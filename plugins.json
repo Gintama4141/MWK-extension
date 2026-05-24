@@ -23,10 +23,10 @@
     },
     {
         "iconUrl": "https://kisskh.co/assets/icons/icon-192x192.png",
-        "fileHash": "sha256-82b70da1f4e2340b3e81b17b88d488ab5ebe893d4870d7cd7f1d6e09833dd688",
+        "fileHash": "sha256-73b4e52dbcd86bb69c5221342dde3a76a37df8e33ba66e69bdf6d4d26b61e809",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 16252,
+        "fileSize": 18812,
         "status": 1,
         "language": "en",
         "authors": [
