@@ -23,7 +23,7 @@
     },
     {
         "iconUrl": "https://kisskh.co/assets/icons/icon-192x192.png",
-        "fileHash": "sha256-73b4e52dbcd86bb69c5221342dde3a76a37df8e33ba66e69bdf6d4d26b61e809",
+        "fileHash": "sha256-ae4ec7b8954e8c8ea5fe38394113c42474667da3db4f931cbc56c068058dfd9b",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
         "fileSize": 18812,
@@ -36,7 +36,7 @@
             "TvSeries",
             "Movie"
         ],
-        "version": 1,
+        "version": 2,
         "internalName": "KissKHProvider",
         "description": "KissKH - Asian Dramas & Movies",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/KissKHProvider.cs3",
