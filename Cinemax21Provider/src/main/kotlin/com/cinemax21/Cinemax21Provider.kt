@@ -19,7 +19,6 @@ import com.cinemax21.Cinemax21ProviderExtractor.invokeWyzie
 import com.cinemax21.Cinemax21ProviderExtractor.invokeXprime
 import com.cinemax21.Cinemax21ProviderExtractor.invokeCinemaOS
 import com.cinemax21.Cinemax21ProviderExtractor.invokePlayer4U
-import com.cinemax21.Cinemax21ProviderExtractor.invokeRiveStream
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.metaproviders.TmdbProvider
@@ -409,9 +408,6 @@ open class Cinemax21Provider : TmdbProvider() {
                     res.year,
                     callback
                 )
-            },
-            {
-                if (!res.isAnime) invokeRiveStream(res.id, res.season, res.episode, callback)
             },
             {
                 invokeVidsrc(
