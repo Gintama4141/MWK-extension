@@ -17,6 +17,11 @@ class Lk21Provider : MainAPI() {
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.Movie)
 
+    private val gomoviesAPI = "https://gomovies-online.cam"
+    private val idlixAPI = "https://tv10.idlixku.com"
+    private val vidlinkAPI = "https://vidlink.pro"
+    private val multiembedAPI = "https://multiembed.mov"
+
     override val mainPage = mainPageOf(
         "$mainUrl/latest" to "Latest",
         "$mainUrl/populer" to "Populer",
@@ -101,6 +106,10 @@ class Lk21Provider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data).document
+        val title = document.selectFirst("h1")?.text()?.trim()
+            ?: document.selectFirst("meta[property=og:title]")?.attr("content")?.trim() ?: ""
+        val yearText = document.body().text().let { Regex("(\\d{4})").findAll(it).map { it.value }.firstOrNull { it.toIntOrNull() in 1900..2030 } }
+        val year = yearText?.toIntOrNull()
 
         val iframes = document.select("iframe[src]")
         if (iframes.isNotEmpty()) {
@@ -110,7 +119,6 @@ class Lk21Provider : MainAPI() {
                     loadExtractor(fixUrl(src), subtitleCallback, callback)
                 }
             }
-            return true
         }
 
         val playerLinks = document.select("#player-list a[data-url]")
@@ -122,10 +130,92 @@ class Lk21Provider : MainAPI() {
                     loadExtractor(realUrl, subtitleCallback, callback)
                 }
             }
-            return true
         }
 
+        runAllAsync(
+            { invokeGomovies(title, year, subtitleCallback, callback) },
+            { invokeIdlix(title, year, subtitleCallback, callback) },
+            { invokeVidlink(title, year, subtitleCallback, callback) },
+        )
+
         return true
+    }
+
+    private fun String.toSlug(): String {
+        return this.filter { it.isWhitespace() || it.isLetterOrDigit() }
+            .trim()
+            .replace("\\s+".toRegex(), "-")
+            .lowercase()
+    }
+
+    private suspend fun invokeGomovies(
+        title: String, year: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit
+    ) {
+        try {
+            val slug = title.toSlug()
+            val searchDoc = app.get("$gomoviesAPI/search/$slug").document
+            val filmLink = searchDoc.selectFirst("a[href*='/watch-film/']")?.attr("href") ?: return
+            val absoluteFilmLink = if (filmLink.startsWith("http")) filmLink else "$gomoviesAPI$filmLink"
+            val filmPage = app.get(absoluteFilmLink).document
+            val embedUrl = filmPage.selectFirst("iframe[src]")?.attr("src") ?: return
+            if (embedUrl.contains("youtube", true)) return
+            val absoluteEmbed = when {
+                embedUrl.startsWith("http") -> embedUrl
+                embedUrl.startsWith("//") -> "https:$embedUrl"
+                else -> "$gomoviesAPI$embedUrl"
+            }
+            loadExtractor(absoluteEmbed, "$gomoviesAPI/", subtitleCallback, callback)
+        } catch (_: Exception) {}
+    }
+
+    private suspend fun invokeIdlix(
+        title: String, year: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit
+    ) {
+        try {
+            val slug = title.toSlug()
+            val movieUrl = if (year != null) "$idlixAPI/movie/$slug-$year" else "$idlixAPI/movie/$slug"
+            val doc = app.get(movieUrl).document
+            doc.select("ul#playeroptionsul > li").mapNotNull { link ->
+                val id = link.attr("data-post").ifBlank { return@mapNotNull null }
+                val nume = link.attr("data-nume")
+                val type = link.attr("data-type")
+                Triple(id, nume, type)
+            }.forEach { (id, nume, type) ->
+                try {
+                    val json = app.post(
+                        url = "$idlixAPI/wp-admin/admin-ajax.php",
+                        data = mapOf(
+                            "action" to "doo_player_ajax",
+                            "post" to id,
+                            "nume" to nume,
+                            "type" to type,
+                        ),
+                        referer = movieUrl,
+                        headers = mapOf("Accept" to "*/*", "X-Requested-With" to "XMLHttpRequest")
+                    ).parsedSafe<IdlixResponse>() ?: return@forEach
+                    if (json.embed_url.isNotBlank()) {
+                        loadExtractor(json.embed_url, "$idlixAPI/", subtitleCallback, callback)
+                    }
+                } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
+    }
+
+    private suspend fun invokeVidlink(
+        title: String, year: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit
+    ) {
+        try {
+            val slug = title.toSlug()
+            val searchUrl = if (year != null) "$vidlinkAPI/search/$slug%20$year" else "$vidlinkAPI/search/$slug"
+            val doc = app.get(searchUrl).document
+            val firstResult = doc.selectFirst("a[href*='/movie/']") ?: return
+            val moviePath = firstResult.attr("href")
+            val embedUrl = "$vidlinkAPI$moviePath"
+            loadExtractor(embedUrl, subtitleCallback, callback)
+        } catch (_: Exception) {}
     }
 
     private suspend fun decryptStreamUrl(encryptedId: String, referer: String): String? {
@@ -158,32 +248,24 @@ class Lk21Provider : MainAPI() {
             ).text
 
             val verifyJson = JSONObject(verifyResponse)
-            if (verifyJson.optBoolean("success", false)) {
-                val playerUrl = verifyJson.optString("url").ifBlank { return null }
-                val videoId = playerUrl.substringAfterLast("/").ifBlank { return playerUrl }
-                val serverType = playerUrl.substringAfterLast("/iframe/").substringBefore("/")
+            if (!verifyJson.optBoolean("success", false)) return null
 
-                val apiHost = when (serverType) {
-                    "p2p" -> "cloud.hownetwork.xyz"
-                    else -> null
-                }
-                if (apiHost == null) return playerUrl
+            val playerUrl = verifyJson.optString("url").ifBlank { return null }
+            val videoId = playerUrl.substringAfterLast("/").ifBlank { return playerUrl }
+            val serverType = playerUrl.substringAfterLast("/iframe/").substringBefore("/")
 
-                val apiBody = "r=${URLEncoder.encode(playerUrl, "UTF-8")}&d=${URLEncoder.encode(apiHost, "UTF-8")}"
-                val apiResponse = app.post(
-                    url = "https://$apiHost/api2.php?id=$videoId",
-                    headers = mapOf(
-                        "Content-Type" to "application/x-www-form-urlencoded",
-                        "Referer" to "https://$apiHost/video.php?id=$videoId"
-                    ),
-                    requestBody = apiBody.toRequestBody("application/x-www-form-urlencoded".toMediaTypeOrNull())
-                ).text
-
-                val apiJson = JSONObject(apiResponse)
-                apiJson.optString("file").ifBlank { null }
-            } else {
-                null
+            val apiHost = when (serverType) {
+                "p2p" -> "cloud.hownetwork.xyz"
+                else -> return playerUrl
             }
+
+            val apiResponse = app.get(
+                url = "https://$apiHost/api2.php?id=$videoId",
+                referer = "https://$apiHost/video.php?id=$videoId"
+            ).text
+
+            val apiJson = JSONObject(apiResponse)
+            apiJson.optString("file").ifBlank { null }
         } catch (e: Exception) {
             null
         }
@@ -208,4 +290,8 @@ class Lk21Provider : MainAPI() {
         val minutes = match.groupValues[2].toIntOrNull() ?: 0
         return (hours * 60 + minutes) * 60
     }
+
+    data class IdlixResponse(
+        @com.fasterxml.jackson.annotation.JsonProperty("embed_url") val embed_url: String = "",
+    )
 }
