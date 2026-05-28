@@ -66,6 +66,48 @@
         "name": "DonghubProvider"
     },
     {
+        "fileHash": "sha256-c79c6a15b16f889287d3567aceb107733fe2ee810eb9a246c5610ac78903bfa9",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
+        "fileSize": 29341,
+        "status": 1,
+        "language": "id",
+        "authors": [
+            "MWK"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "AsianDrama"
+        ],
+        "version": 1,
+        "internalName": "Dutamovie",
+        "description": "DutaMovie - Streaming Movie and TV Series",
+        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Dutamovie.cs3",
+        "name": "Dutamovie"
+    },
+    {
+        "fileHash": "sha256-721b28e0c69e03c3bba0a4a74798bb5ba6a049863d21396572ded70cfbb1ef53",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
+        "fileSize": 28595,
+        "status": 1,
+        "language": "id",
+        "authors": [
+            "MWK"
+        ],
+        "tvTypes": [
+            "AsianDrama",
+            "TvSeries",
+            "Movie"
+        ],
+        "version": 1,
+        "internalName": "Kawanfilm",
+        "description": "Kawanfilm - Streaming Movie Sub Indo",
+        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Kawanfilm.cs3",
+        "name": "Kawanfilm"
+    },
+    {
         "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://klikxxi.fit&size=%size%",
         "fileHash": "sha256-5d620032a9588a52f090e435fb7f9f7d9a901bf1ae750a3e4548e88537e5ade3",
         "apiVersion": 1,
@@ -152,6 +194,27 @@
         "description": "NgeFilm21 \u2014 Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/NgeFilm21Provider.cs3",
         "name": "NgeFilm21Provider"
+    },
+    {
+        "fileHash": "sha256-07f41ccc50e8bdb8ac579dd7c4e477982f008a897a62c1dc83d8690642e0f3cb",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
+        "fileSize": 20047,
+        "status": 1,
+        "language": "id",
+        "authors": [
+            "MWK"
+        ],
+        "tvTypes": [
+            "AsianDrama",
+            "TvSeries",
+            "Movie"
+        ],
+        "version": 1,
+        "internalName": "Nomat",
+        "description": "Nomat - Streaming Movie and TV Series",
+        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Nomat.cs3",
+        "name": "Nomat"
     },
     {
         "iconUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRr-sfek8gXmLpcAppEpaYbUDVtndQbCm_boh1-E91QrmSvsw-2l3-s2JOP&s=10",
