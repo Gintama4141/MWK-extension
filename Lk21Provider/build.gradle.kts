@@ -1,4 +1,4 @@
-version = 1
+version = 2
 
 cloudstream {
     description = "LK21 — Nonton Film dan Series Streaming Download Movie"
