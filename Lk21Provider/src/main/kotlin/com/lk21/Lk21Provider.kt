@@ -27,13 +27,13 @@ class Lk21Provider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page <= 1) request.data else "${request.data}/page/$page"
         val document = app.get(url).document
-        val items = document.select("a:has(h3):has(img)").mapNotNull { it.toSearchResponse() }
+        val items = document.select("article a[itemprop=url]").mapNotNull { it.toSearchResponse() }
         return newHomePageResponse(request.name, items)
     }
 
     private fun Element.toSearchResponse(): SearchResponse? {
         val href = fixUrl(attr("href"))
-        val title = selectFirst("h3")?.text()?.trim() ?: return null
+        val title = selectFirst("h3.poster-title")?.text()?.trim() ?: return null
         val poster = selectFirst("img")?.let {
             it.attr("src").ifEmpty { it.attr("data-src") }
         }?.let { fixUrlNull(it) }
@@ -48,7 +48,7 @@ class Lk21Provider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val document = app.get("$mainUrl/?s=$query").document
-        return document.select("a:has(h3):has(img)").mapNotNull { it.toSearchResponse() }
+        return document.select("article a[itemprop=url]").mapNotNull { it.toSearchResponse() }
     }
 
     override suspend fun load(url: String): LoadResponse {
