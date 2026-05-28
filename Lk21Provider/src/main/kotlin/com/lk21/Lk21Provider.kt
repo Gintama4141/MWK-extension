@@ -100,7 +100,7 @@ class Lk21Provider : MainAPI() {
                 this.plot = description
                 this.tags = tags
                 this.year = year
-                this.rating = ratingText?.toFloatOrNull()
+                this.score = Score.from10(ratingText)
             }
         }
 
@@ -110,7 +110,7 @@ class Lk21Provider : MainAPI() {
             this.tags = tags
             this.year = year
             this.duration = runtime
-            this.rating = ratingText?.toFloatOrNull()
+            this.score = Score.from10(ratingText)
         }
     }
 
