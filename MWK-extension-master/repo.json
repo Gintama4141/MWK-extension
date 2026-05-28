@@ -1,0 +1,9 @@
+{
+    "name": "MWK Extension",
+    "iconUrl": "https://github.com/Gintama4141.png",
+    "description": "MWK Extension collection for CloudStream with Indonesian subtitles",
+    "manifestVersion": 1,
+    "pluginLists": [
+      "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/plugins.json"
+    ]
+}
