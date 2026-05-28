@@ -23,10 +23,10 @@
     },
     {
         "iconUrl": "https://klikxxi.me/wp-content/uploads/2024/02/cropped-site-icon.png",
-        "fileHash": "sha256-1818dd49e62abd98540a690a604fa96a5bc3dd1355347072cb85bdea668122f1",
+        "fileHash": "sha256-ba551ccc54d0c958b613736e0021c6cd1ca7d3b9e08f92a48d786438949c95c7",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 215288,
+        "fileSize": 212746,
         "status": 1,
         "language": "id",
         "authors": [
@@ -88,10 +88,10 @@
     },
     {
         "iconUrl": "https://play-lh.googleusercontent.com/EFMkS1T-8txjLFIl9QxjcTRLa7a7Muv08C04b7ongYgodoY_b2T3GpxzGAQEx-eitfQ=w256",
-        "fileHash": "sha256-1ea8be8423eac532ea65cb96e6e506398db8965f7ced1cda0b48436ec9e376c0",
+        "fileHash": "sha256-523ba8abec4dbdaf192d0ec82712463e728d959d07822c632407f5c5f4f16632",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 38342,
+        "fileSize": 37730,
         "status": 1,
         "language": "id",
         "authors": [
@@ -109,31 +109,11 @@
         "name": "KuronimeProvider"
     },
     {
-        "iconUrl": "https://tv10.lk21official.cc/favicon.ico",
-        "fileHash": "sha256-789eb25d3a8ae768b4b3c8488139f19d63ab38d3e06e5925a312fc384e8de617",
-        "apiVersion": 1,
-        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 28457,
-        "status": 1,
-        "language": "id",
-        "authors": [
-            "MWK"
-        ],
-        "tvTypes": [
-            "Movie"
-        ],
-        "version": 4,
-        "internalName": "Lk21Provider",
-        "description": "LK21 \u2014 Nonton Film dan Series Streaming Download Movie",
-        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Lk21Provider.cs3",
-        "name": "Lk21Provider"
-    },
-    {
         "iconUrl": "https://movieboxph.app/wp-content/uploads/2025/11/Movie-Box-icon.webp",
-        "fileHash": "sha256-cab80676a6d84d6310cb72076f2ba210682d78ba819f18c5fccfaf783bc52c52",
+        "fileHash": "sha256-0c0528f83d352a801acb687d32975b1b49c47fe646d097e86333811a9f40c4cb",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 30615,
+        "fileSize": 30167,
         "status": 1,
         "language": "id",
         "authors": [
@@ -175,10 +155,10 @@
     },
     {
         "iconUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRr-sfek8gXmLpcAppEpaYbUDVtndQbCm_boh1-E91QrmSvsw-2l3-s2JOP&s=10",
-        "fileHash": "sha256-04a80e67682c2b0835ea9365c44b27429949a50b9ff626f0a37d052a4abc9459",
+        "fileHash": "sha256-8bf2b0c310ad4ad746c4a8f49cc290a93fa0124c12ce05afd72d88782c2a0440",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 34976,
+        "fileSize": 34516,
         "status": 1,
         "language": "id",
         "authors": [
