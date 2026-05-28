@@ -110,10 +110,10 @@
     },
     {
         "iconUrl": "https://tv10.lk21official.cc/favicon.ico",
-        "fileHash": "sha256-0b7c41f0ddc07b9156a5d2886f450631ed47a7b97d7aada76aad548127ebd53d",
+        "fileHash": "sha256-789eb25d3a8ae768b4b3c8488139f19d63ab38d3e06e5925a312fc384e8de617",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 18856,
+        "fileSize": 28457,
         "status": 1,
         "language": "id",
         "authors": [
@@ -122,7 +122,7 @@
         "tvTypes": [
             "Movie"
         ],
-        "version": 3,
+        "version": 4,
         "internalName": "Lk21Provider",
         "description": "LK21 \u2014 Nonton Film dan Series Streaming Download Movie",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Lk21Provider.cs3",
