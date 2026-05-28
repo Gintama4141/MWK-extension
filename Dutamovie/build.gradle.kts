@@ -5,7 +5,7 @@ cloudstream {
     language = "id"
     authors = listOf("MWK")
     status = 1
-    isCrossPlatform = true
+    // isCrossPlatform = true
     tvTypes = listOf(
         "Movie",
         "TvSeries",
