@@ -1,4 +1,4 @@
-version = 2
+version = 3
 
 cloudstream {
     description = "LK21 — Nonton Film dan Series Streaming Download Movie"
@@ -8,7 +8,6 @@ cloudstream {
     status = 1
     tvTypes = listOf(
         "Movie",
-        "TvSeries",
     )
 
     iconUrl = "https://tv10.lk21official.cc/favicon.ico"
