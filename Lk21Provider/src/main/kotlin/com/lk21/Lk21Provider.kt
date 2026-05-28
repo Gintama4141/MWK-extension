@@ -159,7 +159,28 @@ class Lk21Provider : MainAPI() {
 
             val verifyJson = JSONObject(verifyResponse)
             if (verifyJson.optBoolean("success", false)) {
-                verifyJson.optString("url").ifBlank { null }
+                val playerUrl = verifyJson.optString("url").ifBlank { return null }
+                val videoId = playerUrl.substringAfterLast("/").ifBlank { return playerUrl }
+                val serverType = playerUrl.substringAfterLast("/iframe/").substringBefore("/")
+
+                val apiHost = when (serverType) {
+                    "p2p" -> "cloud.hownetwork.xyz"
+                    else -> null
+                }
+                if (apiHost == null) return playerUrl
+
+                val apiBody = "r=${URLEncoder.encode(playerUrl, "UTF-8")}&d=${URLEncoder.encode(apiHost, "UTF-8")}"
+                val apiResponse = app.post(
+                    url = "https://$apiHost/api2.php?id=$videoId",
+                    headers = mapOf(
+                        "Content-Type" to "application/x-www-form-urlencoded",
+                        "Referer" to "https://$apiHost/video.php?id=$videoId"
+                    ),
+                    requestBody = apiBody.toRequestBody("application/x-www-form-urlencoded".toMediaTypeOrNull())
+                ).text
+
+                val apiJson = JSONObject(apiResponse)
+                apiJson.optString("file").ifBlank { null }
             } else {
                 null
             }
