@@ -14,6 +14,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
+
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.jsoup.Jsoup
@@ -58,10 +59,6 @@ class OtakudesuProvider : MainAPI() {
     override val mainPage = mainPageOf(
         "$mainUrl/ongoing-anime" to "Ongoing Anime",
         "$mainUrl/complete-anime" to "Complete Anime",
-        "$mainUrl/genres/action" to "Action",
-        "$mainUrl/genres/fantasy" to "Fantasy",
-        "$mainUrl/genres/romance" to "Romance",
-        "$mainUrl/genres/slice-of-life" to "Slice of Life",
     )
 
     override suspend fun getMainPage(
@@ -223,8 +220,8 @@ class OtakudesuProvider : MainAPI() {
 
 
     data class ResponseSources(
-        @JsonProperty("id") val id: String,
-        @JsonProperty("i") val i: String,
+        @JsonProperty("id") val id: Int,
+        @JsonProperty("i") val i: Int,
         @JsonProperty("q") val q: String,
     )
 
@@ -240,8 +237,15 @@ class OtakudesuProvider : MainAPI() {
     ): Boolean {
 
         val document = app.get(data).document
+        val ajaxHeaders = mapOf("X-Requested-With" to "XMLHttpRequest")
 
         runAllAsync(
+            {
+                val iframeSrc = document.selectFirst("div#pembed iframe")?.attr("src")
+                if (!iframeSrc.isNullOrBlank()) {
+                    loadExtractor(iframeSrc, data, subtitleCallback, callback)
+                }
+            },
             {
                 val scriptData = document.select("script:containsData(__x__nonce)").firstOrNull()?.data()
                     ?: document.select("script:containsData(mirrorstream)").firstOrNull()?.data()
@@ -254,53 +258,61 @@ class OtakudesuProvider : MainAPI() {
                     ?: Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]{32})"""").find(scriptData)?.groupValues?.getOrNull(1)
 
                 if (nonceAction != null && embedAction != null) {
-                    val nonceResp = app.post("$mainUrl/wp-admin/admin-ajax.php", data = mapOf("action" to nonceAction))
-                            .parsed<ResponseData>()
-                    val nonce = nonceResp.data
+                    val nonceResp = app.post("$mainUrl/wp-admin/admin-ajax.php",
+                        data = mapOf("action" to nonceAction),
+                        headers = ajaxHeaders,
+                        referer = data
+                    ).parsedSafe<ResponseData>()
+                    val nonce = nonceResp?.data ?: return@runAllAsync
 
                     document.select("div.mirrorstream > ul > li").amap { li ->
                         val dataContent = li.select("a").attr("data-content")
                         if (dataContent.isNotBlank()) {
                             val decodedData = base64Decode(dataContent)
                             val res = tryParseJson<ResponseSources>(decodedData)
-                            
+
                             if (res != null) {
+                                val embedData = app.post(
+                                    "${mainUrl}/wp-admin/admin-ajax.php",
+                                    data = mapOf(
+                                        "id" to res.id.toString(),
+                                        "i" to res.i.toString(),
+                                        "q" to res.q,
+                                        "nonce" to nonce,
+                                        "action" to embedAction
+                                    ),
+                                    headers = ajaxHeaders,
+                                    referer = data
+                                ).parsedSafe<ResponseData>()?.data ?: return@amap
+
                                 val sources = Jsoup.parse(
-                                    base64Decode(
-                                        app.post(
-                                            "${mainUrl}/wp-admin/admin-ajax.php", data = mapOf(
-                                                "id" to res.id,
-                                                "i" to res.i,
-                                                "q" to res.q,
-                                                "nonce" to nonce,
-                                                "action" to embedAction
-                                            )
-                                        ).parsed<ResponseData>().data
-                                    )
+                                    base64Decode(embedData)
                                 ).select("iframe").attr("src")
 
-                                loadCustomExtractor(sources, data, subtitleCallback, callback, getQuality(res.q))
+                                if (sources.isNotBlank()) {
+                                    loadCustomExtractor(sources, data, subtitleCallback, callback, getQuality(res.q))
+                                }
                             }
                         }
                     }
                 }
             },
             {
-                document.select("div.download li").map { ele ->
+                document.select("div.download li").amap { ele ->
                     val quality = getQuality(ele.select("strong").text())
-                    ele.select("a").map {
-                        it.attr("href") to it.text()
-                    }.filter {
-                        !inBlacklist(it.first) && quality != Qualities.P360.value
-                    }.amap {
-                        val link = app.get(it.first, referer = "$mainUrl/").url
-                        loadCustomExtractor(
-                            fixedIframe(link),
-                            data,
-                            subtitleCallback,
-                            callback,
-                            quality
-                        )
+                    if (quality == Qualities.P360.value) return@amap
+                    ele.select("a").map { it.attr("href") }.amap { href ->
+                        if (inBlacklist(href)) return@amap
+                        try {
+                            val link = app.get(href, referer = "$mainUrl/").url
+                            loadCustomExtractor(
+                                fixedIframe(link),
+                                data,
+                                subtitleCallback,
+                                callback,
+                                quality
+                            )
+                        } catch (_: Exception) {}
                     }
                 }
             }

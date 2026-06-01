@@ -27,5 +27,11 @@ class OtakudesuProviderPlugin : Plugin() {
         registerExtractorAPI(Acefile())
         registerExtractorAPI(Mp4Upload())
         registerExtractorAPI(Mediafire())
+        registerExtractorAPI(Moedesu())
+        registerExtractorAPI(DesuBeta())
+        registerExtractorAPI(Desudesuhd())
+        registerExtractorAPI(Odvidhide())
+        registerExtractorAPI(DesustreamInfo())
+        registerExtractorAPI(Updesu())
     }
 }
