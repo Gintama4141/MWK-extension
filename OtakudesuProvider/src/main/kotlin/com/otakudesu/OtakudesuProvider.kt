@@ -14,9 +14,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
-
 import kotlinx.coroutines.runBlocking
-import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -34,12 +32,9 @@ class OtakudesuProvider : MainAPI() {
     )
 
     companion object {
+        val objectMapper = ObjectMapper()
         const val acefile = "https://acefile.co"
-        val mirrorBlackList = arrayOf(
-            "Mega",
-            "MegaUp",
-            "Otakufiles",
-        )
+        val mirrorBlackList = arrayOf("Mega", "MegaUp", "Otakufiles")
 
         fun getType(t: String): TvType {
             return if (t.contains("OVA", true) || t.contains("Special")) TvType.OVA
@@ -97,7 +92,6 @@ class OtakudesuProvider : MainAPI() {
             }
     }
 
-
     override suspend fun load(url: String): LoadResponse {
         val document = app.get(url).document
 
@@ -115,8 +109,7 @@ class OtakudesuProvider : MainAPI() {
         )?.groupValues?.get(1)?.toIntOrNull()
         val status = getStatus(
             document.selectFirst("div.infozingle > p:nth-child(6) > span")!!.ownText()
-                .replace(":", "")
-                .trim()
+                .replace(":", "").trim()
         )
         val description = document.select("div.sinopc > p").text()
 
@@ -133,16 +126,10 @@ class OtakudesuProvider : MainAPI() {
                 animeMetaData = parseAnimeData(syncMetaData)
                 tmdbid = animeMetaData?.mappings?.themoviedbId
                 kitsuid = animeMetaData?.mappings?.kitsuId
-            } catch (e: Exception) {}
+            } catch (_: Exception) {}
         }
 
-        val logoUrl = fetchTmdbLogoUrl(
-            tmdbAPI = "https://api.themoviedb.org/3",
-            apiKey = "98ae14df2b8d8f8f8136499daf79f0e0",
-            type = type,
-            tmdbId = tmdbid,
-            appLangCode = "en"
-        )
+        val logoUrl = fetchTmdbLogoUrl(tmdbid, type)
 
         val backgroundposter = animeMetaData?.images?.find { it.coverType == "Fanart" }?.url ?: tracker?.cover
 
@@ -160,13 +147,9 @@ class OtakudesuProvider : MainAPI() {
             val metaEp = if (episodeKey != null) animeMetaData?.episodes?.get(episodeKey) else null
 
             val epOverview = metaEp?.overview
-            val finalOverview = if (!epOverview.isNullOrBlank()) {
-                epOverview
-            } else {
-                "Synopsis not yet available."
-            }
+            val finalOverview = if (!epOverview.isNullOrBlank()) epOverview else "Synopsis not yet available."
 
-            newEpisode(link) { 
+            newEpisode(link) {
                 this.name = if (type == TvType.AnimeMovie) {
                     animeMetaData?.titles?.get("en") ?: animeMetaData?.titles?.get("ja") ?: title
                 } else {
@@ -193,19 +176,14 @@ class OtakudesuProvider : MainAPI() {
 
         val apiDescription = animeMetaData?.description?.replace(Regex("<.*?>"), "")
         val rawPlot = apiDescription ?: animeMetaData?.episodes?.get("1")?.overview
-        
-        val finalPlot = if (!rawPlot.isNullOrBlank()) {
-            rawPlot
-        } else {
-            description
-        }
+        val finalPlot = if (!rawPlot.isNullOrBlank()) rawPlot else description
 
         return newAnimeLoadResponse(title, url, TvType.Anime) {
             this.engName = animeMetaData?.titles?.get("en") ?: title
             this.japName = animeMetaData?.titles?.get("ja") ?: animeMetaData?.titles?.get("x-jat")
             this.posterUrl = tracker?.image ?: poster
             this.backgroundPosterUrl = backgroundposter
-            try { this.logoUrl = logoUrl } catch(_:Throwable){}
+            try { this.logoUrl = logoUrl } catch (_: Throwable) {}
             this.year = year
             addEpisodes(DubStatus.Subbed, episodes)
             this.showStatus = status
@@ -214,20 +192,9 @@ class OtakudesuProvider : MainAPI() {
             this.recommendations = recommendations
             addMalId(malId)
             addAniListId(tracker?.aniId?.toIntOrNull())
-            try { addKitsuId(kitsuid) } catch(_:Throwable){}
+            try { addKitsuId(kitsuid) } catch (_: Throwable) {}
         }
     }
-
-
-    data class ResponseSources(
-        @JsonProperty("id") val id: Int,
-        @JsonProperty("i") val i: Int,
-        @JsonProperty("q") val q: String,
-    )
-
-    data class ResponseData(
-        @JsonProperty("data") val data: String
-    )
 
     override suspend fun loadLinks(
         data: String,
@@ -235,7 +202,6 @@ class OtakudesuProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-
         val document = app.get(data).document
         val ajaxHeaders = mapOf("X-Requested-With" to "XMLHttpRequest")
 
@@ -258,7 +224,8 @@ class OtakudesuProvider : MainAPI() {
                     ?: Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]{32})"""").find(scriptData)?.groupValues?.getOrNull(1)
 
                 if (nonceAction != null && embedAction != null) {
-                    val nonceResp = app.post("$mainUrl/wp-admin/admin-ajax.php",
+                    val nonceResp = app.post(
+                        "$mainUrl/wp-admin/admin-ajax.php",
                         data = mapOf("action" to nonceAction),
                         headers = ajaxHeaders,
                         referer = data
@@ -269,7 +236,9 @@ class OtakudesuProvider : MainAPI() {
                         val dataContent = li.select("a").attr("data-content")
                         if (dataContent.isNotBlank()) {
                             val decodedData = base64Decode(dataContent)
-                            val res = tryParseJson<ResponseSources>(decodedData)
+                            val res = runCatching {
+                                objectMapper.readValue(decodedData, ResponseSources::class.java)
+                            }.getOrNull()
 
                             if (res != null) {
                                 val embedData = app.post(
@@ -305,13 +274,7 @@ class OtakudesuProvider : MainAPI() {
                         if (inBlacklist(href)) return@amap
                         try {
                             val link = app.get(href, referer = "$mainUrl/").url
-                            loadCustomExtractor(
-                                fixedIframe(link),
-                                data,
-                                subtitleCallback,
-                                callback,
-                                quality
-                            )
+                            loadCustomExtractor(fixedIframe(link), data, subtitleCallback, callback, quality)
                         } catch (_: Exception) {}
                     }
                 }
@@ -331,12 +294,7 @@ class OtakudesuProvider : MainAPI() {
         loadExtractor(url, referer, subtitleCallback) { link ->
             runBlocking {
                 callback.invoke(
-                    newExtractorLink(
-                        link.name,
-                        link.name,
-                        link.url,
-                        link.type
-                    ) {
+                    newExtractorLink(link.name, link.name, link.url, link.type) {
                         this.referer = link.referer
                         this.quality = quality
                         this.headers = link.headers
@@ -353,7 +311,6 @@ class OtakudesuProvider : MainAPI() {
                 val id = Regex("""(?:/f/|/file/)(\w+)""").find(url)?.groupValues?.getOrNull(1)
                 "${acefile}/player/$id"
             }
-
             else -> fixUrl(url)
         }
     }
@@ -366,6 +323,88 @@ class OtakudesuProvider : MainAPI() {
         return Regex("(\\d{3,4})[pP]").find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: Qualities.Unknown.value
     }
+
+    private fun parseAnimeData(jsonString: String): MetaAnimeData? {
+        return try {
+            objectMapper.readValue(jsonString, MetaAnimeData::class.java)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun fetchTmdbLogoUrl(tmdbId: Int?, type: TvType): String? {
+        if (tmdbId == null) return null
+        val apiKey = "98ae14df2b8d8f8f8136499daf79f0e0"
+        val url = if (type == TvType.AnimeMovie)
+            "https://api.themoviedb.org/3/movie/$tmdbId/images?api_key=$apiKey"
+        else
+            "https://api.themoviedb.org/3/tv/$tmdbId/images?api_key=$apiKey"
+
+        val json = runCatching {
+            objectMapper.readValue(app.get(url).text, TmdbImageResponse::class.java)
+        }.getOrNull() ?: return null
+        val logos = json.logos ?: return null
+        if (logos.isEmpty()) return null
+
+        fun isSvg(o: TmdbLogoImage) = o.filePath?.endsWith(".svg", true) == true
+        fun urlOf(o: TmdbLogoImage) = "https://image.tmdb.org/t/p/w500${o.filePath}"
+
+        var svgFallback: TmdbLogoImage? = null
+        for (logo in logos) {
+            if (logo.filePath.isNullOrBlank()) continue
+            val l = logo.iso6391?.trim()?.lowercase()
+            if (l == "en") {
+                if (!isSvg(logo)) return urlOf(logo)
+                if (svgFallback == null) svgFallback = logo
+            }
+        }
+        if (svgFallback != null) return urlOf(svgFallback)
+
+        var best: TmdbLogoImage? = null
+        var bestSvg: TmdbLogoImage? = null
+
+        for (logo in logos) {
+            val avg = logo.voteAverage ?: 0.0
+            val cnt = logo.voteCount ?: 0
+            if (avg <= 0 || cnt <= 0) continue
+            if (isSvg(logo)) {
+                val b = bestSvg
+                if (b == null || avg > (b.voteAverage ?: 0.0) || (avg == (b.voteAverage ?: 0.0) && cnt > (b.voteCount ?: 0))) {
+                    bestSvg = logo
+                }
+            } else {
+                val b = best
+                if (b == null || avg > (b.voteAverage ?: 0.0) || (avg == (b.voteAverage ?: 0.0) && cnt > (b.voteCount ?: 0))) {
+                    best = logo
+                }
+            }
+        }
+
+        if (best != null) return urlOf(best)
+        if (bestSvg != null) return urlOf(bestSvg)
+        return null
+    }
+
+    data class ResponseSources(
+        @JsonProperty("id") val id: Int,
+        @JsonProperty("i") val i: Int,
+        @JsonProperty("q") val q: String,
+    )
+
+    data class ResponseData(
+        @JsonProperty("data") val data: String
+    )
+
+    data class TmdbLogoImage(
+        @JsonProperty("file_path") val filePath: String?,
+        @JsonProperty("iso_639_1") val iso6391: String?,
+        @JsonProperty("vote_average") val voteAverage: Double?,
+        @JsonProperty("vote_count") val voteCount: Int?
+    )
+
+    data class TmdbImageResponse(
+        @JsonProperty("logos") val logos: List<TmdbLogoImage>?
+    )
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     data class MetaImage(
@@ -399,84 +438,6 @@ class OtakudesuProvider : MainAPI() {
         @JsonProperty("themoviedb_id") val themoviedbId: Int? = null,
         @JsonProperty("kitsu_id") val kitsuId: String? = null
     )
-
-    private fun parseAnimeData(jsonString: String): MetaAnimeData? {
-        return try {
-            val objectMapper = ObjectMapper()
-            objectMapper.readValue(jsonString, MetaAnimeData::class.java)
-        } catch (_: Exception) {
-            null
-        }
-    }
-}
-
-suspend fun fetchTmdbLogoUrl(
-    tmdbAPI: String,
-    apiKey: String,
-    type: TvType,
-    tmdbId: Int?,
-    appLangCode: String?
-): String? {
-    if (tmdbId == null) return null
-
-    val url = if (type == TvType.AnimeMovie)
-        "$tmdbAPI/movie/$tmdbId/images?api_key=$apiKey"
-    else
-        "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
-
-    val json = runCatching { JSONObject(app.get(url).text) }.getOrNull() ?: return null
-    val logos = json.optJSONArray("logos") ?: return null
-    if (logos.length() == 0) return null
-
-    val lang = appLangCode?.trim()?.lowercase()
-
-    fun path(o: JSONObject) = o.optString("file_path")
-    fun isSvg(o: JSONObject) = path(o).endsWith(".svg", true)
-    fun urlOf(o: JSONObject) = "https://image.tmdb.org/t/p/w500${path(o)}"
-
-    var svgFallback: JSONObject? = null
-
-    for (i in 0 until logos.length()) {
-        val logo = logos.optJSONObject(i) ?: continue
-        val p = path(logo)
-        if (p.isBlank()) continue
-
-        val l = logo.optString("iso_639_1").trim().lowercase()
-        if (l == lang) {
-            if (!isSvg(logo)) return urlOf(logo)
-            if (svgFallback == null) svgFallback = logo
-        }
-    }
-    svgFallback?.let { return urlOf(it) }
-
-    var best: JSONObject? = null
-    var bestSvg: JSONObject? = null
-
-    fun voted(o: JSONObject) = o.optDouble("vote_average", 0.0) > 0 && o.optInt("vote_count", 0) > 0
-    fun better(a: JSONObject?, b: JSONObject): Boolean {
-        if (a == null) return true
-        val aAvg = a.optDouble("vote_average", 0.0)
-        val aCnt = a.optInt("vote_count", 0)
-        val bAvg = b.optDouble("vote_average", 0.0)
-        val bCnt = b.optInt("vote_count", 0)
-        return bAvg > aAvg || (bAvg == aAvg && bCnt > aCnt)
-    }
-
-    for (i in 0 until logos.length()) {
-        val logo = logos.optJSONObject(i) ?: continue
-        if (!voted(logo)) continue
-
-        if (isSvg(logo)) {
-            if (better(bestSvg, logo)) bestSvg = logo
-        } else {
-            if (better(best, logo)) best = logo
-        }
-    }
-
-    best?.let { return urlOf(it) }
-    bestSvg?.let { return urlOf(it) }
-
-    return null
 }
 
 class Moedesu : JWPlayer() {
