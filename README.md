@@ -40,16 +40,12 @@ https://raw.githubusercontent.com/Gintama4141/MWK-extension/master/repo.json
 | Provider | Tipe | Deskripsi |
 |:---------|:-----|:----------|
 | **Anichin** | Anime | Streaming Donghua Subtitle Indonesia |
-| **CineMax21** | Movie & TV | Streaming Movie dan TV Series (TMDB-based) |
 | **Donghub** | Anime | Streaming Donghua Subtitle Indonesia |
 | **DutaMovie** | Movie & TV | Streaming Movie dan TV Series |
 | **Kawanfilm** | Movie | Streaming Movie Sub Indo |
 | **KlikXXI** | Movie & TV | Streaming Movie dan TV Series |
-| **Kuronime** | Anime | Streaming Anime Subtitle Indonesia |
-| **MovieBox** | Movie & TV | Streaming Movie Subtitle Indonesia |
 | **NgeFilm21** | Movie & TV | Streaming Movie dan TV Series |
 | **Nomat** | Movie & TV | Streaming Movie dan TV Series |
-| **OtakuDesu** | Anime | Streaming Anime Subtitle Indonesia |
 | **PencuriMovie** | Movie & TV | Streaming Movie dan TV Series |
 
 ---
