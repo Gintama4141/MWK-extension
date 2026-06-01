@@ -56,15 +56,20 @@ class OtakudesuProvider : MainAPI() {
     }
 
     override val mainPage = mainPageOf(
-        "$mainUrl/ongoing-anime/page/" to "Ongoing Anime",
-        "$mainUrl/complete-anime/page/" to "Complete Anime"
+        "$mainUrl/ongoing-anime" to "Ongoing Anime",
+        "$mainUrl/complete-anime" to "Complete Anime",
+        "$mainUrl/genres/action" to "Action",
+        "$mainUrl/genres/fantasy" to "Fantasy",
+        "$mainUrl/genres/romance" to "Romance",
+        "$mainUrl/genres/slice-of-life" to "Slice of Life",
     )
 
     override suspend fun getMainPage(
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
-        val document = app.get(request.data + page).document
+        val url = if (page <= 1) request.data else "${request.data}/page/$page"
+        val document = app.get(url).document
         val home = document.select("div.venz > ul > li").mapNotNull {
             it.toSearchResult()
         }
@@ -74,7 +79,7 @@ class OtakudesuProvider : MainAPI() {
     private fun Element.toSearchResult(): AnimeSearchResponse? {
         val title = this.selectFirst("h2.jdlflm")?.text()?.trim() ?: return null
         val href = this.selectFirst("a")!!.attr("href")
-        val posterUrl = this.select("div.thumbz > img").attr("src").toString()
+        val posterUrl = this.select("div.thumbz > img").attr("src")
         val epNum = this.selectFirst("div.epz")?.ownText()?.replace(Regex("\\D"), "")?.trim()
             ?.toIntOrNull()
         return newAnimeSearchResponse(title, href, TvType.Anime) {
@@ -88,7 +93,7 @@ class OtakudesuProvider : MainAPI() {
             .map {
                 val title = it.selectFirst("h2 > a")!!.ownText().trim()
                 val href = it.selectFirst("h2 > a")!!.attr("href")
-                val posterUrl = it.selectFirst("img")!!.attr("src").toString()
+                val posterUrl = it.selectFirst("img")!!.attr("src")
                 newAnimeSearchResponse(title, href, TvType.Anime) {
                     this.posterUrl = posterUrl
                 }
