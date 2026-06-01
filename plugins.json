@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://anichin.ro/wp-content/uploads/2026/02/cropped-favicon-anichin-192x192.webp",
-        "fileHash": "sha256-9a7e4d685b5eb07adc989e1762edf446dfe7ac63e509d0527b77225201423fc7",
+        "fileHash": "sha256-4a7eb28ac95a137ca1fc80020726289894d7d9c7712ef1ce9c00f9192f3dd843",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 13268,
+        "fileSize": 13734,
         "status": 1,
         "language": "id",
         "authors": [
@@ -15,40 +15,18 @@
             "AnimeMovie",
             "Cartoon"
         ],
-        "version": 4,
+        "version": 3,
         "internalName": "AnichinProvider",
         "description": "Anichin - Streaming Donghua Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/AnichinProvider.cs3",
         "name": "AnichinProvider"
     },
     {
-        "iconUrl": "https://klikxxi.me/wp-content/uploads/2024/02/cropped-site-icon.png",
-        "fileHash": "sha256-4d6d669efe442dbab551aa0484802d1755151d7d35623d2db5c4becf78155d72",
-        "apiVersion": 1,
-        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 237273,
-        "status": 1,
-        "language": "id",
-        "authors": [
-            "Miku"
-        ],
-        "tvTypes": [
-            "AsianDrama",
-            "TvSeries",
-            "Movie"
-        ],
-        "version": 3,
-        "internalName": "Cinemax21Provider",
-        "description": "CineMax21 \u2014 Streaming Movie and TV Series",
-        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Cinemax21Provider.cs3",
-        "name": "Cinemax21Provider"
-    },
-    {
         "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://donghub.vip&size=%size%",
-        "fileHash": "sha256-6becbfa7bc951c9b20f1fe85efafda843c48e0f1ceafce8acdcf459e9511ed22",
+        "fileHash": "sha256-16a49016269c2e20f83f9f83f79621ddb53a399748ec1e46a7156586f3d165fa",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 20112,
+        "fileSize": 18883,
         "status": 1,
         "language": "id",
         "authors": [
@@ -59,17 +37,17 @@
             "AnimeMovie",
             "Cartoon"
         ],
-        "version": 2,
+        "version": 1,
         "internalName": "DonghubProvider",
         "description": "Donghub \u2014 Streaming Donghua Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/DonghubProvider.cs3",
         "name": "DonghubProvider"
     },
     {
-        "fileHash": "sha256-d0e2a611b82eb4300884644a45456576374947b1977ed480c077947d95336cce",
+        "fileHash": "sha256-c79c6a15b16f889287d3567aceb107733fe2ee810eb9a246c5610ac78903bfa9",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 29356,
+        "fileSize": 29341,
         "status": 1,
         "language": "id",
         "authors": [
@@ -80,17 +58,17 @@
             "TvSeries",
             "AsianDrama"
         ],
-        "version": 2,
+        "version": 1,
         "internalName": "Dutamovie",
         "description": "DutaMovie - Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Dutamovie.cs3",
         "name": "Dutamovie"
     },
     {
-        "fileHash": "sha256-01435122f81126ac1a5f734c27c31e9a60c308de723f99915292362ff920529e",
+        "fileHash": "sha256-721b28e0c69e03c3bba0a4a74798bb5ba6a049863d21396572ded70cfbb1ef53",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 28613,
+        "fileSize": 28595,
         "status": 1,
         "language": "id",
         "authors": [
@@ -101,7 +79,7 @@
             "TvSeries",
             "Movie"
         ],
-        "version": 2,
+        "version": 1,
         "internalName": "Kawanfilm",
         "description": "Kawanfilm - Streaming Movie Sub Indo",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Kawanfilm.cs3",
@@ -109,10 +87,10 @@
     },
     {
         "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://klikxxi.fit&size=%size%",
-        "fileHash": "sha256-f09d23e3e32d8b9e3fa3fb31e7c49956a1eddeae3c3b19948a2550a21b214519",
+        "fileHash": "sha256-5d620032a9588a52f090e435fb7f9f7d9a901bf1ae750a3e4548e88537e5ade3",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 21256,
+        "fileSize": 21422,
         "status": 1,
         "language": "id",
         "authors": [
@@ -122,63 +100,18 @@
             "TvSeries",
             "Movie"
         ],
-        "version": 2,
+        "version": 1,
         "internalName": "KlikxxiProvider",
         "description": "KlikXXI \u2014 Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/KlikxxiProvider.cs3",
         "name": "KlikxxiProvider"
     },
     {
-        "iconUrl": "https://play-lh.googleusercontent.com/EFMkS1T-8txjLFIl9QxjcTRLa7a7Muv08C04b7ongYgodoY_b2T3GpxzGAQEx-eitfQ=w256",
-        "fileHash": "sha256-c742720b31884e9e245dc289a95757232c7b790f7f163df40b1324e1d09138dc",
-        "apiVersion": 1,
-        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 38380,
-        "status": 1,
-        "language": "id",
-        "authors": [
-            "MWK"
-        ],
-        "tvTypes": [
-            "AnimeMovie",
-            "Anime",
-            "OVA"
-        ],
-        "version": 4,
-        "internalName": "KuronimeProvider",
-        "description": "Kuronime \u2014 Streaming Anime Subtitle Indonesia",
-        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/KuronimeProvider.cs3",
-        "name": "KuronimeProvider"
-    },
-    {
-        "iconUrl": "https://movieboxph.app/wp-content/uploads/2025/11/Movie-Box-icon.webp",
-        "fileHash": "sha256-391d9c06907f4c370dd1aae5221a6e244b0dc7b6c753c45617ae188f361d5d42",
-        "apiVersion": 1,
-        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 30573,
-        "status": 1,
-        "language": "id",
-        "authors": [
-            "MWK"
-        ],
-        "tvTypes": [
-            "TvSeries",
-            "Movie",
-            "Anime",
-            "AsianDrama"
-        ],
-        "version": 2,
-        "internalName": "MovieboxProvider",
-        "description": "MovieBox \u2014 Streaming Movie Subtitle Indonesia",
-        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/MovieboxProvider.cs3",
-        "name": "MovieboxProvider"
-    },
-    {
         "iconUrl": "https://new31.ngefilm.site/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png",
-        "fileHash": "sha256-74c46efe662943c4a9c3fc9ac4d35241a97ebee8771ce899a656d52580b3771a",
+        "fileHash": "sha256-c4e3743f8ed285c27860137974adb217d7aeed59bc24cf99ed297459e1afa7ba",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 31600,
+        "fileSize": 31593,
         "status": 1,
         "language": "id",
         "authors": [
@@ -189,17 +122,17 @@
             "TvSeries",
             "Movie"
         ],
-        "version": 2,
+        "version": 1,
         "internalName": "NgeFilm21Provider",
         "description": "NgeFilm21 \u2014 Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/NgeFilm21Provider.cs3",
         "name": "NgeFilm21Provider"
     },
     {
-        "fileHash": "sha256-1499b8244a08a53167c6ab5a12b9b3dc026a9b26256b4150b7e7e5516ee4a9a3",
+        "fileHash": "sha256-07f41ccc50e8bdb8ac579dd7c4e477982f008a897a62c1dc83d8690642e0f3cb",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 20046,
+        "fileSize": 20047,
         "status": 1,
         "language": "id",
         "authors": [
@@ -210,40 +143,18 @@
             "TvSeries",
             "Movie"
         ],
-        "version": 2,
+        "version": 1,
         "internalName": "Nomat",
         "description": "Nomat - Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Nomat.cs3",
         "name": "Nomat"
     },
     {
-        "iconUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRr-sfek8gXmLpcAppEpaYbUDVtndQbCm_boh1-E91QrmSvsw-2l3-s2JOP&s=10",
-        "fileHash": "sha256-7743ac8c219dd0de52a1948ebd7d8f2da518bb8ec665ab789a3052fc7f156243",
-        "apiVersion": 1,
-        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 34984,
-        "status": 1,
-        "language": "id",
-        "authors": [
-            "MWK"
-        ],
-        "tvTypes": [
-            "AnimeMovie",
-            "Anime",
-            "OVA"
-        ],
-        "version": 5,
-        "internalName": "OtakudesuProvider",
-        "description": "OtakuDesu \u2014 Streaming Anime Subtitle Indonesia",
-        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/OtakudesuProvider.cs3",
-        "name": "OtakudesuProvider"
-    },
-    {
         "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://ww03.pencurimovie.bond&size=%size%",
-        "fileHash": "sha256-66c5d5071376cf5f55d1ef52526c38158c31d9758dd27951cdb5e0375b5ff860",
+        "fileHash": "sha256-d694f256ea898514121d64e8870686e9a3e263973f571bd2200593bb78fb9343",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 15413,
+        "fileSize": 15417,
         "status": 1,
         "language": "id",
         "authors": [
@@ -253,7 +164,7 @@
             "Movie",
             "TvSeries"
         ],
-        "version": 2,
+        "version": 1,
         "internalName": "PencuriMovieProvider",
         "description": "PencuriMovie \u2014 Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/PencuriMovieProvider.cs3",
