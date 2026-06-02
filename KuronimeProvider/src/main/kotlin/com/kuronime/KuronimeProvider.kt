@@ -8,7 +8,6 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addKitsuId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addMalId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
-import com.lagradost.cloudstream3.extractors.helper.AesHelper
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper
@@ -22,7 +21,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import org.jsoup.nodes.Element
 import java.net.URI
+import java.security.MessageDigest
 import java.util.ArrayList
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class KuronimeProvider : MainAPI() {
     override var mainUrl = "https://kuronime.sbs"
@@ -282,14 +285,8 @@ class KuronimeProvider : MainAPI() {
 
         runAllAsync(
             {
-                val decrypt = AesHelper.cryptoAESHandler(
-                    base64Decode(servers?.src ?: return@runAllAsync),
-                    KEY.toByteArray(),
-                    false,
-                    "AES/CBC/NoPadding"
-                )
-                val source =
-                    tryParseJson<Sources>(decrypt?.toJsonFormat())?.src?.replace("\\", "")
+                val json = decryptCryptoJS(servers?.src ?: return@runAllAsync, KEY)
+                val source = tryParseJson<Sources>(json)?.src?.replace("\\", "")
                 M3u8Helper.generateM3u8(
                     this.name,
                     source ?: return@runAllAsync,
@@ -298,14 +295,8 @@ class KuronimeProvider : MainAPI() {
                 ).forEach(callback)
             },
             {
-                val decrypt = AesHelper.cryptoAESHandler(
-                    base64Decode(servers?.srcSd ?: return@runAllAsync),
-                    KEY.toByteArray(),
-                    false,
-                    "AES/CBC/NoPadding"
-                )
-                val source =
-                    tryParseJson<Sources>(decrypt?.toJsonFormat())?.src?.replace("\\", "")
+                val json = decryptCryptoJS(servers?.srcSd ?: return@runAllAsync, KEY)
+                val source = tryParseJson<Sources>(json)?.src?.replace("\\", "")
                 M3u8Helper.generateM3u8(
                     this.name,
                     source ?: return@runAllAsync,
@@ -314,13 +305,8 @@ class KuronimeProvider : MainAPI() {
                 ).forEach(callback)
             },
             {
-                val decrypt = AesHelper.cryptoAESHandler(
-                    base64Decode(servers?.mirror ?: return@runAllAsync),
-                    KEY.toByteArray(),
-                    false,
-                    "AES/CBC/NoPadding"
-                )
-                tryParseJson<Mirrors>(decrypt)?.embed?.map { embed ->
+                val json = decryptCryptoJS(servers?.mirror ?: return@runAllAsync, KEY)
+                tryParseJson<Mirrors>(json)?.embed?.map { embed ->
                     embed.value.forEach { entry ->
                         loadFixedExtractor(
                             entry.value,
@@ -337,9 +323,54 @@ class KuronimeProvider : MainAPI() {
         return true
     }
 
-    private fun String.toJsonFormat(): String {
-        return if (this.startsWith("\"")) this.substringAfter("\"").substringBeforeLast("\"")
-            .replace("\\\"", "\"") else this
+    private fun decryptCryptoJS(encryptedBase64: String, password: String): String? {
+        return try {
+            val jsonBytes = android.util.Base64.decode(encryptedBase64, android.util.Base64.DEFAULT)
+            val wrapper = JSONObject(String(jsonBytes, Charsets.UTF_8))
+            val ct = wrapper.getString("ct")
+            val ivHex = wrapper.getString("iv")
+            val saltHex = wrapper.optString("s", "")
+
+            val ciphertext = android.util.Base64.decode(ct, android.util.Base64.DEFAULT)
+            val saltBytes = hexToBytes(saltHex)
+            val iv = hexToBytes(ivHex)
+
+            val md5 = MessageDigest.getInstance("MD5")
+            val passBytes = password.toByteArray(Charsets.UTF_8)
+
+            md5.update(passBytes)
+            md5.update(saltBytes)
+            val d1 = md5.digest()
+            md5.reset()
+
+            md5.update(d1)
+            md5.update(passBytes)
+            md5.update(saltBytes)
+            val d2 = md5.digest()
+
+            val digest = ByteArray(48)
+            System.arraycopy(d1, 0, digest, 0, 16)
+            System.arraycopy(d2, 0, digest, 16, 16)
+            md5.reset()
+
+            md5.update(d2)
+            md5.update(passBytes)
+            md5.update(saltBytes)
+            val d3 = md5.digest()
+            System.arraycopy(d3, 0, digest, 32, 16)
+
+            val key = digest.copyOfRange(0, 32)
+            val derivedIv = digest.copyOfRange(32, 48)
+
+            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+            cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(derivedIv))
+            val decrypted = cipher.doFinal(ciphertext)
+            String(decrypted, Charsets.UTF_8)
+        } catch (_: Exception) { null }
+    }
+
+    private fun hexToBytes(hex: String): ByteArray {
+        return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
 
     private suspend fun loadFixedExtractor(
