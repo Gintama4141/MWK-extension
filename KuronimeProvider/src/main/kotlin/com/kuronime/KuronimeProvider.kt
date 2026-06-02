@@ -38,7 +38,7 @@ class KuronimeProvider : MainAPI() {
     )
 
     companion object {
-        const val KEY = "3&!Z0M,VIZ;dZW=="
+        const val KEY = "3&!Z0M,;dZWVIZ=="
         fun getType(t: String): TvType {
             return if (t.contains("OVA", true) || t.contains("Special", true)) TvType.OVA
             else if (t.contains("Movie", true)) TvType.AnimeMovie
