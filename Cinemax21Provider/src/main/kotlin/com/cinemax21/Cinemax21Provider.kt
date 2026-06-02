@@ -1,6 +1,7 @@
 package com.cinemax21
-
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import com.cinemax21.Cinemax21ProviderExtractor.invokeDrama
 import com.cinemax21.Cinemax21ProviderExtractor.invokeKisskh 
 import com.cinemax21.Cinemax21ProviderExtractor.invokeMoviebox
@@ -29,10 +30,14 @@ import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
-
-openclass Cinemax21Provider : TmdbProvider() {
+private val jsonMapper = jacksonObjectMapper()
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
+    val txt = text ?: return null
+    return try {
+        jsonMapper.readValue(txt, object : TypeReference<T>() {})
+    } catch (e: Exception) { null }
+}
+open class Cinemax21Provider : TmdbProvider() {
     override var name = "CineMax21"
     override val hasMainPage = true
     override var lang = "id"
@@ -43,18 +48,14 @@ openclass Cinemax21Provider : TmdbProvider() {
         TvType.Movie,
         TvType.TvSeries,
     )
-
     val wpRedisInterceptor by lazy { CloudflareKiller() }
-
     companion object {
         private const val tmdbAPI = "https://api.themoviedb.org/3"
         const val gdbot = "https://gdtot.pro"
         const val anilistAPI = "https://graphql.anilist.co"
         const val malsyncAPI = "https://api.malsync.moe"
         const val jikanAPI = "https://api.jikan.moe/v4"
-
         private const val apiKey = "b030404650f279792a8d3287232358e3"
-
         const val gomoviesAPI = "https://gomovies-online.cam"
         const val idlixAPI = "https://tv10.idlixku.com" 
         const val vidsrcccAPI = "https://vidsrc.cc"
@@ -72,18 +73,15 @@ openclass Cinemax21Provider : TmdbProvider() {
         const val cinemaOSApi = "https://cinemaos.tech"
         const val Player4uApi = "https://player4u.xyz"
         const val RiveStreamAPI = "https://rivestream.org"
-
         fun getType(t: String?): TvType = when (t) {
             "movie" -> TvType.Movie
             else -> TvType.TvSeries
         }
-
         fun getStatus(t: String?): ShowStatus = when (t) {
             "Returning Series" -> ShowStatus.Ongoing
             else -> ShowStatus.Completed
         }
     }
-
     override val mainPage = mainPageOf(
         "$tmdbAPI/trending/movie/day?api_key=$apiKey&region=US&without_genres=16" to "Trending Movies",
         "$tmdbAPI/discover/movie?api_key=$apiKey&sort_by=popularity.desc&primary_release_date.gte=2020-01-01&without_genres=16" to "Popular Movies (2020+)",
@@ -110,17 +108,14 @@ openclass Cinemax21Provider : TmdbProvider() {
         "$tmdbAPI/discover/movie?api_key=$apiKey&with_genres=10752&sort_by=popularity.desc&without_genres=16&primary_release_date.gte=2020-01-01" to "War Movies",
         "$tmdbAPI/discover/movie?api_key=$apiKey&with_genres=80&sort_by=popularity.desc&without_genres=16&primary_release_date.gte=2020-01-01" to "Crime Movies",
     )
-
     private fun getImageUrl(link: String?): String? {
         if (link == null) return null
         return if (link.startsWith("/")) "https://image.tmdb.org/t/p/w500/$link" else link
     }
-
     private fun getOriImageUrl(link: String?): String? {
         if (link == null) return null
         return if (link.startsWith("/")) "https://image.tmdb.org/t/p/original/$link" else link
     }
-
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val adultQuery =
             if (settingsForProvider.enableAdult) "" else "&without_keywords=190370|13059|226161|195669"
@@ -132,7 +127,6 @@ openclass Cinemax21Provider : TmdbProvider() {
             } ?: throw ErrorLoadingException("Invalid Json reponse")
         return newHomePageResponse(request.name, home)
     }
-
     private fun Media.toSearchResponse(type: String? = null): SearchResponse? {
         return newMovieSearchResponse(
             title ?: name ?: originalTitle ?: return null,
@@ -143,16 +137,13 @@ openclass Cinemax21Provider : TmdbProvider() {
             this.score = Score.from10(voteAverage)
         }
     }
-
     override suspend fun quickSearch(query: String): List<SearchResponse>? = search(query)
-
     override suspend fun search(query: String): List<SearchResponse>? {
         return app.get("$tmdbAPI/search/multi?api_key=$apiKey&language=en-US&query=$query&page=1&include_adult=${settingsForProvider.enableAdult}")
             .safeJson<Results>()?.results?.mapNotNull { media ->
                 media.toSearchResponse()
             }
     }
-
     override suspend fun load(url: String): LoadResponse? {
         val data = try {
             if (url.startsWith("https://www.themoviedb.org/")) {
@@ -170,7 +161,6 @@ openclass Cinemax21Provider : TmdbProvider() {
         } catch (e: Exception) {
             throw ErrorLoadingException("Invalid URL or JSON data: ${e.message}")
         }
-
         val type = getType(data.type)
         val append = "alternative_titles,credits,external_ids,keywords,videos,recommendations"
         val resUrl = if (type == TvType.Movie) {
@@ -180,7 +170,6 @@ openclass Cinemax21Provider : TmdbProvider() {
         }
         val res = app.get(resUrl).safeJson<MediaDetail>()
             ?: throw ErrorLoadingException("Invalid Json Response")
-
         val title = res.title ?: res.name ?: return null
         val poster = getOriImageUrl(res.posterPath)
         val bgPoster = getOriImageUrl(res.backdropPath)
@@ -189,15 +178,12 @@ openclass Cinemax21Provider : TmdbProvider() {
         val year = releaseDate?.split("-")?.first()?.toIntOrNull()
         
         val genres = res.genres?.mapNotNull { it.name }
-
         val isCartoon = genres?.contains("Animation") ?: false
         val isAnime = isCartoon && (res.originalLanguage == "zh" || res.originalLanguage == "ja")
         val isAsian = !isAnime && (res.originalLanguage == "zh" || res.originalLanguage == "ko")
         val isBollywood = res.productionCountries?.any { it.name == "India" } ?: false
-
         val keywords = res.keywords?.results?.mapNotNull { it.name }.orEmpty()
             .ifEmpty { res.keywords?.keywords?.mapNotNull { it.name } }
-
         val actors = res.credits?.cast?.mapNotNull { cast ->
             ActorData(
                 Actor(
@@ -208,13 +194,11 @@ openclass Cinemax21Provider : TmdbProvider() {
         } ?: return null
         val recommendations =
             res.recommendations?.results?.mapNotNull { media -> media.toSearchResponse() }
-
         val trailer = res.videos?.results
             ?.filter { it.site == "YouTube" && it.key?.isNotBlank() == true && it.type == "Trailer" }
             ?.sortedByDescending { it.type == "Trailer" }
             ?.map { "https://www.youtube.com/watch?v=${it.key}" }
             ?.take(1)
-
         return if (type == TvType.TvSeries) {
             val lastSeason = res.lastEpisodeToAir?.seasonNumber
             val episodes = res.seasons?.mapNotNull { season ->
@@ -314,16 +298,13 @@ openclass Cinemax21Provider : TmdbProvider() {
             }
         }
     }
-
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-
         val res = parseJson<LinkData>(data)
-
         runAllAsync(
             {
                 invokeIdlix(
@@ -451,10 +432,8 @@ openclass Cinemax21Provider : TmdbProvider() {
                 )
             }
         )
-
         return true
     }
-
     data class LinkData(
         val id: Int? = null,
         val imdbId: String? = null,
@@ -478,18 +457,15 @@ openclass Cinemax21Provider : TmdbProvider() {
         val isBollywood: Boolean = false,
         val isCartoon: Boolean = false,
     )
-
     data class Data(
         val id: Int? = null,
         val type: String? = null,
         val aniId: String? = null,
         val malId: Int? = null,
     )
-
     data class Results(
         @JsonProperty("results") val results: ArrayList<Media>? = arrayListOf(),
     )
-
     data class Media(
         @JsonProperty("id") val id: Int? = null,
         @JsonProperty("name") val name: String? = null,
@@ -499,29 +475,24 @@ openclass Cinemax21Provider : TmdbProvider() {
         @JsonProperty("poster_path") val posterPath: String? = null,
         @JsonProperty("vote_average") val voteAverage: Double? = null,
     )
-
     data class Genres(
         @JsonProperty("id") val id: Int? = null,
         @JsonProperty("name") val name: String? = null,
     )
-
     data class Keywords(
         @JsonProperty("id") val id: Int? = null,
         @JsonProperty("name") val name: String? = null,
     )
-
     data class KeywordResults(
         @JsonProperty("results") val results: ArrayList<Keywords>? = arrayListOf(),
         @JsonProperty("keywords") val keywords: ArrayList<Keywords>? = arrayListOf(),
     )
-
     data class Seasons(
         @JsonProperty("id") val id: Int? = null,
         @JsonProperty("name") val name: String? = null,
         @JsonProperty("season_number") val seasonNumber: Int? = null,
         @JsonProperty("air_date") val airDate: String? = null,
     )
-
     data class Cast(
         @JsonProperty("id") val id: Int? = null,
         @JsonProperty("name") val name: String? = null,
@@ -530,7 +501,6 @@ openclass Cinemax21Provider : TmdbProvider() {
         @JsonProperty("known_for_department") val knownForDepartment: String? = null,
         @JsonProperty("profile_path") val profilePath: String? = null,
     )
-
     data class Episodes(
         @JsonProperty("id") val id: Int? = null,
         @JsonProperty("name") val name: String? = null,
@@ -541,53 +511,42 @@ openclass Cinemax21Provider : TmdbProvider() {
         @JsonProperty("episode_number") val episodeNumber: Int? = null,
         @JsonProperty("season_number") val seasonNumber: Int? = null,
     )
-
     data class MediaDetailEpisodes(
         @JsonProperty("episodes") val episodes: ArrayList<Episodes>? = arrayListOf(),
     )
-
     data class Trailers(
         @JsonProperty("key") val key: String? = null,
         @JsonProperty("site") val site: String? = null,
         @JsonProperty("type") val type: String? = null,
     )
-
     data class ResultsTrailer(
         @JsonProperty("results") val results: List<Trailers>? = null,
     )
-
     data class AltTitles(
         @JsonProperty("iso_3166_1") val iso31661: String? = null,
         @JsonProperty("title") val title: String? = null,
         @JsonProperty("type") val type: String? = null,
     )
-
     data class ResultsAltTitles(
         @JsonProperty("results") val results: ArrayList<AltTitles>? = arrayListOf(),
     )
-
     data class ExternalIds(
         @JsonProperty("imdb_id") val imdbId: String? = null,
         @JsonProperty("tvdb_id") val tvdbId: Int? = null,
     )
-
     data class Credits(
         @JsonProperty("cast") val cast: ArrayList<Cast>? = arrayListOf(),
     )
-
     data class ResultsRecommendations(
         @JsonProperty("results") val results: ArrayList<Media>? = arrayListOf(),
     )
-
     data class LastEpisodeToAir(
         @JsonProperty("episode_number") val episodeNumber: Int? = null,
         @JsonProperty("season_number") val seasonNumber: Int? = null,
     )
-
     data class ProductionCountries(
         @JsonProperty("name") val name: String? = null,
     )
-
     data class MediaDetail(
         @JsonProperty("id") val id: Int? = null,
         @JsonProperty("imdb_id") val imdbId: String? = null,

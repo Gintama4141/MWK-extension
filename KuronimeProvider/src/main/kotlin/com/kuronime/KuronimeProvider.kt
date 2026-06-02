@@ -1,8 +1,7 @@
 package com.kuronime
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addKitsuId
@@ -27,9 +26,17 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
 
-classKuronimeProvider : MainAPI() {
+private val jsonMapper = jacksonObjectMapper()
+
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
+    val txt = text ?: return null
+    return try {
+        jsonMapper.readValue(txt, object : TypeReference<T>() {})
+    } catch (e: Exception) { null }
+}
+
+class KuronimeProvider : MainAPI() {
     override var mainUrl = "https://kuronime.sbs"
     private var animekuUrl = "https://animeku.org"
     override var name = "Kuronime"
@@ -442,8 +449,8 @@ classKuronimeProvider : MainAPI() {
 
     private fun parseAnimeData(jsonString: String): MetaAnimeData? {
         return try {
-            val objectMapper = ObjectMapper()
-            objectMapper.readValue(jsonString, MetaAnimeData::class.java)
+            val mapper = ObjectMapper()
+            mapper.readValue(jsonString, MetaAnimeData::class.java)
         } catch (_: Exception) {
             null
         }

@@ -1,6 +1,7 @@
 package com.moviebox
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.*
@@ -10,9 +11,17 @@ import com.lagradost.nicehttp.RequestBodyTypes
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
 
-classMovieboxProvider : MainAPI() {
+private val jsonMapper = jacksonObjectMapper()
+
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
+    val txt = text ?: return null
+    return try {
+        jsonMapper.readValue(txt, object : TypeReference<T>() {})
+    } catch (e: Exception) { null }
+}
+
+class MovieboxProvider : MainAPI() {
     override var mainUrl = "https://moviebox.ph"
     private val mainAPIUrl = "https://h5-api.aoneroom.com"
     private val secondAPIUrl = "https://filmboom.top"
@@ -85,7 +94,6 @@ classMovieboxProvider : MainAPI() {
 
             home.addAll(index)
         }
-
 
         return newHomePageResponse(request.name, home)
     }

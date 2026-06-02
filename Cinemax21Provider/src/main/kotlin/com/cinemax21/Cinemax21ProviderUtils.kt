@@ -1,5 +1,6 @@
 package com.cinemax21
-
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import android.util.Base64
 import com.cinemax21.Cinemax21Provider.Companion.anilistAPI
 import com.lagradost.cloudstream3.*
@@ -26,15 +27,12 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.max
 import kotlin.text.isLowerCase
-
 var gomoviesCookies: Map<String, String>? = null
-
 val mimeType = arrayOf(
     "video/x-matroska",
     "video/mp4",
     "video/x-msvideo"
 )
-
 suspend fun convertTmdbToAnimeId(
     title: String?,
     date: String?,
@@ -43,12 +41,10 @@ suspend fun convertTmdbToAnimeId(
 ): AniIds {
     val sDate = date?.split("-")
     val sAiredDate = airedDate?.split("-")
-
     val year = sDate?.firstOrNull()?.toIntOrNull()
     val airedYear = sAiredDate?.firstOrNull()?.toIntOrNull()
     val season = getSeason(sDate?.get(1)?.toIntOrNull())
     val airedSeason = getSeason(sAiredDate?.get(1)?.toIntOrNull())
-
     return if (type == TvType.AnimeMovie) {
         tmdbToAnimeId(title, airedYear, "", type)
     } else {
@@ -61,7 +57,6 @@ suspend fun convertTmdbToAnimeId(
         ) else ids
     }
 }
-
 suspend fun tmdbToAnimeId(title: String?, year: Int?, season: String?, type: TvType): AniIds {
     val query = """
         query (
@@ -88,7 +83,6 @@ suspend fun tmdbToAnimeId(title: String?, year: Int?, season: String?, type: TvT
           }
         }
     """.trimIndent().trim()
-
     val variables = mapOf(
         "search" to title,
         "sort" to "SEARCH_MATCH",
@@ -97,18 +91,14 @@ suspend fun tmdbToAnimeId(title: String?, year: Int?, season: String?, type: TvT
         "seasonYear" to year,
         "format" to listOf(if (type == TvType.AnimeMovie) "MOVIE" else "TV")
     ).filterValues { value -> value != null && value.toString().isNotEmpty() }
-
     val data = mapOf(
         "query" to query,
         "variables" to variables
     ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
-
     val res = app.post(anilistAPI, requestBody = data)
         .safeJson<AniSearch>()?.data?.Page?.media?.firstOrNull()
     return AniIds(res?.id, res?.idMal)
-
 }
-
 fun safeBase64Decode(input: String): String {
     var paddedInput = input
     val remainder = input.length % 4
@@ -117,7 +107,6 @@ fun safeBase64Decode(input: String): String {
     }
     return base64Decode(paddedInput)
 }
-
 fun getSeason(month: Int?): String? {
     val seasons = arrayOf(
         "Winter", "Winter", "Spring", "Spring", "Spring", "Summer",
@@ -126,7 +115,6 @@ fun getSeason(month: Int?): String? {
     if (month == null) return null
     return seasons[month - 1]
 }
-
 fun getEpisodeSlug(
     season: Int? = null,
     episode: Int? = null,
@@ -137,12 +125,10 @@ fun getEpisodeSlug(
         (if (season!! < 10) "0$season" else "$season") to (if (episode!! < 10) "0$episode" else "$episode")
     }
 }
-
 fun getTitleSlug(title: String? = null): Pair<String?, String?> {
     val slug = title.createSlug()
     return slug?.replace("-", "\\W") to title?.replace(" ", "_")
 }
-
 fun getIndexQuery(
     title: String? = null,
     year: Int? = null,
@@ -156,7 +142,6 @@ fun getIndexQuery(
         "$title S${seasonSlug}E${episodeSlug}"
     }).trim()
 }
-
 fun searchIndex(
     title: String? = null,
     season: Int? = null,
@@ -175,7 +160,6 @@ fun searchIndex(
             episode
         )
     }?.distinctBy { it.name }?.sortedByDescending { it.size?.toLongOrNull() ?: 0 } ?: return null
-
     return if (isTrimmed) {
         files.let { file ->
             listOfNotNull(
@@ -187,7 +171,6 @@ fun searchIndex(
         files
     }
 }
-
 fun matchingIndex(
     mediaName: String?,
     mediaMimeType: String?,
@@ -207,12 +190,10 @@ fun matchingIndex(
         if (include720) Regex("(?i)(2160p|1080p|720p)") else Regex("(?i)(2160p|1080p)")
     ) == true && ((mediaMimeType in mimeType) || mediaName.contains(Regex("\\.mkv|\\.mp4|\\.avi")))
 }
-
 fun decodeIndexJson(json: String): String {
     val slug = json.reversed().substring(24)
     return base64Decode(slug.substring(0, slug.length - 20))
 }
-
 fun String.xorDecrypt(key: String): String {
     val sb = StringBuilder()
     var i = 0
@@ -226,7 +207,6 @@ fun String.xorDecrypt(key: String): String {
     }
     return sb.toString()
 }
-
 fun vidsrctoDecrypt(text: String): String {
     val parse = Base64.decode(text.toByteArray(), Base64.URL_SAFE)
     val cipher = Cipher.getInstance("RC4")
@@ -237,24 +217,19 @@ fun vidsrctoDecrypt(text: String): String {
     )
     return decode(cipher.doFinal(parse).toString(Charsets.UTF_8))
 }
-
 fun String?.createSlug(): String? {
     return this?.filter { it.isWhitespace() || it.isLetterOrDigit() }
         ?.trim()
         ?.replace("\\s+".toRegex(), "-")
         ?.lowercase()
 }
-
 fun getLanguage(str: String): String {
     return if (str.contains("(in_ID)")) "Indonesian" else str
 }
-
 fun bytesToGigaBytes(number: Double): Double = number / 1024000000
-
 fun getKisskhTitle(str: String?): String? {
     return str?.replace(Regex("[^a-zA-Z\\d]"), "-")
 }
-
 fun String.getFileSize(): Float? {
     val size = Regex("(?i)(\\d+\\.?\\d+\\sGB|MB)").find(this)?.groupValues?.get(0)?.trim()
     val num = Regex("(\\d+\\.?\\d+)").find(size ?: return null)?.groupValues?.get(0)?.toFloat()
@@ -264,13 +239,11 @@ fun String.getFileSize(): Float? {
         else -> num * 1000
     }
 }
-
 fun getUhdTags(str: String?): String {
     return Regex("\\d{3,4}[Pp]\\.?(.*?)\\[").find(str ?: "")?.groupValues?.getOrNull(1)
         ?.replace(".", " ")?.trim()
         ?: str ?: ""
 }
-
 fun getIndexQualityTags(str: String?, fullTag: Boolean = false): String {
     return if (fullTag) Regex("(?i)(.*)\\.(?:mkv|mp4|avi)").find(str ?: "")?.groupValues?.get(1)
         ?.trim() ?: str ?: "" else Regex("(?i)\\d{3,4}[pP]\\.?(.*?)\\.(mkv|mp4|avi)").find(
@@ -278,16 +251,13 @@ fun getIndexQualityTags(str: String?, fullTag: Boolean = false): String {
     )?.groupValues?.getOrNull(1)
         ?.replace(".", " ")?.trim() ?: str ?: ""
 }
-
 fun getIndexQuality(str: String?): Int {
     return Regex("(\\d{3,4})[pP]").find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
         ?: Qualities.Unknown.value
 }
-
 fun getIndexSize(str: String?): String? {
     return Regex("(?i)([\\d.]+\\s*(?:gb|mb))").find(str ?: "")?.groupValues?.getOrNull(1)?.trim()
 }
-
 fun getQuality(str: String): Int {
     return when (str) {
         "360p" -> Qualities.P240.value
@@ -298,7 +268,6 @@ fun getQuality(str: String): Int {
         else -> getQualityFromName(str)
     }
 }
-
 fun getGMoviesQuality(str: String): Int {
     return when {
         str.contains("480P", true) -> Qualities.P480.value
@@ -308,7 +277,6 @@ fun getGMoviesQuality(str: String): Int {
         else -> Qualities.Unknown.value
     }
 }
-
 fun getFDoviesQuality(str: String): String {
     return when {
         str.contains("1080P", true) -> "1080P"
@@ -316,7 +284,6 @@ fun getFDoviesQuality(str: String): String {
         else -> ""
     }
 }
-
 fun getLanguageNameFromCode(code: String?): String? {
     return code?.split("_")?.first()?.let { langCode ->
         try {
@@ -328,7 +295,6 @@ fun getLanguageNameFromCode(code: String?): String? {
         }
     }
 }
-
 fun getVipLanguage(str: String): String {
     return when (str) {
         "in_ID" -> "Indonesian"
@@ -338,40 +304,33 @@ fun getVipLanguage(str: String): String {
         }
     }
 }
-
 fun fixCrunchyrollLang(language: String?): String? {
     val langCode = language?.split("_")?.first()
     return getLanguageNameFromCode(langCode)
         ?: getLanguageNameFromCode(langCode?.substringBefore("-"))
 }
-
 fun getDeviceId(length: Int = 16): String {
     val allowedChars = ('a'..'f') + ('0'..'9')
     return (1..length)
         .map { allowedChars.random() }
         .joinToString("")
 }
-
 fun String.encodeUrl(): String {
     val url = URL(this)
     val uri = URI(url.protocol, url.userInfo, url.host, url.port, url.path, url.query, url.ref)
     return uri.toURL().toString()
 }
-
 fun getBaseUrl(url: String): String {
     return URI(url).let {
         "${it.scheme}://${it.host}"
     }
 }
-
 fun String.fixUrlBloat(): String {
     return this.replace("\"", "").replace("\\", "")
 }
-
 fun String.getHost(): String {
     return fixTitle(URI(this).host.substringBeforeLast(".").substringAfterLast("."))
 }
-
 fun isUpcoming(dateString: String?): Boolean {
     return try {
         val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -382,7 +341,6 @@ fun isUpcoming(dateString: String?): Boolean {
         false
     }
 }
-
 fun getDate(): TmdbDate {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val calender = Calendar.getInstance()
@@ -391,15 +349,11 @@ fun getDate(): TmdbDate {
     val nextWeek = formatter.format(calender.time)
     return TmdbDate(today, nextWeek)
 }
-
 fun decode(input: String): String = URLDecoder.decode(input, "utf-8")
-
 fun encode(input: String): String = URLEncoder.encode(input, "utf-8").replace("+", "%20")
-
 fun base64DecodeAPI(api: String): String {
     return api.chunked(4).map { base64Decode(it) }.reversed().joinToString("")
 }
-
 fun fixUrl(url: String, domain: String): String {
     if (url.startsWith("http")) {
         return url
@@ -407,7 +361,6 @@ fun fixUrl(url: String, domain: String): String {
     if (url.isEmpty()) {
         return ""
     }
-
     val startsWithNoHttp = url.startsWith("//")
     if (startsWithNoHttp) {
         return "https:$url"
@@ -418,14 +371,12 @@ fun fixUrl(url: String, domain: String): String {
         return "$domain/$url"
     }
 }
-
 fun base64UrlEncode(input: ByteArray): String {
     return base64Encode(input)
         .replace("+", "-")
         .replace("/", "_")
         .replace("=", "")
 }
-
 fun Int.toRomanNumeral(): String = Symbol.closestBelow(this)
     .let { symbol ->
         if (symbol != null) {
@@ -434,14 +385,12 @@ fun Int.toRomanNumeral(): String = Symbol.closestBelow(this)
             ""
         }
     }
-
 private enum class Symbol(val decimalValue: Int) {
     I(1),
     IV(4),
     V(5),
     IX(9),
     X(10);
-
     companion object {
         fun closestBelow(value: Int) =
             entries.toTypedArray()
@@ -449,12 +398,8 @@ private enum class Symbol(val decimalValue: Int) {
                 .firstOrNull { value >= it.decimalValue }
     }
 }
-
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
-
-objectVidrockHelper {
+object VidrockHelper {
     private const val Ww = "x7k9mPqT2rWvY8zA5bC3nF6hJ2lK4mN9"
-
     fun encrypt(
         r: Int?,
         e: String,
@@ -464,36 +409,34 @@ objectVidrockHelper {
         val s = if (e == "tv") "${r}_${t}_${n}" else r.toString()
         val keyBytes = Ww.toByteArray(Charsets.UTF_8)
         val ivBytes = Ww.substring(0, 16).toByteArray(Charsets.UTF_8)
-
         val secretKey = SecretKeySpec(keyBytes, "AES")
         val ivSpec = IvParameterSpec(ivBytes)
-
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
         val encrypted = cipher.doFinal(s.toByteArray(Charsets.UTF_8))
         return base64UrlEncode(encrypted)
     }
 }
-
+private val jsonMapper = jacksonObjectMapper()
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
+    val txt = text ?: return null
+    return try {
+        jsonMapper.readValue(txt, object : TypeReference<T>() {})
+    } catch (e: Exception) { null }
+}
 object VidsrcHelper {
-
     fun encryptAesCbc(plainText: String, keyText: String): String {
         val sha256 = MessageDigest.getInstance("SHA-256")
         val keyBytes = sha256.digest(keyText.toByteArray(Charsets.UTF_8))
         val secretKey = SecretKeySpec(keyBytes, "AES")
-
         val iv = ByteArray(16) { 0 }
         val ivSpec = IvParameterSpec(iv)
-
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
-
         val encrypted = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
         return base64UrlEncode(encrypted)
     }
-
 }
-
 fun generateHashedString(): String {
     val s = "a8f7e9c2d4b6a1f3e8c9d2t4a7f6e9c2d4z6a1f3e8c9d2b4a7f5e9c2d4b6a1f3"
     val a = "2"
@@ -501,51 +444,40 @@ fun generateHashedString(): String {
     val keySpec = SecretKeySpec(s.toByteArray(StandardCharsets.UTF_8), algorithm)
     val mac = Mac.getInstance(algorithm)
     mac.init(keySpec)
-
     val input = "crypto_rotation_v${a}_seed_2025"
     val hmacBytes = mac.doFinal(input.toByteArray(StandardCharsets.UTF_8))
     val hex = hmacBytes.joinToString("") { "%02x".format(it) }
-
     val repeated = hex.repeat(3)
     val result = repeated.substring(0, max(s.length, 128))
-
     return result
 }
-
 fun cinemaOSGenerateHash(t: CinemaOsSecretKeyRequest, isSeries: Boolean): String {
     val c = generateHashedString()
     val m: String = if (isSeries) "content_v3::contentId=${t.tmdbId}::partId=${t.episodeId}::seriesId=${t.seasonId}::environment=production" else "content_v3::contentId=${t.tmdbId}::environment=production"
-
     val hmac384 = Mac.getInstance("HmacSHA384")
     hmac384.init(SecretKeySpec(c.toByteArray(Charsets.UTF_8), "HmacSHA384"))
     hmac384.update(m.toByteArray(Charsets.UTF_8))
     val x = hmac384.doFinal().joinToString("") { "%02x".format(it) }
-
     val hmac512 = Mac.getInstance("HmacSHA512")
     hmac512.init(SecretKeySpec(x.toByteArray(Charsets.UTF_8), "HmacSHA512"))
     hmac512.update(c.takeLast(64).toByteArray(Charsets.UTF_8))
     val finalDigest = hmac512.doFinal().joinToString("") { "%02x".format(it) }
-
     return finalDigest
 }
-
 fun cinemaOSDecryptResponse(e: CinemaOSReponseData?): Any {
     val encrypted = e?.encrypted
     val cin = e?.cin
     val mao = e?.mao
     val salt = e?.salt
-
     val keyBytes = "a1b2c3d4e4f6477658455678901477567890abcdef1234567890abcdef123456".toByteArray()
     val ivBytes = hexStringToByteArray(cin.toString())
     val authTagBytes = hexStringToByteArray(mao.toString())
     val encryptedBytes = hexStringToByteArray(encrypted.toString())
     val saltBytes = hexStringToByteArray(salt.toString())
-
     val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
     val spec = PBEKeySpec(keyBytes.map { it.toInt().toChar() }.toCharArray(), saltBytes, 100000, 256)
     val tmp = factory.generateSecret(spec)
     val key = SecretKeySpec(tmp.encoded, "AES")
-
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     val gcmSpec = GCMParameterSpec(128, ivBytes)
     cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec)
@@ -553,7 +485,6 @@ fun cinemaOSDecryptResponse(e: CinemaOSReponseData?): Any {
     
     return String(decryptedBytes)
 }
-
 fun hexStringToByteArray(hex: String): ByteArray {
     val len = hex.length
     require(len % 2 == 0) { "Hex string must have even length" }
@@ -565,17 +496,14 @@ fun hexStringToByteArray(hex: String): ByteArray {
     }
     return data
 }
-
 fun parseCinemaOSSources(jsonString: String): List<Map<String, String>> {
     val json = JSONObject(jsonString)
     val sourcesObject = json.getJSONObject("sources")
     val sourcesList = mutableListOf<Map<String, String>>()
-
     val keys = sourcesObject.keys()
     while (keys.hasNext()) {
         val key = keys.next()
         val source = sourcesObject.getJSONObject(key)
-
         if (source.has("qualities")) {
             val qualities = source.getJSONObject("qualities")
             val qualityKeys = qualities.keys()
@@ -604,7 +532,6 @@ fun parseCinemaOSSources(jsonString: String): List<Map<String, String>> {
     }
     return sourcesList
 }
-
 suspend fun getPlayer4uUrl(
     name: String,
     selectedQuality: Int,
@@ -626,13 +553,11 @@ suspend fun getPlayer4uUrl(
         )
         script = getAndUnpack(iframeResponse.text).takeIf { it.isNotEmpty() } ?: return
     }
-
     val m3u8 = Regex("\"hls2\":\\s*\"(.*?m3u8.*?)\"").find(script)?.groupValues?.getOrNull(1).orEmpty()
     callback(newExtractorLink(name, name, m3u8, ExtractorLinkType.M3U8) {
         this.quality = selectedQuality
     })
 }
-
 fun getPlayer4UQuality(quality: String): Int {
     return when (quality) {
         "4K", "2160P" -> Qualities.P2160.value
@@ -652,7 +577,6 @@ fun getPlayer4UQuality(quality: String): Int {
         else -> Qualities.Unknown.value
     }
 }
-
 object DramaHelper {
     val headers = mapOf(
         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
@@ -661,7 +585,6 @@ object DramaHelper {
         "Connection" to "keep-alive",
         "Referer" to "https://dramafull.cc/"
     )
-
     fun normalizeQuery(title: String): String {
         return title
             .replace(Regex("\\(\\d{4}\\)"), "")
@@ -669,15 +592,12 @@ object DramaHelper {
             .trim()
             .replace("\\s+".toRegex(), " ")
     }
-
     fun isFuzzyMatch(original: String, result: String): Boolean {
         val cleanOrg = original.lowercase().replace(Regex("[^a-z0-9]"), "")
         val cleanRes = result.lowercase().replace(Regex("[^a-z0-9]"), "")
-
         if (cleanOrg.length < 5 || cleanRes.length < 5) {
             return cleanOrg == cleanRes
         }
-
         return cleanOrg.contains(cleanRes) || cleanRes.contains(cleanOrg)
     }
 }

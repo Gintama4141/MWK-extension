@@ -1,6 +1,7 @@
 package com.cinemax21
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.APIHolder.capitalize
 import com.lagradost.cloudstream3.APIHolder.unixTimeMS
@@ -30,9 +31,17 @@ import javax.crypto.spec.SecretKeySpec
 import java.security.MessageDigest
 import android.net.Uri
 
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
 
-objectCinemax21ProviderExtractor : Cinemax21Provider() {
+private val jsonMapper = jacksonObjectMapper()
+
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
+    val txt = text ?: return null
+    return try {
+        jsonMapper.readValue(txt, object : TypeReference<T>() {})
+    } catch (e: Exception) { null }
+}
+
+object Cinemax21ProviderExtractor : Cinemax21Provider() {
 
     suspend fun invokeIdlix(
         title: String? = null,

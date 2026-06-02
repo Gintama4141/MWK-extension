@@ -1,6 +1,7 @@
 package com.cinemax21
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.newSubtitleFile
@@ -11,9 +12,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.getAndUnpack
 import com.lagradost.cloudstream3.utils.newExtractorLink
 
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
-
-classJeniusplay : ExtractorApi() {
+class Jeniusplay : ExtractorApi() {
     override var name = "Jeniusplay"
     override var mainUrl = "https://jeniusplay.com"
     override val requiresReferer = true
@@ -80,4 +79,13 @@ classJeniusplay : ExtractorApi() {
         @JsonProperty("file") val file: String,
         @JsonProperty("label") val label: String?,
     )
+}
+
+private val jsonMapper = jacksonObjectMapper()
+
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
+    val txt = text ?: return null
+    return try {
+        jsonMapper.readValue(txt, object : TypeReference<T>() {})
+    } catch (e: Exception) { null }
 }
