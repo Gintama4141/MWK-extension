@@ -16,7 +16,7 @@ import com.lagradost.cloudstream3.utils.newExtractorLink
 class TorraStream : TmdbProvider() {
     override var name = "TorraStream"
     override var mainUrl = "https://torrentio.strem.fun"
-    override var lang = "id"
+    override var lang = "en"
     override val hasMainPage = true
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.AsianDrama)

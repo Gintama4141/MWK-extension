@@ -13,7 +13,7 @@ class StreamPlay : MainAPI() {
     override var mainUrl = "https://streamplay.co"
     override var name = "StreamPlay"
     override val hasMainPage = true
-    override var lang = "id"
+    override var lang = "en"
     override val hasQuickSearch = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.Anime, TvType.AsianDrama)
 
