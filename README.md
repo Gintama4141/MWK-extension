@@ -42,15 +42,20 @@ https://raw.githubusercontent.com/Gintama4141/MWK-extension/master/repo.json
 | **Anichin** | Anime | Streaming Donghua Subtitle Indonesia |
 | **CineMax21** | Movie & TV | Streaming Movie dan TV Series (TMDB-based, multi-source) |
 | **Donghub** | Anime | Streaming Donghua Subtitle Indonesia |
+| **Donghuastream** | Anime | Streaming Donghua Subtitle Indonesia (multi-extractor) |
 | **DutaMovie** | Movie & TV | Streaming Movie dan TV Series |
 | **Kawanfilm** | Movie | Streaming Movie Sub Indo |
+| **Kisskh** | Movie & TV | Streaming Movie dan TV Series (TMDB-based) |
 | **KlikXXI** | Movie & TV | Streaming Movie dan TV Series |
 | **Kuronime** | Anime | Streaming Anime Subtitle Indonesia |
 | **MovieBox** | Movie & TV | Streaming Movie, TV Series & Drama |
 | **NgeFilm21** | Movie & TV | Streaming Movie dan TV Series |
 | **Nomat** | Movie & TV | Streaming Movie dan TV Series |
+| **OneTouchTV** | Movie & TV | Streaming Movie dan TV Series (multi-source) |
 | **OtakuDesu** | Anime | Streaming Anime Subtitle Indonesia |
 | **PencuriMovie** | Movie & TV | Streaming Movie dan TV Series |
+| **StreamPlay** | Movie & TV | Streaming Movie dan TV Series |
+| **TorraStream** | Movie & TV | Streaming Movie dan TV Series (Torrentio-based) |
 
 ---
 
