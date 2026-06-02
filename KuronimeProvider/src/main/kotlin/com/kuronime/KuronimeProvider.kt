@@ -299,6 +299,22 @@ class KuronimeProvider : MainAPI() {
             },
             {
                 val decrypt = AesHelper.cryptoAESHandler(
+                    base64Decode(servers?.srcSd ?: return@runAllAsync),
+                    KEY.toByteArray(),
+                    false,
+                    "AES/CBC/NoPadding"
+                )
+                val source =
+                    tryParseJson<Sources>(decrypt?.toJsonFormat())?.src?.replace("\\", "")
+                M3u8Helper.generateM3u8(
+                    this.name,
+                    source ?: return@runAllAsync,
+                    "$animekuUrl/",
+                    headers = mapOf("Origin" to animekuUrl)
+                ).forEach(callback)
+            },
+            {
+                val decrypt = AesHelper.cryptoAESHandler(
                     base64Decode(servers?.mirror ?: return@runAllAsync),
                     KEY.toByteArray(),
                     false,
@@ -410,7 +426,9 @@ class KuronimeProvider : MainAPI() {
 
     data class Servers(
         @JsonProperty("src") var src: String? = null,
+        @JsonProperty("src_sd") var srcSd: String? = null,
         @JsonProperty("mirror") var mirror: String? = null,
+        @JsonProperty("blog") var blog: String? = null,
     )
 
     data class All(
