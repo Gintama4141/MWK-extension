@@ -269,7 +269,7 @@ class KuronimeProvider : MainAPI() {
             
         val id = scriptData.substringAfter("_0xa100d42aa = \"").substringBefore("\";")
 
-        val servers = app.post(
+        val serversText = app.post(
             "$animekuUrl/api/v9/sources", requestBody = """{"id":"$id"}""".toRequestBody(
                 RequestBodyTypes.JSON.toMediaTypeOrNull()
             ), headers = mapOf(
@@ -277,7 +277,8 @@ class KuronimeProvider : MainAPI() {
                 "Origin" to animekuUrl,
                 "Accept" to "application/json"
             ), referer = "$currentBaseUrl/"
-        ).parsedSafe<Servers>()
+        ).text
+        val servers = tryParseJson<Servers>(serversText)
 
         runAllAsync(
             {
