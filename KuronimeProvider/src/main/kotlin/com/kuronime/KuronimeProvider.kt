@@ -1,5 +1,8 @@
 package com.kuronime
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.*
@@ -27,14 +30,9 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 
-private val jsonMapper = jacksonObjectMapper()
-
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
-    val txt = text ?: return null
-    return try {
-        jsonMapper.readValue(txt, object : TypeReference<T>() {})
-    } catch (e: Exception) { null }
-}
+inline fun <reified T> String.safeParseJson(): T? = try {
+    jacksonObjectMapper().readValue(this, object : TypeReference<T>() {})
+} catch (e: Exception) { null }
 
 class KuronimeProvider : MainAPI() {
     override var mainUrl = "https://kuronime.sbs"
@@ -145,7 +143,7 @@ class KuronimeProvider : MainAPI() {
                 "sf_value" to query,
                 "search" to "false"
             ), headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-        ).safeJson<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
+        ).text?.safeParseJson<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
             newAnimeSearchResponse(
                 it.postTitle ?: "",
                 it.postLink ?: return@mapNotNull null,

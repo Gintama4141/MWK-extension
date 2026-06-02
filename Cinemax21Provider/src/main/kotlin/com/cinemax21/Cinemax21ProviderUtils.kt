@@ -1,6 +1,4 @@
 package com.cinemax21
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.core.type.TypeReference
 import android.util.Base64
 import com.cinemax21.Cinemax21Provider.Companion.anilistAPI
 import com.lagradost.cloudstream3.*
@@ -96,7 +94,7 @@ suspend fun tmdbToAnimeId(title: String?, year: Int?, season: String?, type: TvT
         "variables" to variables
     ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
     val res = app.post(anilistAPI, requestBody = data)
-        .safeJson<AniSearch>()?.data?.Page?.media?.firstOrNull()
+        .text?.safeParseJson<AniSearch>()?.data?.Page?.media?.firstOrNull()
     return AniIds(res?.id, res?.idMal)
 }
 fun safeBase64Decode(input: String): String {
@@ -416,13 +414,6 @@ object VidrockHelper {
         val encrypted = cipher.doFinal(s.toByteArray(Charsets.UTF_8))
         return base64UrlEncode(encrypted)
     }
-}
-private val jsonMapper = jacksonObjectMapper()
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
-    val txt = text ?: return null
-    return try {
-        jsonMapper.readValue(txt, object : TypeReference<T>() {})
-    } catch (e: Exception) { null }
 }
 object VidsrcHelper {
     fun encryptAesCbc(plainText: String, keyText: String): String {

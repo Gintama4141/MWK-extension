@@ -1,7 +1,6 @@
 package com.cinemax21
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.newSubtitleFile
@@ -31,7 +30,7 @@ class Jeniusplay : ExtractorApi() {
             data = mapOf("hash" to hash, "r" to "$referer"),
             referer = referer,
             headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-        ).safeJson<ResponseSource>()?.videoSource
+        ).text?.safeParseJson<ResponseSource>()?.videoSource
 
         if (m3uLink != null) {
             callback.invoke(
@@ -81,11 +80,4 @@ class Jeniusplay : ExtractorApi() {
     )
 }
 
-private val jsonMapper = jacksonObjectMapper()
 
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
-    val txt = text ?: return null
-    return try {
-        jsonMapper.readValue(txt, object : TypeReference<T>() {})
-    } catch (e: Exception) { null }
-}

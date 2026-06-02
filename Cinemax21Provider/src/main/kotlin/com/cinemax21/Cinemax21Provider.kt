@@ -30,13 +30,9 @@ import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-private val jsonMapper = jacksonObjectMapper()
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
-    val txt = text ?: return null
-    return try {
-        jsonMapper.readValue(txt, object : TypeReference<T>() {})
-    } catch (e: Exception) { null }
-}
+inline fun <reified T> String.safeParseJson(): T? = try {
+    jacksonObjectMapper().readValue(this, object : TypeReference<T>() {})
+} catch (e: Exception) { null }
 open class Cinemax21Provider : TmdbProvider() {
     override var name = "CineMax21"
     override val hasMainPage = true
@@ -122,7 +118,7 @@ open class Cinemax21Provider : TmdbProvider() {
         val type = if (request.data.contains("/movie")) "movie" else "tv"
         
         val home = app.get("${request.data}$adultQuery&page=$page")
-            .safeJson<Results>()?.results?.mapNotNull { media ->
+            .text?.safeParseJson<Results>()?.results?.mapNotNull { media ->
                 media.toSearchResponse(type)
             } ?: throw ErrorLoadingException("Invalid Json reponse")
         return newHomePageResponse(request.name, home)
@@ -140,7 +136,7 @@ open class Cinemax21Provider : TmdbProvider() {
     override suspend fun quickSearch(query: String): List<SearchResponse>? = search(query)
     override suspend fun search(query: String): List<SearchResponse>? {
         return app.get("$tmdbAPI/search/multi?api_key=$apiKey&language=en-US&query=$query&page=1&include_adult=${settingsForProvider.enableAdult}")
-            .safeJson<Results>()?.results?.mapNotNull { media ->
+            .text?.safeParseJson<Results>()?.results?.mapNotNull { media ->
                 media.toSearchResponse()
             }
     }
@@ -168,7 +164,7 @@ open class Cinemax21Provider : TmdbProvider() {
         } else {
             "$tmdbAPI/tv/${data.id}?api_key=$apiKey&append_to_response=$append&include_video_language=id,en"
         }
-        val res = app.get(resUrl).safeJson<MediaDetail>()
+        val res = app.get(resUrl).text?.safeParseJson<MediaDetail>()
             ?: throw ErrorLoadingException("Invalid Json Response")
         val title = res.title ?: res.name ?: return null
         val poster = getOriImageUrl(res.posterPath)
@@ -203,7 +199,7 @@ open class Cinemax21Provider : TmdbProvider() {
             val lastSeason = res.lastEpisodeToAir?.seasonNumber
             val episodes = res.seasons?.mapNotNull { season ->
                 app.get("$tmdbAPI/${data.type}/${data.id}/season/${season.seasonNumber}?api_key=$apiKey")
-                    .safeJson<MediaDetailEpisodes>()?.episodes?.map { eps ->
+                    .text?.safeParseJson<MediaDetailEpisodes>()?.episodes?.map { eps ->
                         newEpisode(
                             data = LinkData(
                                 data.id,

@@ -13,13 +13,9 @@ class Movearnpre : Dingtezuni() {
     override var name = "Movearnpre"
     override var mainUrl = "https://movearnpre.com"
 }
-private val jsonMapper = jacksonObjectMapper()
-inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? {
-    val txt = text ?: return null
-    return try {
-        jsonMapper.readValue(txt, object : TypeReference<T>() {})
-    } catch (e: Exception) { null }
-}
+inline fun <reified T> String.safeParseJson(): T? = try {
+    jacksonObjectMapper().readValue(this, object : TypeReference<T>() {})
+} catch (e: Exception) { null }
 class Mivalyo : Dingtezuni() {
     override var name = "Earnvids"
     override var mainUrl = "https://mivalyo.com"
@@ -87,12 +83,12 @@ open class Gofile : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1)
-        val token = app.get("$mainApi/createAccount").safeJson<Account>()?.data?.get("token")
+        val token = app.get("$mainApi/createAccount").text?.safeParseJson<Account>()?.data?.get("token")
         val websiteToken = app.get("$mainUrl/dist/js/alljs.js").text.let {
             Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
         }
         app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
-            .safeJson<Source>()?.data?.contents?.forEach {
+            .text?.safeParseJson<Source>()?.data?.contents?.forEach {
                 callback.invoke(
                     newExtractorLink(
                         name,
