@@ -38,7 +38,7 @@ open class Cinemax21Provider : TmdbProvider() {
     override val hasMainPage = true
     override var lang = "id"
     override val instantLinkLoading = true
-    override val useMetaLoadResponse = true
+    override val useMetaLoadResponse = false
     override val hasQuickSearch = true
     override val supportedTypes = setOf(
         TvType.Movie,

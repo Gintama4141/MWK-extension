@@ -249,9 +249,8 @@ class OtakudesuProvider : MainAPI() {
                     ?: Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]{32})"""").find(scriptData)?.groupValues?.getOrNull(1)
 
                 if (nonceAction != null && embedAction != null) {
-                    val nonceResp = app.post("$mainUrl/wp-admin/admin-ajax.php", data = mapOf("action" to nonceAction))
-                            .parsed<ResponseData>()
-                    val nonce = nonceResp.data
+                    val nonceRespText = app.post("$mainUrl/wp-admin/admin-ajax.php", data = mapOf("action" to nonceAction)).text
+                    val nonce = nonceRespText?.let { tryParseJson<ResponseData>(it) }?.data ?: return@runAllAsync
 
                     document.select("div.mirrorstream > ul > li").amap { li ->
                         val dataContent = li.select("a").attr("data-content")
@@ -260,21 +259,20 @@ class OtakudesuProvider : MainAPI() {
                             val res = tryParseJson<ResponseSources>(decodedData)
                             
                             if (res != null) {
-                                val sources = Jsoup.parse(
-                                    base64Decode(
-                                        app.post(
-                                            "${mainUrl}/wp-admin/admin-ajax.php", data = mapOf(
-                                                "id" to res.id,
-                                                "i" to res.i,
-                                                "q" to res.q,
-                                                "nonce" to nonce,
-                                                "action" to embedAction
-                                            )
-                                        ).parsed<ResponseData>().data
+                                val embedRespText = app.post(
+                                    "${mainUrl}/wp-admin/admin-ajax.php", data = mapOf(
+                                        "id" to res.id,
+                                        "i" to res.i,
+                                        "q" to res.q,
+                                        "nonce" to nonce,
+                                        "action" to embedAction
                                     )
-                                ).select("iframe").attr("src")
-
-                                loadCustomExtractor(sources, data, subtitleCallback, callback, getQuality(res.q))
+                                ).text
+                                val embedData = embedRespText?.let { tryParseJson<ResponseData>(it) }?.data
+                                if (embedData != null) {
+                                    val sources = Jsoup.parse(base64Decode(embedData)).select("iframe").attr("src")
+                                    loadCustomExtractor(sources, data, subtitleCallback, callback, getQuality(res.q))
+                                }
                             }
                         }
                     }
