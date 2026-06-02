@@ -190,7 +190,7 @@ class Nomat : MainAPI() {
 		return try {
 			val nhDoc = app.get(data, referer = mainUrl, timeout = 100L).document
 
-			nhDoc.select("div.server-item").forEach { el ->
+			nhDoc.select("div.server-item").amap { el ->
 				val encoded = el.attr("data-url")
 				if (encoded.isNotBlank()) {
 					try {

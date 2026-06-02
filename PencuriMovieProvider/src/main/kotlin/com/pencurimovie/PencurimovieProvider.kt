@@ -146,9 +146,9 @@ class PencurimovieProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data).document
-        document.select("div.movieplay iframe").forEach {
+        document.select("div.movieplay iframe").amap {
             val href = it.attr("data-src")
-            loadExtractor(href,subtitleCallback, callback)
+            if (href.isNotBlank()) loadExtractor(href, subtitleCallback, callback)
         }
         return true
     }

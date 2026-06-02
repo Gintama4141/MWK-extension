@@ -273,9 +273,9 @@ class KlikxxiProvider : MainAPI() {
 
         if (postId.isNullOrBlank()) return false
 
-        document.select("div.tab-content-ajax").forEach { tab ->
+        document.select("div.tab-content-ajax").amap { tab ->
             val tabId = tab.attr("id")
-            if (tabId.isNullOrBlank()) return@forEach
+            if (tabId.isNullOrBlank()) return@amap
 
             val response = app.post(
                 "$mainUrl/wp-admin/admin-ajax.php",
@@ -286,7 +286,7 @@ class KlikxxiProvider : MainAPI() {
                 )
             ).document
 
-            val iframe = response.selectFirst("iframe")?.getIframeAttr() ?: return@forEach
+            val iframe = response.selectFirst("iframe")?.getIframeAttr() ?: return@amap
             val link = httpsify(iframe)
 
             loadExtractor(link, mainUrl, subtitleCallback, callback)

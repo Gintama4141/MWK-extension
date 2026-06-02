@@ -130,12 +130,12 @@ class AnichinProvider : MainAPI() {
         val links = mutableSetOf<String>()
 
         document.select("#embed_holder iframe[src]").mapTo(links) { it.attr("abs:src") }
-        document.select("select.mirror option[value]").forEach { option ->
-            val decoded = decodeServerHash(option.attr("value")) ?: return@forEach
+        document.select("select.mirror option[value]").amap { option ->
+            val decoded = decodeServerHash(option.attr("value")) ?: return@amap
             Jsoup.parse(decoded).select("iframe[src]").mapTo(links) { it.attr("src") }
         }
 
-        links.filter { it.isNotBlank() }.forEach { link ->
+        links.filter { it.isNotBlank() }.amap { link ->
             loadExtractor(fixUrl(link), data, subtitleCallback, callback)
         }
 

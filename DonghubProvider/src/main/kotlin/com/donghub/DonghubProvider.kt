@@ -102,7 +102,7 @@ class DonghubProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data).document
-        document.select(".mobius option").forEach { item ->
+        document.select(".mobius option").amap { item ->
             val base64 = item.attr("value")
             if (base64.isNotBlank()) {
                 val decoded = base64Decode(base64)

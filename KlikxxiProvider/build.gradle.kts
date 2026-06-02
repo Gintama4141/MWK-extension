@@ -1,4 +1,4 @@
-version = 2
+version = 3
 
 cloudstream {
     description = "KlikXXI — Streaming Movie and TV Series"
