@@ -24,8 +24,8 @@ class KisskhProvider : MainAPI() {
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.AsianDrama, TvType.Anime)
 
-    private val kisskhAPI = "https://kisskh.co/api/DramaList/Episode"
-    private val kisskhSubAPI = "https://kisskh.co/api/Sub"
+    private val kisskhAPI = "https://kisskh.co/api/DramaList/Episode/"
+    private val kisskhSubAPI = "https://kisskh.co/api/Sub/"
 
     companion object {
         const val TMDBIMAGEBASEURL = "https://image.tmdb.org/t/p/original"
@@ -73,6 +73,13 @@ class KisskhProvider : MainAPI() {
     }
 
     private fun getTitle(str: String): String = str.replace(Regex("[^a-zA-Z0-9]"), "-")
+
+    private fun getLanguage(str: String): String = when (str) {
+        "Indonesia" -> "Indonesian"
+        else -> str
+    }
+
+    private val CHUNK_REGEX1 by lazy { Regex("^\\d+$", RegexOption.MULTILINE) }
 
     override suspend fun load(url: String): LoadResponse? {
         val id = url.split("/")
@@ -165,32 +172,33 @@ class KisskhProvider : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         val loadData = parseJson<Data>(data)
-        val kkey = app.get("$kisskhAPI/${loadData.epsId}?err=false&ts=&time=&version=2.8.10", timeout = 10000)
-            .parsedSafe<Key>()?.key ?: ""
+        val kkey = app.get("$kisskhAPI${loadData.epsId}&version=2.8.10", timeout = 10000).parsedSafe<Key>()?.key ?: ""
         app.get(
             "$mainUrl/api/DramaList/Episode/${loadData.epsId}.png?err=false&ts=&time=&kkey=$kkey",
             referer = "$mainUrl/Drama/${getTitle("${loadData.title}")}/Episode-${loadData.eps}?id=${loadData.id}&ep=${loadData.epsId}&page=0&pageSize=100"
         ).parsedSafe<Sources>()?.let { source ->
-            listOfNotNull(source.video, source.thirdParty).amap { link ->
+            listOf(source.video, source.thirdParty).amap { link ->
                 safeApiCall {
-                    if (link.contains(".m3u8")) {
-                        M3u8Helper.generateM3u8(this.name, fixUrl(link), referer = "$mainUrl/", headers = mapOf("Origin" to mainUrl)).forEach(callback)
-                    } else if (link.contains("mp4")) {
+                    if (link?.contains(".m3u8") == true) {
+                        M3u8Helper.generateM3u8(this.name, link, referer = "$mainUrl/", headers = mapOf("Origin" to mainUrl)).forEach(callback)
+                    } else if (link?.contains("mp4") == true) {
                         callback.invoke(newExtractorLink(this.name, this.name, url = fixUrl(link), INFER_TYPE) {
                             this.referer = mainUrl; this.quality = Qualities.P720.value
                         })
                     } else {
-                        loadExtractor(link.substringBefore("=http") ?: return@safeApiCall, "$mainUrl/", subtitleCallback, callback)
+                        loadExtractor(link?.substringBefore("=http") ?: return@safeApiCall, "$mainUrl/", subtitleCallback, callback)
                     }
                 }
             }
         }
 
-        val kkey1 = app.get("$kisskhSubAPI/${loadData.epsId}?err=false&ts=&time=&version=2.8.10", timeout = 10000)
-            .parsedSafe<Key>()?.key ?: ""
+        val kkey1 = app.get("$kisskhSubAPI${loadData.epsId}&version=2.8.10", timeout = 10000).parsedSafe<Key>()?.key ?: ""
         app.get("$mainUrl/api/Sub/${loadData.epsId}?kkey=$kkey1").text.let { res ->
             tryParseJson<List<Subtitle>>(res)?.map { sub ->
-                subtitleCallback.invoke(newSubtitleFile(sub.label ?: return@map, sub.src ?: return@map))
+                if (sub.src!!.contains(".txt")) {
+                    subtitleCallback.invoke(SubtitleFile(getLanguage(sub.label ?: return@map), sub.src))
+                } else
+                    subtitleCallback.invoke(SubtitleFile(getLanguage(sub.label ?: return@map), sub.src))
             }
         }
         return true
@@ -202,21 +210,15 @@ class KisskhProvider : MainAPI() {
                 val request = chain.request().newBuilder().build()
                 val response = chain.proceed(request)
                 if (response.request.url.toString().contains(".txt")) {
-                    val body = response.body ?: return response
-                    val text = body.string()
-                    val chunks = text.split(Regex("^\\d+$", RegexOption.MULTILINE)).filter(String::isNotBlank).map(String::trim)
+                    val responseBody = response.body.string()
+                    val chunks = responseBody.split(CHUNK_REGEX1).filter(String::isNotBlank).map(String::trim)
                     val decrypted = chunks.mapIndexed { index, chunk ->
-                        if (chunk.isBlank()) return@mapIndexed ""
                         val parts = chunk.split("\n")
-                        if (parts.isEmpty()) return@mapIndexed ""
-                        val header = parts.first()
-                        val textLines = parts.drop(1)
-                        val d = textLines.joinToString("\n") { line ->
-                            try { decrypt(line) } catch (e: Exception) { "DECRYPT_ERROR:${e.message}" }
-                        }
-                        listOf(index + 1, header, d).joinToString("\n")
-                    }.filter { it.isNotEmpty() }.joinToString("\n\n")
-                    val newBody = decrypted.toResponseBody(body.contentType())
+                        val text = parts.slice(1 until parts.size)
+                        val d = text.map { decrypt(it) }.joinToString("\n")
+                        arrayOf<Any>(index + 1, parts.first(), d).joinToString("\n")
+                    }.joinToString("\n\n")
+                    val newBody = decrypted.toResponseBody(response.body.contentType())
                     return response.newBuilder().body(newBody).build()
                 }
                 return response

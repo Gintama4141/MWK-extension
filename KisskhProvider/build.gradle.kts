@@ -1,8 +1,8 @@
 // use an integer for version numbers
-version = 1
+version = 2
 
 cloudstream {
-    language = "id"
+    language = "en"
     authors = listOf("MWK")
     status = 1
     tvTypes = listOf("AsianDrama","TvSeries","Anime","Movie")
