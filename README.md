@@ -93,6 +93,17 @@ Build individual provider:
 
 ---
 
+## Sumber Kode
+
+Provider di repositori ini dikembangkan/diadaptasi dari berbagai sumber:
+
+| Sumber | Repo |
+|:-------|:-----|
+| **HatsuneMikuUwU** | [cloudstream-extensions-uwu](https://github.com/HatsuneMikuUwU/cloudstream-extensions-uwu) — Provider utama & sync parsing |
+| **phisher98** | [cloudstream-extensions](https://github.com/phisher98/cloudstream-extensions) — Referensi struktur & loading |
+| **recloudstream** | [extensions](https://github.com/recloudstream/extensions) — CloudStream API & pola umum |
+| **CuxPlug** | [CuxPlug](https://github.com/CuxPlug/CuxPlug) — Optimasi & extractor |
+
 ## Disclaimer
 
 Extension ini hanya untuk tujuan edukasi dan penelitian. Kami tidak menyediakan, menghosting, atau mendistribusikan konten apapun. Semua konten berasal dari sumber pihak ketiga. Gunakan dengan bijak dan tanggung jawab kamu sendiri.
