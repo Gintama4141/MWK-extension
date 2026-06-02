@@ -3,13 +3,12 @@ package com.kuronime
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addKitsuId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addMalId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
+import com.lagradost.cloudstream3.extractors.helper.AesHelper
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper
@@ -23,16 +22,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import org.jsoup.nodes.Element
 import java.net.URI
-import java.security.MessageDigest
 import java.util.ArrayList
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
-
-
-inline fun <reified T> String.safeParseJson(): T? = try {
-    jacksonObjectMapper().readValue(this, object : TypeReference<T>() {})
-} catch (e: Exception) { null }
 
 class KuronimeProvider : MainAPI() {
     override var mainUrl = "https://kuronime.sbs"
@@ -48,7 +38,7 @@ class KuronimeProvider : MainAPI() {
     )
 
     companion object {
-        const val KEY = "3&!Z0M,;dZWVIZ=="
+        const val KEY = "3&!Z0M,VIZ;dZW=="
         fun getType(t: String): TvType {
             return if (t.contains("OVA", true) || t.contains("Special", true)) TvType.OVA
             else if (t.contains("Movie", true)) TvType.AnimeMovie
@@ -143,7 +133,7 @@ class KuronimeProvider : MainAPI() {
                 "sf_value" to query,
                 "search" to "false"
             ), headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-        ).text?.safeParseJson<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
+        ).parsedSafe<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
             newAnimeSearchResponse(
                 it.postTitle ?: "",
                 it.postLink ?: return@mapNotNull null,
@@ -279,21 +269,22 @@ class KuronimeProvider : MainAPI() {
             
         val id = scriptData.substringAfter("_0xa100d42aa = \"").substringBefore("\";")
 
-        val serversText = app.post(
+        val servers = app.post(
             "$animekuUrl/api/v9/sources", requestBody = """{"id":"$id"}""".toRequestBody(
                 RequestBodyTypes.JSON.toMediaTypeOrNull()
-            ), headers = mapOf(
-                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-                "Origin" to animekuUrl,
-                "Accept" to "application/json"
             ), referer = "$currentBaseUrl/"
-        ).text
-        val servers = tryParseJson<Servers>(serversText)
+        ).parsedSafe<Servers>()
 
         runAllAsync(
             {
-                val json = decryptCryptoJS(servers?.src ?: return@runAllAsync, KEY)
-                val source = tryParseJson<Sources>(json)?.src?.replace("\\", "")
+                val decrypt = AesHelper.cryptoAESHandler(
+                    base64Decode(servers?.src ?: return@runAllAsync),
+                    KEY.toByteArray(),
+                    false,
+                    "AES/CBC/NoPadding"
+                )
+                val source =
+                    tryParseJson<Sources>(decrypt?.toJsonFormat())?.src?.replace("\\", "")
                 M3u8Helper.generateM3u8(
                     this.name,
                     source ?: return@runAllAsync,
@@ -302,18 +293,13 @@ class KuronimeProvider : MainAPI() {
                 ).forEach(callback)
             },
             {
-                val json = decryptCryptoJS(servers?.srcSd ?: return@runAllAsync, KEY)
-                val source = tryParseJson<Sources>(json)?.src?.replace("\\", "")
-                M3u8Helper.generateM3u8(
-                    this.name,
-                    source ?: return@runAllAsync,
-                    "$animekuUrl/",
-                    headers = mapOf("Origin" to animekuUrl)
-                ).forEach(callback)
-            },
-            {
-                val json = decryptCryptoJS(servers?.mirror ?: return@runAllAsync, KEY)
-                tryParseJson<Mirrors>(json)?.embed?.map { embed ->
+                val decrypt = AesHelper.cryptoAESHandler(
+                    base64Decode(servers?.mirror ?: return@runAllAsync),
+                    KEY.toByteArray(),
+                    false,
+                    "AES/CBC/NoPadding"
+                )
+                tryParseJson<Mirrors>(decrypt)?.embed?.map { embed ->
                     embed.value.forEach { entry ->
                         loadFixedExtractor(
                             entry.value,
@@ -330,54 +316,9 @@ class KuronimeProvider : MainAPI() {
         return true
     }
 
-    private fun decryptCryptoJS(encryptedBase64: String, password: String): String? {
-        return try {
-            val jsonBytes = android.util.Base64.decode(encryptedBase64, android.util.Base64.DEFAULT)
-            val wrapper = JSONObject(String(jsonBytes, Charsets.UTF_8))
-            val ct = wrapper.getString("ct")
-            val ivHex = wrapper.getString("iv")
-            val saltHex = wrapper.optString("s", "")
-
-            val ciphertext = android.util.Base64.decode(ct, android.util.Base64.DEFAULT)
-            val saltBytes = hexToBytes(saltHex)
-            val iv = hexToBytes(ivHex)
-
-            val md5 = MessageDigest.getInstance("MD5")
-            val passBytes = password.toByteArray(Charsets.UTF_8)
-
-            md5.update(passBytes)
-            md5.update(saltBytes)
-            val d1 = md5.digest()
-            md5.reset()
-
-            md5.update(d1)
-            md5.update(passBytes)
-            md5.update(saltBytes)
-            val d2 = md5.digest()
-
-            val digest = ByteArray(48)
-            System.arraycopy(d1, 0, digest, 0, 16)
-            System.arraycopy(d2, 0, digest, 16, 16)
-            md5.reset()
-
-            md5.update(d2)
-            md5.update(passBytes)
-            md5.update(saltBytes)
-            val d3 = md5.digest()
-            System.arraycopy(d3, 0, digest, 32, 16)
-
-            val key = digest.copyOfRange(0, 32)
-            val derivedIv = digest.copyOfRange(32, 48)
-
-            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-            cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(derivedIv))
-            val decrypted = cipher.doFinal(ciphertext)
-            String(decrypted, Charsets.UTF_8)
-        } catch (_: Exception) { null }
-    }
-
-    private fun hexToBytes(hex: String): ByteArray {
-        return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    private fun String.toJsonFormat(): String {
+        return if (this.startsWith("\"")) this.substringAfter("\"").substringBeforeLast("\"")
+            .replace("\\\"", "\"") else this
     }
 
     private suspend fun loadFixedExtractor(
@@ -464,9 +405,7 @@ class KuronimeProvider : MainAPI() {
 
     data class Servers(
         @JsonProperty("src") var src: String? = null,
-        @JsonProperty("src_sd") var srcSd: String? = null,
         @JsonProperty("mirror") var mirror: String? = null,
-        @JsonProperty("blog") var blog: String? = null,
     )
 
     data class All(
