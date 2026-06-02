@@ -130,10 +130,10 @@
     },
     {
         "iconUrl": "https://play-lh.googleusercontent.com/EFMkS1T-8txjLFIl9QxjcTRLa7a7Muv08C04b7ongYgodoY_b2T3GpxzGAQEx-eitfQ=w256",
-        "fileHash": "sha256-61e9d5bead2565512d540609aa392fa05fde46340cf5647ca3357043509ec34d",
+        "fileHash": "sha256-2585a1938bd2f4f7912454d35e9db0a48652748049b71955407ac1cbc84e7146",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 38380,
+        "fileSize": 38522,
         "status": 1,
         "language": "id",
         "authors": [
