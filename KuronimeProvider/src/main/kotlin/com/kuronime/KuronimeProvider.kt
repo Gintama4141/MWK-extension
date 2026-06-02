@@ -272,6 +272,10 @@ class KuronimeProvider : MainAPI() {
         val servers = app.post(
             "$animekuUrl/api/v9/sources", requestBody = """{"id":"$id"}""".toRequestBody(
                 RequestBodyTypes.JSON.toMediaTypeOrNull()
+            ), headers = mapOf(
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                "Origin" to animekuUrl,
+                "Accept" to "application/json"
             ), referer = "$currentBaseUrl/"
         ).parsedSafe<Servers>()
 
