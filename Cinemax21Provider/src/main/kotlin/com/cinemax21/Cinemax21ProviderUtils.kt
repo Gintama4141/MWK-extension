@@ -104,7 +104,7 @@ suspend fun tmdbToAnimeId(title: String?, year: Int?, season: String?, type: TvT
     ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
 
     val res = app.post(anilistAPI, requestBody = data)
-        .parsedSafe<AniSearch>()?.data?.Page?.media?.firstOrNull()
+        .safeJson<AniSearch>()?.data?.Page?.media?.firstOrNull()
     return AniIds(res?.id, res?.idMal)
 
 }
@@ -450,7 +450,9 @@ private enum class Symbol(val decimalValue: Int) {
     }
 }
 
-object VidrockHelper {
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
+
+objectVidrockHelper {
     private const val Ww = "x7k9mPqT2rWvY8zA5bC3nF6hJ2lK4mN9"
 
     fun encrypt(

@@ -30,7 +30,9 @@ import javax.crypto.spec.SecretKeySpec
 import java.security.MessageDigest
 import android.net.Uri
 
-object Cinemax21ProviderExtractor : Cinemax21Provider() {
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
+
+objectCinemax21ProviderExtractor : Cinemax21Provider() {
 
     suspend fun invokeIdlix(
         title: String? = null,
@@ -74,7 +76,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
                     ),
                     referer = url,
                     headers = mapOf("Accept" to "*/*", "X-Requested-With" to "XMLHttpRequest")
-                ).parsedSafe<ResponseHash>() ?: return@amap
+                ).safeJson<ResponseHash>() ?: return@amap
 
                 val metrix = parseJson<AesData>(json.embed_url).m
                 val password = createIdlixKey(json.key, metrix)
@@ -126,7 +128,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val searchUrl = "$baseUrl/api/live-search/$encodedQuery"
 
         try {
-            val searchRes = app.get(searchUrl, headers = DramaHelper.headers).parsedSafe<DramaSearchResponse>()
+            val searchRes = app.get(searchUrl, headers = DramaHelper.headers).safeJson<DramaSearchResponse>()
             val matchedItem = searchRes?.data?.find { item ->
                 val itemTitle = item.title ?: item.name ?: ""
                 DramaHelper.isFuzzyMatch(title, itemTitle)
@@ -190,19 +192,19 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
             val matched = searchList.find { it.title.equals(title, true) } 
                 ?: searchList.firstOrNull { it.title?.contains(title, true) == true } ?: return
             val dramaId = matched.id ?: return
-            val detailRes = app.get("$mainUrl/api/DramaList/Drama/$dramaId?isq=false").parsedSafe<KisskhDetail>() ?: return
+            val detailRes = app.get("$mainUrl/api/DramaList/Drama/$dramaId?isq=false").safeJson<KisskhDetail>() ?: return
             val episodes = detailRes.episodes ?: return
             val targetEp = if (season == null) episodes.lastOrNull() else episodes.find { it.number?.toInt() == episode }
             val epsId = targetEp?.id ?: return
-            val kkeyVideo = app.get("$KISSKH_API$epsId&version=2.8.10").parsedSafe<KisskhKey>()?.key ?: ""
+            val kkeyVideo = app.get("$KISSKH_API$epsId&version=2.8.10").safeJson<KisskhKey>()?.key ?: ""
             val videoUrl = "$mainUrl/api/DramaList/Episode/$epsId.png?err=false&ts=&time=&kkey=$kkeyVideo"
-            val sources = app.get(videoUrl).parsedSafe<KisskhSources>()
+            val sources = app.get(videoUrl).safeJson<KisskhSources>()
 
             listOfNotNull(sources?.video, sources?.thirdParty).forEach { link ->
                 if (link.contains(".m3u8")) M3u8Helper.generateM3u8("Kisskh", link, referer = "$mainUrl/", headers = mapOf("Origin" to mainUrl)).forEach(callback)
                 else if (link.contains(".mp4")) callback.invoke(newExtractorLink("Kisskh", "Kisskh", link, ExtractorLinkType.VIDEO) { this.referer = mainUrl })
             }
-            val kkeySub = app.get("$KISSKH_SUB_API$epsId&version=2.8.10").parsedSafe<KisskhKey>()?.key ?: ""
+            val kkeySub = app.get("$KISSKH_SUB_API$epsId&version=2.8.10").safeJson<KisskhKey>()?.key ?: ""
             val subJson = app.get("$mainUrl/api/Sub/$epsId?kkey=$kkeySub").text
             tryParseJson<List<KisskhSubtitle>>(subJson)?.forEach { sub ->
                 subtitleCallback.invoke(newSubtitleFile(sub.label ?: "Unknown", sub.src ?: return@forEach))
@@ -247,7 +249,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val format = streams.firstOrNull()?.format
         if (id != null) {
             val subUrl = "$apiUrl/wefeed-h5-bff/web/subject/caption?format=$format&id=$id&subjectId=$subjectId"
-            app.get(subUrl, referer = validReferer).parsedSafe<MovieboxResponse>()?.data?.captions?.forEach { sub ->
+            app.get(subUrl, referer = validReferer).safeJson<MovieboxResponse>()?.data?.captions?.forEach { sub ->
                 subtitleCallback.invoke(newSubtitleFile(sub.lanName ?: "Unknown", sub.url ?: return@forEach))
             }
         }
@@ -300,8 +302,8 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val v = script.substringAfter("v = \"").substringBefore("\";")
         val vrf = VidsrcHelper.encryptAesCbc("$tmdbId", "secret_$userId")
         val serverUrl = if (season == null) "${Cinemax21Provider.vidsrcccAPI}/api/$tmdbId/servers?id=$tmdbId&type=movie&v=$v&vrf=$vrf&imdbId=$imdbId" else "${Cinemax21Provider.vidsrcccAPI}/api/$tmdbId/servers?id=$tmdbId&type=tv&v=$v&vrf=$vrf&imdbId=$imdbId&season=$season&episode=$episode"
-        app.get(serverUrl).parsedSafe<VidsrcccResponse>()?.data?.amap {
-            val sources = app.get("${Cinemax21Provider.vidsrcccAPI}/api/source/${it.hash}").parsedSafe<VidsrcccResult>()?.data ?: return@amap
+        app.get(serverUrl).safeJson<VidsrcccResponse>()?.data?.amap {
+            val sources = app.get("${Cinemax21Provider.vidsrcccAPI}/api/source/${it.hash}").safeJson<VidsrcccResult>()?.data ?: return@amap
             when {
                 it.name.equals("VidPlay") -> {
                     callback.invoke(newExtractorLink("VidPlay", "VidPlay", sources.source ?: return@amap, ExtractorLinkType.M3U8) { this.referer = "${Cinemax21Provider.vidsrcccAPI}/" })
@@ -313,7 +315,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
                     val iframeRes = app.get(iframe ?: return@amap, referer = "https://lucky.vidbox.site/").text
                     val id = iframe.substringAfterLast("/").substringBefore("?")
                     val key = Regex("\\w{48}").find(iframeRes)?.groupValues?.get(0) ?: return@amap
-                    app.get("${iframe.substringBeforeLast("/")}/getSources?id=$id&_k=$key", headers = mapOf("X-Requested-With" to "XMLHttpRequest"), referer = iframe).parsedSafe<UpcloudResult>()?.sources?.amap file@{ source ->
+                    app.get("${iframe.substringBeforeLast("/")}/getSources?id=$id&_k=$key", headers = mapOf("X-Requested-With" to "XMLHttpRequest"), referer = iframe).safeJson<UpcloudResult>()?.sources?.amap file@{ source ->
                         callback.invoke(newExtractorLink("UpCloud", "UpCloud", source.file ?: return@file, ExtractorLinkType.M3U8) { this.referer = "${Cinemax21Provider.vidsrcccAPI}/" })
                     }
                 }
@@ -344,12 +346,12 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         runAllAsync(
             {
                 val url = if (season == null) "${Cinemax21Provider.xprimeAPI}/${servers.first()}?id=$tmdbId" else "${Cinemax21Provider.xprimeAPI}/${servers.first()}?id=$tmdbId&season=$season&episode=$episode"
-                val source = app.get(url).parsedSafe<RageSources>()?.url
+                val source = app.get(url).safeJson<RageSources>()?.url
                 callback.invoke(newExtractorLink("Rage", "Rage", source ?: return@runAllAsync, ExtractorLinkType.M3U8) { this.referer = referer })
             },
             {
                 val url = if (season == null) "${Cinemax21Provider.xprimeAPI}/${servers.last()}?name=$title&fallback_year=$year" else "${Cinemax21Provider.xprimeAPI}/${servers.last()}?name=$title&fallback_year=$year&season=$season&episode=$episode"
-                val sources = app.get(url).parsedSafe<PrimeboxSources>()
+                val sources = app.get(url).safeJson<PrimeboxSources>()
                 sources?.streams?.map { source -> callback.invoke(newExtractorLink("Primebox", "Primebox", source.value, ExtractorLinkType.M3U8) { this.referer = referer; this.quality = getQualityFromName(source.key) }) }
                 sources?.subtitles?.map { subtitle -> subtitleCallback.invoke(newSubtitleFile(subtitle.label ?: "", subtitle.file ?: return@map)) }
             }
@@ -360,10 +362,10 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         imdbId: String? = null, season: Int? = null, episode: Int? = null, subtitleCallback: (SubtitleFile) -> Unit,
     ) {
         val id = imdbId?.removePrefix("tt")
-        val epsId = app.post("${Cinemax21Provider.watchSomuchAPI}/Watch/ajMovieTorrents.aspx", data = mapOf("index" to "0", "mid" to "$id", "wsk" to "30fb68aa-1c71-4b8c-b5d4-4ca9222cfb45", "lid" to "", "liu" to ""), headers = mapOf("X-Requested-With" to "XMLHttpRequest")).parsedSafe<WatchsomuchResponses>()?.movie?.torrents?.let { eps -> if (season == null) eps.firstOrNull()?.id else eps.find { it.episode == episode && it.season == season }?.id } ?: return
+        val epsId = app.post("${Cinemax21Provider.watchSomuchAPI}/Watch/ajMovieTorrents.aspx", data = mapOf("index" to "0", "mid" to "$id", "wsk" to "30fb68aa-1c71-4b8c-b5d4-4ca9222cfb45", "lid" to "", "liu" to ""), headers = mapOf("X-Requested-With" to "XMLHttpRequest")).safeJson<WatchsomuchResponses>()?.movie?.torrents?.let { eps -> if (season == null) eps.firstOrNull()?.id else eps.find { it.episode == episode && it.season == season }?.id } ?: return
         val (seasonSlug, episodeSlug) = getEpisodeSlug(season, episode)
         val subUrl = if (season == null) "${Cinemax21Provider.watchSomuchAPI}/Watch/ajMovieSubtitles.aspx?mid=$id&tid=$epsId&part=" else "${Cinemax21Provider.watchSomuchAPI}/Watch/ajMovieSubtitles.aspx?mid=$id&tid=$epsId&part=S${seasonSlug}E${episodeSlug}"
-        app.get(subUrl).parsedSafe<WatchsomuchSubResponses>()?.subtitles?.map { sub -> subtitleCallback.invoke(newSubtitleFile(sub.label?.substringBefore("&nbsp")?.trim() ?: "", fixUrl(sub.url ?: return@map null, Cinemax21Provider.watchSomuchAPI))) }
+        app.get(subUrl).safeJson<WatchsomuchSubResponses>()?.subtitles?.map { sub -> subtitleCallback.invoke(newSubtitleFile(sub.label?.substringBefore("&nbsp")?.trim() ?: "", fixUrl(sub.url ?: return@map null, Cinemax21Provider.watchSomuchAPI))) }
     }
 
     suspend fun invokeMapple(
@@ -383,7 +385,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
     ) {
         val type = if (season == null) "movie" else "tv"
         val url = if (season == null) "${Cinemax21Provider.vidlinkAPI}/$type/$tmdbId" else "${Cinemax21Provider.vidlinkAPI}/$type/$tmdbId/$season/$episode"
-        val videoLink = app.get(url, interceptor = WebViewResolver(Regex("""${Cinemax21Provider.vidlinkAPI}/api/b/$type/A{32}"""), timeout = 15_000L)).parsedSafe<VidlinkSources>()?.stream?.playlist
+        val videoLink = app.get(url, interceptor = WebViewResolver(Regex("""${Cinemax21Provider.vidlinkAPI}/api/b/$type/A{32}"""), timeout = 15_000L)).safeJson<VidlinkSources>()?.stream?.playlist
         callback.invoke(newExtractorLink("Vidlink", "Vidlink", videoLink ?: return, ExtractorLinkType.M3U8) { this.referer = "${Cinemax21Provider.vidlinkAPI}/" })
     }
 
@@ -395,7 +397,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val url = if (season == null) "${Cinemax21Provider.vidfastAPI}/$type/$tmdbId" else "${Cinemax21Provider.vidfastAPI}/$type/$tmdbId/$season/$episode"
         val res = app.get(url, interceptor = WebViewResolver(Regex("""${Cinemax21Provider.vidfastAPI}/$module/JEwECseLZdY"""), timeout = 15_000L)).text
         tryParseJson<ArrayList<VidFastServers>>(res)?.filter { it.description?.contains("Original audio") == true }?.amapIndexed { index, server ->
-                val source = app.get("${Cinemax21Provider.vidfastAPI}/$module/Sdoi/${server.data}", referer = "${Cinemax21Provider.vidfastAPI}/").parsedSafe<VidFastSources>()
+                val source = app.get("${Cinemax21Provider.vidfastAPI}/$module/Sdoi/${server.data}", referer = "${Cinemax21Provider.vidfastAPI}/").safeJson<VidFastSources>()
                 callback.invoke(newExtractorLink("Vidfast", "Vidfast [${server.name}]", source?.url ?: return@amapIndexed, INFER_TYPE))
                 if (index == 1) source.tracks?.map { subtitle -> subtitleCallback.invoke(newSubtitleFile(subtitle.label ?: return@map, subtitle.file ?: return@map)) }
             }
@@ -453,7 +455,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val type = if (season == null) "movie" else "tv"
         val url = "${Cinemax21Provider.vidrockAPI}/$type/$tmdbId${if (type == "movie") "" else "/$season/$episode"}"
         val encryptData = VidrockHelper.encrypt(tmdbId, type, season, episode)
-        app.get("${Cinemax21Provider.vidrockAPI}/api/$type/$encryptData", referer = url).parsedSafe<LinkedHashMap<String, HashMap<String, String>>>()?.map { source ->
+        app.get("${Cinemax21Provider.vidrockAPI}/api/$type/$encryptData", referer = url).safeJson<LinkedHashMap<String, HashMap<String, String>>>()?.map { source ->
                 if (source.key == "source2") {
                     val json = app.get(source.value["url"] ?: return@map, referer = "${Cinemax21Provider.vidrockAPI}/").text
                     tryParseJson<ArrayList<VidrockSource>>(json)?.reversed()?.map mirror@{ it ->
@@ -492,7 +494,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val sourceUrl = if (season == null) "$cinemaOSApi/api/fuckit?type=$type&tmdbId=$tmdbId&imdbId=$imdbId&t=$fixTitle&ry=$year&secret=$secretHash" else "$cinemaOSApi/api/fuckit?type=$type&tmdbId=$tmdbId&imdbId=$imdbId&seasonId=$season&episodeId=$episode&t=$fixTitle&ry=$year&secret=$secretHash"
 
         try {
-            val sourceResponse = app.get(sourceUrl, headers = sourceHeaders, timeout = 60).parsedSafe<CinemaOSReponse>()
+            val sourceResponse = app.get(sourceUrl, headers = sourceHeaders, timeout = 60).safeJson<CinemaOSReponse>()
             val decryptedJson = cinemaOSDecryptResponse(sourceResponse?.data)
             val json = parseCinemaOSSources(decryptedJson.toString())
             val blockedServers = listOf("Maphisto", "Noah", "Bolt", "Zeus", "Nexus", "Apollo", "Kratos", "Flick", "Hollywood", "Flash", "Ophim", "Bollywood", "Apex", "Universe", "Hindi", "Bengali", "Tamil", "Telugu")
@@ -531,7 +533,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val headers = mapOf("User-Agent" to USER_AGENT)
         suspend fun <T> retry(times: Int = 3, block: suspend () -> T): T? { repeat(times - 1) { try { return block() } catch (_: Exception) {} }; return try { block() } catch (_: Exception) { null } }
         val sourceApiUrl = "$RiveStreamAPI/api/backendfetch?requestID=VideoProviderServices&secretKey=rive"
-        val sourceList = retry { app.get(sourceApiUrl, headers).parsedSafe<RiveStreamSource>() }
+        val sourceList = retry { app.get(sourceApiUrl, headers).safeJson<RiveStreamSource>() }
         val document = retry { app.get(RiveStreamAPI, headers, timeout = 20).document } ?: return
         val appScript = document.select("script").firstOrNull { it.attr("src").contains("_app") }?.attr("src") ?: return
         val js = retry { app.get("$RiveStreamAPI$appScript").text } ?: return
@@ -548,7 +550,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val searchUrl = "$apiUrl/wefeed-mobile-bff/subject-api/search/v2"
         val jsonBody = """{"page": 1, "perPage": 10, "keyword": "$title"}"""
         val headersSearch = Moviebox2Helper.getHeaders(searchUrl, jsonBody)
-        val searchRes = app.post(searchUrl, headers = headersSearch, requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())).parsedSafe<Moviebox2SearchResponse>()
+        val searchRes = app.post(searchUrl, headers = headersSearch, requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())).safeJson<Moviebox2SearchResponse>()
 
         val matchedSubject = searchRes?.data?.results?.flatMap { it.subjects ?: arrayListOf() }?.find { subject ->
             val subjectYear = subject.releaseDate?.split("-")?.firstOrNull()?.toIntOrNull()
@@ -591,7 +593,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         subjectList.forEach { (currentSubjectId, languageName) ->
             val playUrl = "$apiUrl/wefeed-mobile-bff/subject-api/play-info?subjectId=$currentSubjectId&se=$s&ep=$e"
             val headersPlay = Moviebox2Helper.getHeaders(playUrl, null, "GET")
-            val playRes = app.get(playUrl, headers = headersPlay).parsedSafe<Moviebox2PlayResponse>()
+            val playRes = app.get(playUrl, headers = headersPlay).safeJson<Moviebox2PlayResponse>()
             val streams = playRes?.data?.streams ?: return@forEach
 
             streams.forEach { stream ->
@@ -610,7 +612,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
                 if (stream.id != null) {
                     val subUrlInternal = "$apiUrl/wefeed-mobile-bff/subject-api/get-stream-captions?subjectId=$currentSubjectId&streamId=${stream.id}"
                     val headersSubInternal = Moviebox2Helper.getHeaders(subUrlInternal, null, "GET")
-                    app.get(subUrlInternal, headers = headersSubInternal).parsedSafe<Moviebox2SubtitleResponse>()?.data?.extCaptions?.forEach { cap ->
+                    app.get(subUrlInternal, headers = headersSubInternal).safeJson<Moviebox2SubtitleResponse>()?.data?.extCaptions?.forEach { cap ->
                         val lang = cap.language ?: cap.lanName ?: cap.lan ?: "Unknown"
                         val capUrl = cap.url ?: return@forEach
                         subtitleCallback.invoke(newSubtitleFile(lang, capUrl))
@@ -620,7 +622,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
                     
                     val subHeaders = Moviebox2Helper.getHeaders(subUrlExternal, null, "GET").toMutableMap()
                     
-                    app.get(subUrlExternal, headers = subHeaders).parsedSafe<Moviebox2SubtitleResponse>()?.data?.extCaptions?.forEach { cap ->
+                    app.get(subUrlExternal, headers = subHeaders).safeJson<Moviebox2SubtitleResponse>()?.data?.extCaptions?.forEach { cap ->
                         val lang = cap.lan ?: cap.lanName ?: cap.language ?: "Unknown"
                         val capUrl = cap.url ?: return@forEach
                         subtitleCallback.invoke(newSubtitleFile(lang, capUrl))

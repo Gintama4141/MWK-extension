@@ -9,7 +9,9 @@ import com.lagradost.cloudstream3.extractors.VidStack
 import java.net.URI
 import com.fasterxml.jackson.annotation.JsonProperty
 
-class Movearnpre : Dingtezuni() {
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
+
+classMovearnpre : Dingtezuni() {
     override var name = "Movearnpre"
     override var mainUrl = "https://movearnpre.com"
 }
@@ -90,13 +92,13 @@ open class Gofile : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1)
-        val token = app.get("$mainApi/createAccount").parsedSafe<Account>()?.data?.get("token")
+        val token = app.get("$mainApi/createAccount").safeJson<Account>()?.data?.get("token")
         val websiteToken = app.get("$mainUrl/dist/js/alljs.js").text.let {
             Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
         }
 
         app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
-            .parsedSafe<Source>()?.data?.contents?.forEach {
+            .safeJson<Source>()?.data?.contents?.forEach {
                 callback.invoke(
                     newExtractorLink(
                         name,

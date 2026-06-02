@@ -27,7 +27,9 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-class KuronimeProvider : MainAPI() {
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
+
+classKuronimeProvider : MainAPI() {
     override var mainUrl = "https://kuronime.sbs"
     private var animekuUrl = "https://animeku.org"
     override var name = "Kuronime"
@@ -136,7 +138,7 @@ class KuronimeProvider : MainAPI() {
                 "sf_value" to query,
                 "search" to "false"
             ), headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-        ).parsedSafe<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
+        ).safeJson<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
             newAnimeSearchResponse(
                 it.postTitle ?: "",
                 it.postLink ?: return@mapNotNull null,

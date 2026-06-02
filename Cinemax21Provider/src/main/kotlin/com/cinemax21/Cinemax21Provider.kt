@@ -30,7 +30,9 @@ import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 
-open class Cinemax21Provider : TmdbProvider() {
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
+
+openclass Cinemax21Provider : TmdbProvider() {
     override var name = "CineMax21"
     override val hasMainPage = true
     override var lang = "id"
@@ -125,7 +127,7 @@ open class Cinemax21Provider : TmdbProvider() {
         val type = if (request.data.contains("/movie")) "movie" else "tv"
         
         val home = app.get("${request.data}$adultQuery&page=$page")
-            .parsedSafe<Results>()?.results?.mapNotNull { media ->
+            .safeJson<Results>()?.results?.mapNotNull { media ->
                 media.toSearchResponse(type)
             } ?: throw ErrorLoadingException("Invalid Json reponse")
         return newHomePageResponse(request.name, home)
@@ -146,7 +148,7 @@ open class Cinemax21Provider : TmdbProvider() {
 
     override suspend fun search(query: String): List<SearchResponse>? {
         return app.get("$tmdbAPI/search/multi?api_key=$apiKey&language=en-US&query=$query&page=1&include_adult=${settingsForProvider.enableAdult}")
-            .parsedSafe<Results>()?.results?.mapNotNull { media ->
+            .safeJson<Results>()?.results?.mapNotNull { media ->
                 media.toSearchResponse()
             }
     }
@@ -176,7 +178,7 @@ open class Cinemax21Provider : TmdbProvider() {
         } else {
             "$tmdbAPI/tv/${data.id}?api_key=$apiKey&append_to_response=$append&include_video_language=id,en"
         }
-        val res = app.get(resUrl).parsedSafe<MediaDetail>()
+        val res = app.get(resUrl).safeJson<MediaDetail>()
             ?: throw ErrorLoadingException("Invalid Json Response")
 
         val title = res.title ?: res.name ?: return null
@@ -217,7 +219,7 @@ open class Cinemax21Provider : TmdbProvider() {
             val lastSeason = res.lastEpisodeToAir?.seasonNumber
             val episodes = res.seasons?.mapNotNull { season ->
                 app.get("$tmdbAPI/${data.type}/${data.id}/season/${season.seasonNumber}?api_key=$apiKey")
-                    .parsedSafe<MediaDetailEpisodes>()?.episodes?.map { eps ->
+                    .safeJson<MediaDetailEpisodes>()?.episodes?.map { eps ->
                         newEpisode(
                             data = LinkData(
                                 data.id,

@@ -11,7 +11,9 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.getAndUnpack
 import com.lagradost.cloudstream3.utils.newExtractorLink
 
-class Jeniusplay : ExtractorApi() {
+inline fun <reified T> com.lagradost.cloudstream3.SafeResponse.safeJson(): T? { val txt = text ?: return null; return try { com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().readValue<T>(txt) } catch (e: Exception) { null } }
+
+classJeniusplay : ExtractorApi() {
     override var name = "Jeniusplay"
     override var mainUrl = "https://jeniusplay.com"
     override val requiresReferer = true
@@ -30,7 +32,7 @@ class Jeniusplay : ExtractorApi() {
             data = mapOf("hash" to hash, "r" to "$referer"),
             referer = referer,
             headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-        ).parsedSafe<ResponseSource>()?.videoSource
+        ).safeJson<ResponseSource>()?.videoSource
 
         if (m3uLink != null) {
             callback.invoke(
