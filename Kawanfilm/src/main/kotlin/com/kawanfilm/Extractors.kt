@@ -1,5 +1,7 @@
 package com.kawanfilm
-
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.USER_AGENT
@@ -7,33 +9,29 @@ import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
 import com.lagradost.cloudstream3.extractors.VidStack
 import java.net.URI
-import com.fasterxml.jackson.annotation.JsonProperty
-
 class Movearnpre : Dingtezuni() {
     override var name = "Movearnpre"
     override var mainUrl = "https://movearnpre.com"
 }
-
+inline fun <reified T> String.safeParseJson(): T? = try {
+    jacksonObjectMapper().readValue(this, object : TypeReference<T>() {})
+} catch (e: Exception) { null }
 class Mivalyo : Dingtezuni() {
     override var name = "Earnvids"
     override var mainUrl = "https://mivalyo.com"
 }
-
 class Ryderjet : Dingtezuni() {
     override var name = "Ryderjet"
     override var mainUrl = "https://ryderjet.com"
 }
-
 class Bingezove : Dingtezuni() {
     override var name = "Earnvids"
     override var mainUrl = "https://bingezove.com"
 }
-
 open class Dingtezuni : ExtractorApi() {
     override val name = "Earnvids"
     override val mainUrl = "https://dingtezuni.com"
     override val requiresReferer = true
-
     override suspend fun getUrl(
         url: String,
         referer: String?,
@@ -47,7 +45,6 @@ open class Dingtezuni : ExtractorApi() {
             "Origin" to mainUrl,
             "User-Agent" to USER_AGENT,
         )
-
         val response = app.get(getEmbedUrl(url), referer = referer)
         val script = if (!getPacked(response.text).isNullOrEmpty()) {
             var result = getAndUnpack(response.text)
@@ -56,7 +53,6 @@ open class Dingtezuni : ExtractorApi() {
         } else {
             response.document.selectFirst("script:containsData(sources:)")?.data()
         } ?: return
-
         Regex(":\\s*\"(.*?m3u8.*?)\"").findAll(script).forEach { m3u8Match ->
             M3u8Helper.generateM3u8(
                 name,
@@ -66,7 +62,6 @@ open class Dingtezuni : ExtractorApi() {
             ).forEach(callback)
         }
     }
-
     private fun getEmbedUrl(url: String): String {
         return when {
             url.contains("/d/") -> url.replace("/d/", "/v/")
@@ -76,13 +71,11 @@ open class Dingtezuni : ExtractorApi() {
         }
     }
 }
-
 open class Gofile : ExtractorApi() {
     override val name = "Gofile"
     override val mainUrl = "https://gofile.io"
     override val requiresReferer = false
     private val mainApi = "https://api.gofile.io"
-
     override suspend fun getUrl(
         url: String,
         referer: String?,
@@ -90,13 +83,12 @@ open class Gofile : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1)
-        val token = app.get("$mainApi/createAccount").parsedSafe<Account>()?.data?.get("token")
+        val token = app.get("$mainApi/createAccount").text?.safeParseJson<Account>()?.data?.get("token")
         val websiteToken = app.get("$mainUrl/dist/js/alljs.js").text.let {
             Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
         }
-
         app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
-            .parsedSafe<Source>()?.data?.contents?.forEach {
+            .text?.safeParseJson<Source>()?.data?.contents?.forEach {
                 callback.invoke(
                     newExtractorLink(
                         name,
@@ -109,40 +101,32 @@ open class Gofile : ExtractorApi() {
                 )
             }
     }
-
     private fun getQuality(str: String?): Int {
         return Regex("(\\d{3,4})[pP]").find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: Qualities.Unknown.value
     }
-
     data class Account(
         @JsonProperty("data") val data: HashMap<String, String>? = null,
     )
-
     data class Data(
         @JsonProperty("contents") val contents: HashMap<String, HashMap<String, String>>? = null,
     )
-
     data class Source(
         @JsonProperty("data") val data: Data? = null,
     )
 }
-
 class Hglink : StreamWishExtractor() {
     override val name = "Hglink"
     override val mainUrl = "https://hglink.to"
 }
-
 class Ghbrisk : StreamWishExtractor() {
     override val name = "Ghbrisk"
     override val mainUrl = "https://ghbrisk.com"
 }
-
 class Dhcplay : StreamWishExtractor() {
     override var name = "DHC Play"
     override var mainUrl = "https://dhcplay.com"
 }
-
 class Vidshare : VidStack() {
     override var name = "Vidshare"
     override var mainUrl = "https://vidshare.rpmvid.com"

@@ -3,6 +3,8 @@ package com.kuronime
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addKitsuId
@@ -26,6 +28,11 @@ import java.util.ArrayList
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
+
+
+inline fun <reified T> String.safeParseJson(): T? = try {
+    jacksonObjectMapper().readValue(this, object : TypeReference<T>() {})
+} catch (e: Exception) { null }
 
 class KuronimeProvider : MainAPI() {
     override var mainUrl = "https://kuronime.sbs"
@@ -136,7 +143,7 @@ class KuronimeProvider : MainAPI() {
                 "sf_value" to query,
                 "search" to "false"
             ), headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-        ).parsedSafe<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
+        ).text?.safeParseJson<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
             newAnimeSearchResponse(
                 it.postTitle ?: "",
                 it.postLink ?: return@mapNotNull null,
@@ -440,8 +447,8 @@ class KuronimeProvider : MainAPI() {
 
     private fun parseAnimeData(jsonString: String): MetaAnimeData? {
         return try {
-            val objectMapper = ObjectMapper()
-            objectMapper.readValue(jsonString, MetaAnimeData::class.java)
+            val mapper = ObjectMapper()
+            mapper.readValue(jsonString, MetaAnimeData::class.java)
         } catch (_: Exception) {
             null
         }
