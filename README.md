@@ -54,8 +54,7 @@ https://raw.githubusercontent.com/Gintama4141/MWK-extension/master/repo.json
 | **OneTouchTV** | Movie & TV | Streaming Movie dan TV Series (multi-source) |
 | **OtakuDesu** | Anime | Streaming Anime Subtitle Indonesia |
 | **PencuriMovie** | Movie & TV | Streaming Movie dan TV Series |
-| **StreamPlay** | Movie & TV | Streaming Movie dan TV Series |
-| **TorraStream** | Movie & TV | Streaming Movie dan TV Series (Torrentio-based) |
+
 
 ---
 
