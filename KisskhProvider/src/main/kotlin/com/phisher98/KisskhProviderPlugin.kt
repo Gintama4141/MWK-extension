@@ -1,10 +1,10 @@
-package com.kisskh
+package com.phisher98
 
 import com.lagradost.cloudstream3.plugins.BasePlugin
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 
 @CloudstreamPlugin
-class KisskhProviderPlugin : BasePlugin() {
+class KisskhProviderPlugin: BasePlugin() {
     override fun load() {
         registerMainAPI(KisskhProvider())
     }

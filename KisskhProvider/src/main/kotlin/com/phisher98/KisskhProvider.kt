@@ -1,4 +1,4 @@
-package com.kisskh
+package com.phisher98
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
@@ -26,11 +26,6 @@ class KisskhProvider : MainAPI() {
         TvType.AsianDrama,
         TvType.Anime
     )
-
-    companion object {
-        private const val KissKh = "https://kisskh.co/api/DramaList/Episode?id="
-        private const val KisskhSub = "https://kisskh.co/api/Sub?id="
-    }
 
     override val mainPage = mainPageOf(
         "&type=2&sub=0&country=2&status=0&order=1" to "Movie Popular",
@@ -86,15 +81,6 @@ class KisskhProvider : MainAPI() {
         return str.replace(Regex("[^a-zA-Z0-9]"), "-")
     }
 
-    private fun getLanguage(str: String): String {
-        return when (str) {
-            "Indonesia" -> "Indonesian"
-            else -> str
-        }
-    }
-
-    private val CHUNK_REGEX1 by lazy { Regex("^\\d+$", RegexOption.MULTILINE) }
-
     override suspend fun load(url: String): LoadResponse? {
         val id = url.split("/")
         val res = app.get(
@@ -131,14 +117,23 @@ class KisskhProvider : MainAPI() {
 
     }
 
+    private fun getLanguage(str: String): String {
+        return when (str) {
+            "Indonesia" -> "Indonesian"
+            else -> str
+        }
+    }
+
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
+        val KisskhAPI = "https://kisskh.co/api/DramaList/Episode?id="
+        val KisskhSub = "https://kisskh.co/api/Sub?id="
         val loadData = parseJson<Data>(data)
-        val kkey = app.get("$KissKh${loadData.epsId}&version=2.8.10", timeout = 10000).parsedSafe<Key>()?.key ?:""
+        val kkey = app.get("$KisskhAPI${loadData.epsId}&version=2.8.10", timeout = 10000).parsedSafe<Key>()?.key ?:""
         app.get(
             "$mainUrl/api/DramaList/Episode/${loadData.epsId}.png?err=false&ts=&time=&kkey=$kkey",
             referer = "$mainUrl/Drama/${getTitle("${loadData.title}")}/Episode-${loadData.eps}?id=${loadData.id}&ep=${loadData.epsId}&page=0&pageSize=100"
@@ -203,6 +198,7 @@ class KisskhProvider : MainAPI() {
     }
 // SubDecryptor Code from Thanks to https://github.com/Kohi-den/extensions-source/blob/515590ecfec6af2b915d23508266536f7f5a3ab8/src/en/kisskh/src/eu/kanade/tachiyomi/animeextension/en/kisskh/SubDecryptor.kt
 
+    private val CHUNK_REGEX1 by lazy { Regex("^\\d+$", RegexOption.MULTILINE) }
     override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor {
         return object : Interceptor {
             override fun intercept(chain: Interceptor.Chain): Response {
