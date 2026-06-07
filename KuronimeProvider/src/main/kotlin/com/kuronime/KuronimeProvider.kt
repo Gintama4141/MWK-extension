@@ -132,7 +132,7 @@ class KuronimeProvider : MainAPI() {
                 "sf_value" to query,
                 "search" to "false"
             ), headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-        ).parsedSafe<Search>()?.anime?.firstOrNull()?.all?.mapNotNull {
+        ).text.let { tryParseJson<Search>(it) }?.anime?.firstOrNull()?.all?.mapNotNull {
             newAnimeSearchResponse(
                 it.postTitle ?: "",
                 it.postLink ?: return@mapNotNull null,
@@ -272,7 +272,7 @@ class KuronimeProvider : MainAPI() {
             "$animekuUrl/api/v9/sources", requestBody = """{"id":"$id"}""".toRequestBody(
                 RequestBodyTypes.JSON.toMediaTypeOrNull()
             ), referer = "$currentBaseUrl/"
-        ).parsedSafe<Servers>()
+        ).text.let { tryParseJson<Servers>(it) }
 
         runAllAsync(
             {
