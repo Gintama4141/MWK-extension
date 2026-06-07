@@ -326,8 +326,9 @@ class KuronimeProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
+        val cb = callback
         loadExtractor(url ?: return, referer, subtitleCallback) { link ->
-            callback.invoke(
+            cb.invoke(
                 newExtractorLink(
                     link.name,
                     link.name,

@@ -308,8 +308,9 @@ class OtakudesuProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit,
         quality: Int = Qualities.Unknown.value,
     ) {
+        val cb = callback
         loadExtractor(url, referer, subtitleCallback) { link ->
-            callback.invoke(
+            cb.invoke(
                 newExtractorLink(
                     link.name,
                     link.name,
