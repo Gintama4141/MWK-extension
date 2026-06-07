@@ -2,7 +2,6 @@ package com.kuronime
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addKitsuId
@@ -386,14 +385,8 @@ class KuronimeProvider : MainAPI() {
         @JsonProperty("kitsu_id") val kitsuId: String? = null
     )
 
-    private fun parseAnimeData(jsonString: String): MetaAnimeData? {
-        return try {
-            val mapper = ObjectMapper()
-            mapper.readValue(jsonString, MetaAnimeData::class.java)
-        } catch (_: Exception) {
-            null
-        }
-    }
+    private fun parseAnimeData(jsonString: String): MetaAnimeData? =
+        tryParseJson(jsonString)
 
     data class Mirrors(
         @JsonProperty("embed") val embed: Map<String, Map<String, String>> = emptyMap(),
