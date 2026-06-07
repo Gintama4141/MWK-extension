@@ -61,7 +61,7 @@ class MovieboxProvider : MainAPI() {
         if(!request.data.contains(",")) {
             val url = "$mainAPIUrl/wefeed-h5api-bff/ranking-list/content?id=${request.data}&page=$page&perPage=12"
 
-            val index = app.get(url).text.let { tryParseJson<Media>(it) }?.data?.subjectList?.map {
+            val index = app.get(url).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.subjectList?.map {
                 it.toSearchResponse(this)
             } ?: throw ErrorLoadingException("No Data Found")
 
@@ -76,7 +76,7 @@ class MovieboxProvider : MainAPI() {
             ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
 
             val index = app.post("$mainAPIUrl/wefeed-h5api-bff/subject/filter", requestBody = body)
-                .text.let { tryParseJson<Media>(it) }?.data?.items?.map {
+                .text.let { AppUtils.tryParseJson<Media>(it) }?.data?.items?.map {
                     it.toSearchResponse(this)
                 } ?: throw ErrorLoadingException("No Data Found")
 
@@ -96,14 +96,14 @@ class MovieboxProvider : MainAPI() {
                 "perPage" to "0",
                 "subjectType" to "0",
             ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
-        ).text.let { tryParseJson<Media>(it) }?.data?.items?.map { it.toSearchResponse(this) }
+        ).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.items?.map { it.toSearchResponse(this) }
             ?: throw ErrorLoadingException()
     }
 
     override suspend fun load(url: String): LoadResponse {
         val id = url.substringAfterLast("/")
         val document = app.get("$secondAPIUrl/wefeed-h5-bff/web/subject/detail?subjectId=$id")
-            .text.let { tryParseJson<MediaDetail>(it) }?.data
+            .text.let { AppUtils.tryParseJson<MediaDetail>(it) }?.data
         val subject = document?.subject
         val title = subject?.title ?: ""
         val poster = subject?.cover?.url
@@ -126,7 +126,7 @@ class MovieboxProvider : MainAPI() {
 
         val recommendations =
             app.get("$mainUrl/wefeed-h5-bff/web/subject/detail-rec?subjectId=$id&page=1&perPage=12")
-                .text.let { tryParseJson<Media>(it) }?.data?.items?.map {
+                .text.let { AppUtils.tryParseJson<Media>(it) }?.data?.items?.map {
                     it.toSearchResponse(this)
                 }
 
@@ -184,13 +184,13 @@ class MovieboxProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
 
-        val media = tryParseJson<LoadData>(data) ?: return false
+        val media = AppUtils.tryParseJson<LoadData>(data) ?: return false
         val referer = "$secondAPIUrl/spa/videoPlayPage/movies/${media.detailPath}?id=${media.id}&type=/movie/detail&lang=en"
 
         val streams = app.get(
             "$secondAPIUrl/wefeed-h5-bff/web/subject/play?subjectId=${media.id}&se=${media.season ?: 0}&ep=${media.episode ?: 0}",
             referer = referer
-        ).text.let { tryParseJson<Media>(it) }?.data?.streams
+        ).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.streams
 
         streams?.reversed()?.distinctBy { it.url }?.map { source ->
             callback.invoke(
@@ -212,7 +212,7 @@ class MovieboxProvider : MainAPI() {
         app.get(
             "$secondAPIUrl/wefeed-h5-bff/web/subject/caption?format=$format&id=$id&subjectId=${media.id}",
             referer = referer
-        ).text.let { tryParseJson<Media>(it) }?.data?.captions?.map { subtitle ->
+        ).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.captions?.map { subtitle ->
             subtitleCallback.invoke(
                 newSubtitleFile(
                     subtitle.lanName ?: "",
