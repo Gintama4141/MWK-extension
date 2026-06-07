@@ -12,7 +12,7 @@ android {
 cloudstream {
     description = "#1 Best Extension – MultiAPI-Based with 4K Torrent Support (Debian) Use Extension Settings"
     language    = "en"
-    authors = listOf("Phisher98")
+    authors = listOf("Phisher98", "MWK")
 
     status = 1
 

@@ -3,7 +3,7 @@ version = 3
 cloudstream {
     description = "KlikXXI — Streaming Movie and TV Series"
     language = "id"
-    authors = listOf("MWK")
+    authors = listOf("Miku", "MWK")
 
     /**
      * Status int as the following:

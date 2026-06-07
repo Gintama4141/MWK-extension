@@ -3,7 +3,7 @@ version = 3
 cloudstream {
     description = "Donghub — Streaming Donghua Subtitle Indonesia"
     language = "id"
-    authors = listOf("Miku")
+    authors = listOf("Miku", "MWK")
 
     /**
      * Status int as the following:

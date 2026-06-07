@@ -3,7 +3,7 @@ version = 4
 cloudstream {
     language = "id"
     description = "MovieBox — Streaming Movie Subtitle Indonesia"
-    authors = listOf("Miku")
+    authors = listOf("Miku", "MWK")
     status = 1
     tvTypes = listOf(
         "TvSeries",
