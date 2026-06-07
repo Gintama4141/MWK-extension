@@ -65,6 +65,24 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
             "https://raw.githubusercontent.com/ngosang/trackerslist/refs/heads/master/trackers_best.txt",
             "https://raw.githubusercontent.com/ngosang/trackerslist/refs/heads/master/trackers_best_ip.txt",
         )
+
+        @Volatile
+        private var cachedTrackers: Set<String>? = null
+
+        suspend fun getCachedTrackers(): Set<String> {
+            cachedTrackers?.let { return it }
+            val fetched = TRACKER_LIST_URL.amap { url ->
+                runCatching {
+                    app.get(url).text
+                        .lineSequence()
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() && !it.startsWith("#") }
+                        .toList()
+                }.getOrElse { emptyList() }
+            }.flatten().toMutableSet()
+            cachedTrackers = fetched
+            return fetched
+        }
         private const val Uindex = "https://uindex.org"
         private const val Knaben = "https://knaben.org"
         private const val TorrentsDB = "https://torrentsdb.com"
@@ -557,17 +575,7 @@ suspend fun generateMagnetLink(
 ): String {
     require(hash?.isNotBlank() == true)
 
-    val trackers = mutableSetOf<String>()
-
-    trackerUrls.amap { url ->
-        runCatching {
-            app.get(url).text
-                .lineSequence()
-                .map { it.trim() }
-                .filter { it.isNotEmpty() && !it.startsWith("#") }
-                .toList()
-        }.getOrElse { emptyList() }
-    }.flatten().toMutableSet()
+    val trackers = TorraStream.getCachedTrackers()
 
     return buildString {
         append("magnet:?xt=urn:btih:").append(hash)

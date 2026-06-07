@@ -3,7 +3,6 @@ package com.phisher98
 import com.phisher98.TorraStream.Companion.AnimetoshoAPI
 import com.phisher98.TorraStream.Companion.SubtitlesAPI
 import com.phisher98.TorraStream.Companion.TRACKER_LIST_URL
-import com.google.gson.Gson
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.amap
@@ -35,7 +34,7 @@ suspend fun invokeTorrentio(
             "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
         )
-        val res = app.get(url, headers = headers, timeout = 100L).text.let { tryParseJson<TorrentioResponse>(it) }
+        val res = app.get(url, headers = headers, timeout = 30_000L).text.let { tryParseJson<TorrentioResponse>(it) }
     res?.streams?.forEach { stream ->
         val formattedTitleName = stream.title
             ?.let { title ->
@@ -195,7 +194,7 @@ suspend fun invokeTorrentioAnimeType(
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
-    val res = app.get(url, headers = headers, timeout = 100L).text.let { tryParseJson<TorrentioResponse>(it) }
+    val res = app.get(url, headers = headers, timeout = 30_000L).text.let { tryParseJson<TorrentioResponse>(it) }
     res?.streams?.forEach { stream ->
         val formattedTitleName = stream.title
             ?.let { title ->
@@ -277,7 +276,7 @@ suspend fun invokeSubtitleAPI(
     val headers = mapOf(
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
-    app.get(url, headers = headers, timeout = 100L).text
+    app.get(url, headers = headers, timeout = 30_000L).text
         .let { tryParseJson<SubtitlesAPI>(it) }?.subtitles?.amap { it ->
             val lan = getLanguage(it.lang) ?:"Unknown"
             val suburl = it.url
@@ -295,8 +294,7 @@ suspend fun invokeAnimetosho(
     callback: (ExtractorLink) -> Unit
 ) {
     val url = "$AnimetoshoAPI/json?eid=$id"
-    val jsonResponse = app.get(url).toString()
-    val parsedList = Gson().fromJson(jsonResponse, Array<AnimetoshoItem>::class.java)?.toList() ?: emptyList()
+    val parsedList = app.get(url).text.let { tryParseJson<Array<AnimetoshoItem>>(it) }?.toList() ?: emptyList()
     parsedList.sortedByDescending { it.seeders }.forEach { item ->
         item.magnetUri.let { magnet ->
             val formattedTitleName = item.torrentName
@@ -341,7 +339,7 @@ suspend fun invokeTorrentioAnime(
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
-    val res = app.get(url, headers = headers, timeout = 100L).text.let { tryParseJson<TorrentioResponse>(it) }
+    val res = app.get(url, headers = headers, timeout = 30_000L).text.let { tryParseJson<TorrentioResponse>(it) }
     res?.streams?.forEach { stream ->
         val magnet = generateMagnetLink(TRACKER_LIST_URL, stream.infoHash)
         val formattedTitleName = stream.title
@@ -770,7 +768,7 @@ suspend fun invokeTorrentsDB(
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
 
-    val response = app.get(url, headers = headers, timeout = 100L).text
+    val response = app.get(url, headers = headers, timeout = 30_000L).text
         .let { tryParseJson<TorrentsDBResponse>(it) } ?: return
 
     response.streams?.amap { stream ->
@@ -820,7 +818,7 @@ suspend fun invokeTorrentsDBAnime(
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
 
-    val response = app.get(url, headers = headers, timeout = 100L).text
+    val response = app.get(url, headers = headers, timeout = 30_000L).text
         .let { tryParseJson<TorrentsDBResponse>(it) } ?: return
 
     response.streams?.amap { stream ->

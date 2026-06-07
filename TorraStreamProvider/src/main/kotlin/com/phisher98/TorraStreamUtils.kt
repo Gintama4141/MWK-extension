@@ -26,8 +26,8 @@ fun getIndexQuality(str: String?): Int {
 
 fun getQuality(str: String): Int {
     return when (str) {
-        "360p" -> Qualities.P240.value
-        "480p" -> Qualities.P360.value
+        "360p" -> Qualities.P360.value
+        "480p" -> Qualities.P480.value
         "HD" -> Qualities.P720.value
         "HEVC" -> Qualities.P1440.value
         "UHD" -> Qualities.P2160.value
