@@ -15,6 +15,7 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.nicehttp.RequestBodyTypes
+import kotlinx.coroutines.runBlocking
 
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -328,8 +329,9 @@ class KuronimeProvider : MainAPI() {
     ) {
         val cb = callback
         loadExtractor(url ?: return, referer, subtitleCallback) { link ->
-            cb.invoke(
-                newExtractorLink(
+            runBlocking {
+                cb.invoke(
+                    newExtractorLink(
                     link.name,
                     link.name,
                     link.url,
@@ -343,6 +345,7 @@ class KuronimeProvider : MainAPI() {
             )
         }
     }
+}
 
     private fun getBaseUrl(url: String): String {
         return URI(url).let {
