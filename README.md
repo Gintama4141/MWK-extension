@@ -54,6 +54,7 @@ https://raw.githubusercontent.com/Gintama4141/MWK-extension/master/repo.json
 | **OneTouchTV** | Movie & TV | Streaming Movie dan TV Series (multi-source) |
 | **OtakuDesu** | Anime | Streaming Anime Subtitle Indonesia |
 | **PencuriMovie** | Movie & TV | Streaming Movie dan TV Series |
+| **TorraStream** | Movie, TV & Anime | Multi-API berbasis Torrentio (TMDB + torrent indexer, magnet streaming) |
 
 
 ---
@@ -78,7 +79,7 @@ https://raw.githubusercontent.com/Gintama4141/MWK-extension/master/repo.json
 | Android SDK | 35 |
 | NiceHttp | 0.4.16 |
 | Jsoup | 1.22.1 |
-| Jackson | 2.20.1 |
+| Jackson | 2.13.1 |
 
 ---
 

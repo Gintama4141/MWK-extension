@@ -1,36 +1,48 @@
 # MWK-extension AGENTS.md
 
 ## Goal
-Maintain and optimize the MWK-extension CloudStream3 plugin repo for Indonesian-subtitled streaming; debug/fix Kuronime streaming error; clean up repo.
+Maintain and optimize the MWK-extension CloudStream3 plugin repo; fix `NoSuchMethodError` crashes from incompatible Jackson/`parseJson` calls; keep all 16 providers working with Indonesian subtitles where available.
 
 ## Constraints & Preferences
-- Must support subtitle Indonesia (`lang = "id"`) for all providers.
 - Build/deploy via GitHub Actions to branch `builds`.
-- Must use CloudStream API conventions — no Jackson `ObjectMapper`.
-- Use `tryParseJson` instead of `.parsedSafe()` (latter calls internal `parseJson` method missing in user's CloudStream version).
+- Use `tryParseJson` instead of `.parsedSafe()` / bare `parseJson` / `ObjectMapper` / `jacksonObjectMapper` / `Gson().fromJson` (latter calls internal `parseJson` method missing in some CloudStream versions).
 - Bump provider version on every change.
-- Git repo root: `C:\Users\Darul Izzah Yoso\Downloads\Project\MWK-extension` (newly initialized).
+- Author format: `listOf("OriginalAuthor", "MWK")` for forked providers; `listOf("MWK")` only when origin unknown.
+- `lang` left as-is per provider — not forced to "id".
+- `AesHelper` is allowed — used for AES content decryption, not JSON parsing.
 
-## Status: ✅ Complete
-- Diagnosed `NoSuchMethodError: No virtual method parseJson(...)` — `.parsedSafe<Servers>()` not compatible. Replaced with `.text` + `tryParseJson<Servers>()`.
-- Analyzed `winie.2.min.js` — AES key is `"3&!Z0M,;dZWVIZ=="`.
-- Updated KuronimeProvider AES key + added `src_sd` handling + `Servers` data class.
-- Replaced `AesHelper.cryptoAESHandler` with manual **CryptoJS EVP_BytesToKey + AES/CBC/PKCS5Padding** decryption. Fixed `base64Decode` → `android.util.Base64.decode()`.
-- Bumped versions: Kuronime 5, Otakudesu 5, Anichin 3, others 2.
-- Deleted 19 unwanted providers. Kept 10: Anichin, Cinemax21, Donghub, Kawanfilm, Kuronime, Moviebox, NgeFilm21, Nomat, Otakudesu, PencuriMovie.
-- Updated `repo.json` → Gintama4141/MWK-extension using `builds` branch.
-- Rewrote README.md.
-- Fixed git repo: re-initialized at `MWK-extension/` (was incorrectly at home dir). Pushed to `origin/master`.
-- Remote already had all fixes (AES, EVP_BytesToKey, version bumps) via prior CI pushes.
-- Final push: `004909a` — cleanup (delete Dutamovie, KlikxxiProvider; add Anichin extractors).
+## Active Providers (16)
+Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Kuronime, Moviebox, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream, plus Anichin extractors.
+
+## Status: ✅ All providers clean
+- All 16 providers fixed from `NoSuchMethodError: No virtual method parseJson(...)`.
+- Replaced `.parsedSafe<>()` / `parseJson<>` / `ObjectMapper` / `jacksonObjectMapper` / `Gson().fromJson` with `tryParseJson` + `.text`.
+- Fixed TorraStream: 6× `100L` timeouts → `30_000L`; magnet tracker cache; `toString()` → `.text` in 3× ani.zip calls + Animetosho; `Gson()` → `tryParseJson`; reversed `getQuality` 360p/480p bug.
+- Replaced deprecated `SubtitleFile(` constructor with `newSubtitleFile(` in Donghub & Kisskh.
+- AES key + `Servers` data class + `decryptCryptoJS()` (EVP_BytesToKey + AES/CBC/PKCS5Padding) in Kuronime for winie.2.min.js cipher.
+- Build/deploy via GitHub Actions → `builds` branch.
+
+## Recent Pushes
+- `f97f8e4` Kisskh v5: `newSubtitleFile` migration
+- `ae6bfcb` Donghub v4: `newSubtitleFile` migration
+- `52f0c09` Kawanfilm v4: removed `jacksonObjectMapper`
+- `f705839` Moviebox v5: removed `parseJson` import
+- `ef9d8d6` Moviebox v4: `tryParseJson` migration
+- `1c03403` TorraStream v85: tracker cache + getQuality fix
+- `117ffd3` Dutamovie v4: `tryParseJson` migration
+- `9ef627c` Donghuastream v2: `tryParseJson` migration
+- `52b03c9` Kuronime v9: `tryParseJson` migration
 
 ## Key Files
-- `KuronimeProvider/src/main/kotlin/com/kuronime/KuronimeProvider.kt` — AES key, `decryptCryptoJS()`, `tryParseJson`, `src_sd` support.
-- `repo.json` — plugin repo config.
+- `KuronimeProvider/src/main/kotlin/com/kuronime/KuronimeProvider.kt` — AES key `"3&!Z0M,;dZWVIZ=="`, `decryptCryptoJS()`, `tryParseJson`, `src_sd` support.
+- `TorraStreamProvider/src/main/kotlin/com/torrastream/` — `TorraStreamProvider.kt` (v85), magnet tracker cache, `getQuality` fix.
+- `MovieboxProvider/src/main/kotlin/com/moviebox/MovieboxProvider.kt` (v5) — `tryParseJson<LoadData>()` + 7× `tryParseJson` migrations.
+- `KawanfilmProvider/src/main/kotlin/com/kawanfilm/KawanfilmProvider.kt` (v4) — `jacksonObjectMapper` removed, `tryParseJson` for 2 call sites.
+- `repo.json` — plugin repo config pointing to `builds` branch.
 - `README.md` — provider list.
+- `build.gradle.kts` — root dep list (Jackson + Gson still bundled for `@JsonProperty`/`@SerializedName` annotations only).
 
 ## Remaining Notes
-- Kuronime streaming fix (manual EVP_BytesToKey decrypt) is deployed but untested by user.
-- User needs to download CI build from GitHub Actions and test Liar Game E1 streaming.
-- Otakudesu v5 confirmed working.
+- Otakudesu v5+ confirmed working by user.
+- Kuronime v9 AES streaming fix (manual EVP_BytesToKey decrypt) deployed but untested by user — user should download CI build and test Liar Game E1 streaming.
 - If Kuronime still fails, next steps: add debug logging, test `src_sd`/`mirror` paths, or try `animeku.org/player2.php?id=<id>` as loadable URL.
