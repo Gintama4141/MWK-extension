@@ -22,7 +22,7 @@ import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.toNewSearchResponseList
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.getQualityFromName
@@ -51,15 +51,11 @@ class OneTouchTV : MainAPI() {
         } catch (e: Exception) {
             throw ErrorLoadingException("Failed to decrypt response: ${e.message}")
         }
-        val results: List<SearchResult> = try {
-            if (decryptedJson.trim().startsWith("[")) {
-                parseJson<Array<SearchResult>>(decryptedJson).toList()
-            } else {
-                parseJson<Search>(decryptedJson).result
-            }
-        } catch (e: Exception) {
-            throw ErrorLoadingException("Failed to parse decrypted JSON: ${e.message}")
-        }
+        val results: List<SearchResult> = if (decryptedJson.trim().startsWith("[")) {
+            tryParseJson<Array<SearchResult>>(decryptedJson)?.toList()
+        } else {
+            tryParseJson<Search>(decryptedJson)?.result
+        } ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
         if (results.isEmpty()) throw ErrorLoadingException("No search results found")
         return results.map { result ->
             newTvSeriesSearchResponse(
@@ -81,11 +77,8 @@ class OneTouchTV : MainAPI() {
         } catch (e: Exception) {
             throw ErrorLoadingException("Failed to decrypt response: ${e.message}")
         }
-        val parser = try {
-            parseJson<MediaResult>(decryptedJson)
-        } catch (e: Exception) {
-            throw ErrorLoadingException("Failed to parse decrypted JSON: ${e.message}")
-        }
+        val parser = tryParseJson<MediaResult>(decryptedJson)
+            ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
         val allRawMedia = buildList {
             addAll(parser.randomSlideShow?.map { it.toCleanMedia() } ?: emptyList())
             addAll(parser.recents?.map { it.toCleanMedia() } ?: emptyList())
@@ -121,7 +114,7 @@ class OneTouchTV : MainAPI() {
     override suspend fun load(url: String): LoadResponse {
         val rawResponse = try { app.get(url).text } catch (e: Exception) { throw ErrorLoadingException("Failed to fetch raw response: ${e.message}") }
         val decryptedJson = try { decryptString(rawResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
-        val parser = try { parseJson<LoadData>(decryptedJson) } catch (e: Exception) { throw ErrorLoadingException("Failed to parse decrypted JSON: ${e.message}") }
+        val parser = tryParseJson<LoadData>(decryptedJson) ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
         val title = parser.title ?: "Unknown Title"
         val poster = parser.image ?: "null"
         val backgroundposter = parser.poster?.replace("image-7wk.pages.dev", "image-v1.pages.dev")?.takeIf { it.isNotBlank() && it != "null" } ?: (parser.image ?: "")
@@ -135,16 +128,15 @@ class OneTouchTV : MainAPI() {
             val playId = ep.playId ?: return@mapNotNull null
             newEpisode("$mainUrl/vod/$identifier/episode/$playId") { name = "Episode ${ep.episode ?: "?"}" }
         }
-        val recommendation: List<SearchResponse> = try {
-            val rawTopResponse = app.get("$mainUrl/vod/top").text
-            val topJson = try { decryptString(rawTopResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
-            val topParser = try { parseJson<OneTouchTVParser>(topJson) } catch (e: Exception) { throw ErrorLoadingException("Failed to parse decrypted JSON: ${e.message}") }
-            buildList {
-                topParser.day?.forEach { add(it.toMedia()) }
-                topParser.week?.forEach { add(it.toMedia()) }
-                topParser.month?.forEach { add(it.toMedia()) }
-            }.map { it.toSearchResponse() }
-        } catch (e: Exception) { throw ErrorLoadingException("Failed to load recommendations: ${e.message}") }
+        val rawTopResponse = app.get("$mainUrl/vod/top").text
+        val topJson = try { decryptString(rawTopResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
+        val topParser = tryParseJson<OneTouchTVParser>(topJson)
+            ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
+        val recommendation: List<SearchResponse> = buildList {
+            topParser.day?.forEach { add(it.toMedia()) }
+            topParser.week?.forEach { add(it.toMedia()) }
+            topParser.month?.forEach { add(it.toMedia()) }
+        }.map { it.toSearchResponse() }
         return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes.reversed()) {
             this.backgroundPosterUrl = backgroundposter; this.posterUrl = poster; this.plot = description; this.tags = tags; this.showStatus = status; this.year = year; this.actors = actors; this.recommendations = recommendation
         }
