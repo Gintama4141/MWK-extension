@@ -3,7 +3,6 @@ package com.phisher98
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.mvvm.safeApiCall
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -42,8 +41,8 @@ class KisskhProvider : MainAPI() {
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
-        val home = app.get("$mainUrl/api/DramaList/List?page=$page${request.data}")
-            .parsedSafe<Responses>()?.data
+        val home = app.get("$mainUrl/api/DramaList/List?page=$page${request.data}").text
+            .let { tryParseJson<Responses>(it) }?.data
             ?.mapNotNull { media ->
                 media.toSearchResponse()
             } ?: throw ErrorLoadingException("Invalid Json reponse")
@@ -88,7 +87,7 @@ class KisskhProvider : MainAPI() {
             referer = "$mainUrl/Drama/${
                 getTitle(id.first())
             }?id=${id.last()}"
-        ).parsedSafe<MediaDetail>()
+        ).text.let { tryParseJson<MediaDetail>(it) }
             ?: throw ErrorLoadingException("Invalid Json reponse")
 
         val episodes = res.episodes?.map { eps ->
@@ -132,12 +131,12 @@ class KisskhProvider : MainAPI() {
     ): Boolean {
         val KisskhAPI = "https://script.google.com/macros/s/AKfycbzn8B31PuDxzaMa9_CQ0VGEDasFqfzI5bXvjaIZH4DM8DNq9q6xj1ALvZNz_JT3jF0suA/exec?id="
         val KisskhSub = "https://script.google.com/macros/s/AKfycbyq6hTj0ZhlinYC6xbggtgo166tp6XaDKBCGtnYk8uOfYBUFwwxBui0sGXiu_zIFmA/exec?id="
-        val loadData = parseJson<Data>(data)
-        val kkey = app.get("$KisskhAPI${loadData.epsId}&version=2.8.10", timeout = 10000).parsedSafe<Key>()?.key ?:""
+        val loadData = tryParseJson<Data>(data) ?: return false
+        val kkey = app.get("$KisskhAPI${loadData.epsId}&version=2.8.10", timeout = 10000).text.let { tryParseJson<Key>(it) }?.key ?:""
         app.get(
             "$mainUrl/api/DramaList/Episode/${loadData.epsId}.png?err=false&ts=&time=&kkey=$kkey",
             referer = "$mainUrl/Drama/${getTitle("${loadData.title}")}/Episode-${loadData.eps}?id=${loadData.id}&ep=${loadData.epsId}&page=0&pageSize=100"
-        ).parsedSafe<Sources>()?.let { source ->
+        ).text.let { tryParseJson<Sources>(it) }?.let { source ->
             listOf(source.video, source.thirdParty).amap { link ->
                 safeApiCall {
                     if (link?.contains(".m3u8") == true) {
@@ -172,7 +171,7 @@ class KisskhProvider : MainAPI() {
             }
         }
 
-        val kkey1=app.get("$KisskhSub${loadData.epsId}&version=2.8.10", timeout = 10000).parsedSafe<Key>()?.key ?:""
+        val kkey1=app.get("$KisskhSub${loadData.epsId}&version=2.8.10", timeout = 10000).text.let { tryParseJson<Key>(it) }?.key ?:""
         app.get("$mainUrl/api/Sub/${loadData.epsId}?kkey=$kkey1").text.let { res ->
             tryParseJson<List<Subtitle>>(res)?.map { sub ->
                 if (sub.src!!.contains(".txt")) {
