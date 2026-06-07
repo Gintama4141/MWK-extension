@@ -22,7 +22,7 @@ import com.lagradost.cloudstream3.addDate
 import com.lagradost.cloudstream3.addEpisodes
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.mapper
+
 import com.lagradost.cloudstream3.newAnimeLoadResponse
 import com.lagradost.cloudstream3.newAnimeSearchResponse
 import com.lagradost.cloudstream3.newEpisode
@@ -69,7 +69,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
     private val TorrentsDB = "https://torrentsdb.com"
 
     private fun Any.toStringData(): String {
-        return mapper.writeValueAsString(this)
+        return this.toJson()
     }
 
     private suspend fun anilistAPICall(query: String): AnilistAPIResponse {
