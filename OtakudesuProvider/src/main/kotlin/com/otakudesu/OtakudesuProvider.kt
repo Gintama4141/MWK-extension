@@ -13,8 +13,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -310,21 +309,19 @@ class OtakudesuProvider : MainAPI() {
         quality: Int = Qualities.Unknown.value,
     ) {
         loadExtractor(url, referer, subtitleCallback) { link ->
-            withContext(Dispatchers.IO) {
-                callback.invoke(
-                    newExtractorLink(
-                        link.name,
-                        link.name,
-                        link.url,
-                        link.type
-                    ) {
-                        this.referer = link.referer
-                        this.quality = quality
-                        this.headers = link.headers
-                        this.extractorData = link.extractorData
-                    }
-                )
-            }
+            callback.invoke(
+                newExtractorLink(
+                    link.name,
+                    link.name,
+                    link.url,
+                    link.type
+                ) {
+                    this.referer = link.referer
+                    this.quality = quality
+                    this.headers = link.headers
+                    this.extractorData = link.extractorData
+                }
+            )
         }
     }
 
