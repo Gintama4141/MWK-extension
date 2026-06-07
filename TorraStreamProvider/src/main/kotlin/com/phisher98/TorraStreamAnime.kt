@@ -161,7 +161,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         val backgroundUrl = data.bannerImage
 
         val jpTitle = data.title.romaji
-        val syncMetaData = app.get("https://api.ani.zip/mappings?anilist_id=${ids.id}").toString()
+        val syncMetaData = app.get("https://api.ani.zip/mappings?anilist_id=${ids.id}").text
         val animeMetaData = parseAnimeData(syncMetaData)
         val logoposter = animeMetaData?.images?.find { it.coverType == "Clearlogo" }?.url
 
@@ -275,7 +275,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         var anidbEid: Int? = null
 
         try {
-            val anijson = app.get("https://api.ani.zip/mappings?anilist_id=$aniid").toString()
+            val anijson = app.get("https://api.ani.zip/mappings?anilist_id=$aniid").text
             val mappings = JSONObject(anijson).optJSONObject("mappings")
             if (mappings != null) {
                 kitsuId = mappings.optInt("kitsu_id", -1)
