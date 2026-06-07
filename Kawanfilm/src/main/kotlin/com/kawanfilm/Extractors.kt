@@ -1,9 +1,8 @@
 package com.kawanfilm
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.core.type.TypeReference
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
@@ -13,9 +12,6 @@ class Movearnpre : Dingtezuni() {
     override var name = "Movearnpre"
     override var mainUrl = "https://movearnpre.com"
 }
-inline fun <reified T> String.safeParseJson(): T? = try {
-    jacksonObjectMapper().readValue(this, object : TypeReference<T>() {})
-} catch (e: Exception) { null }
 class Mivalyo : Dingtezuni() {
     override var name = "Earnvids"
     override var mainUrl = "https://mivalyo.com"
@@ -83,12 +79,12 @@ open class Gofile : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1)
-        val token = app.get("$mainApi/createAccount").text?.safeParseJson<Account>()?.data?.get("token")
+        val token = app.get("$mainApi/createAccount").text.let { tryParseJson<Account>(it) }?.data?.get("token")
         val websiteToken = app.get("$mainUrl/dist/js/alljs.js").text.let {
             Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
         }
         app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
-            .text?.safeParseJson<Source>()?.data?.contents?.forEach {
+            .text.let { tryParseJson<Source>(it) }?.data?.contents?.forEach {
                 callback.invoke(
                     newExtractorLink(
                         name,
