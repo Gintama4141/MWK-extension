@@ -10,7 +10,6 @@ import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.nicehttp.RequestBodyTypes
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
 import java.net.*
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -117,10 +116,10 @@ fun getEpisodeSlug(
     season: Int? = null,
     episode: Int? = null,
 ): Pair<String, String> {
-    return if (season == null && episode == null) {
+    return if (season == null || episode == null) {
         "" to ""
     } else {
-        (if (season!! < 10) "0$season" else "$season") to (if (episode!! < 10) "0$episode" else "$episode")
+        (if (season < 10) "0$season" else "$season") to (if (episode < 10) "0$episode" else "$episode")
     }
 }
 fun getTitleSlug(title: String? = null): Pair<String?, String?> {
@@ -487,37 +486,47 @@ fun hexStringToByteArray(hex: String): ByteArray {
     }
     return data
 }
+data class CinemaOSRoot(
+    val sources: Map<String, CinemaOSSource>
+)
+data class CinemaOSSource(
+    val server: String? = null,
+    val qualities: Map<String, CinemaOSQuality>? = null,
+    val url: String? = null,
+    val type: String? = null,
+    val quality: String? = null,
+    val speed: String? = null,
+    val bitrate: String? = null
+)
+data class CinemaOSQuality(
+    val url: String? = null,
+    val type: String? = null
+)
+
 fun parseCinemaOSSources(jsonString: String): List<Map<String, String>> {
-    val json = JSONObject(jsonString)
-    val sourcesObject = json.getJSONObject("sources")
+    val root = tryParseJson<CinemaOSRoot>(jsonString) ?: return emptyList()
+    val sourcesObject = root.sources
     val sourcesList = mutableListOf<Map<String, String>>()
-    val keys = sourcesObject.keys()
-    while (keys.hasNext()) {
-        val key = keys.next()
-        val source = sourcesObject.getJSONObject(key)
-        if (source.has("qualities")) {
-            val qualities = source.getJSONObject("qualities")
-            val qualityKeys = qualities.keys()
-            while (qualityKeys.hasNext()) {
-                val qualityKey = qualityKeys.next()
-                val qualityObj = qualities.getJSONObject(qualityKey)
+    for ((key, source) in sourcesObject) {
+        if (source.qualities != null) {
+            for ((qualityKey, qualityObj) in source.qualities) {
                 val sourceMap = mutableMapOf<String, String>()
-                sourceMap["server"] = source.optString("server", key)
-                sourceMap["url"] = qualityObj.optString("url", "")
-                sourceMap["type"] = qualityObj.optString("type", "")
-                sourceMap["speed"] = source.optString("speed", "")
-                sourceMap["bitrate"] = source.optString("bitrate", "")
+                sourceMap["server"] = source.server ?: key
+                sourceMap["url"] = qualityObj.url ?: ""
+                sourceMap["type"] = qualityObj.type ?: ""
+                sourceMap["speed"] = source.speed ?: ""
+                sourceMap["bitrate"] = source.bitrate ?: ""
                 sourceMap["quality"] = qualityKey
                 sourcesList.add(sourceMap)
             }
         } else {
             val sourceMap = mutableMapOf<String, String>()
-            sourceMap["server"] = source.optString("server", key)
-            sourceMap["url"] = source.optString("url", "")
-            sourceMap["type"] = source.optString("type", "")
-            sourceMap["speed"] = source.optString("speed", "")
-            sourceMap["bitrate"] = source.optString("bitrate", "")
-            sourceMap["quality"] = source.optString("quality", "")
+            sourceMap["server"] = source.server ?: key
+            sourceMap["url"] = source.url ?: ""
+            sourceMap["type"] = source.type ?: ""
+            sourceMap["speed"] = source.speed ?: ""
+            sourceMap["bitrate"] = source.bitrate ?: ""
+            sourceMap["quality"] = source.quality ?: ""
             sourcesList.add(sourceMap)
         }
     }

@@ -2,7 +2,7 @@ package com.onetouchtv
 
 import com.lagradost.cloudstream3.base64Decode
 import com.lagradost.cloudstream3.base64DecodeArray
-import org.json.JSONObject
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -34,5 +34,8 @@ fun decryptString(input: String): String {
     val normalized = normalizeCustomAlphabet(input)
     val cipherBytes = base64ToBytes(normalized)
     val plaintextBytes = decryptAes256Cbc(cipherBytes, key, iv)
-    return JSONObject(String(plaintextBytes, Charsets.UTF_8)).getString("result")
+    data class DecryptResult(val result: String)
+    return runCatching {
+        tryParseJson<DecryptResult>(String(plaintextBytes, Charsets.UTF_8))
+    }.getOrNull()?.result ?: ""
 }

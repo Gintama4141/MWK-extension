@@ -37,6 +37,7 @@ subprojects {
 
     cloudstream {
         setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/Gintama4141/MWK-extension")
+        authors = listOf("MWK")
     }
 
     android {
@@ -76,7 +77,7 @@ subprojects {
         implementation("com.github.Blatzar:NiceHttp:0.4.18")
         implementation("org.jsoup:jsoup:1.22.2")
         implementation("androidx.annotation:annotation:1.10.0")
-        implementation("com.fasterxml.jackson.core:jackson-annotations:2.13.1")
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.13.1")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
         implementation("org.mozilla:rhino:1.8.1")
         implementation("com.google.code.gson:gson:2.14.0")

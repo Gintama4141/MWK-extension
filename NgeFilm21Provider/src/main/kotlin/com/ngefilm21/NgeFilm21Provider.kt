@@ -257,15 +257,13 @@ class Ngefilm21Provider : MainAPI() {
                 }
 
                 if (linkM3u8 != null) {
-                    linkM3u8 = linkM3u8!!.replace("\\/", "/")
-                    if (linkM3u8!!.startsWith("/")) {
-                        linkM3u8 = "https://$domain$linkM3u8"
-                    }
+                    val cleanUrl = linkM3u8.replace("\\/", "/")
+                    val finalUrl = if (cleanUrl.startsWith("/")) "https://$domain$cleanUrl" else cleanUrl
                     callback.invoke(
                         newExtractorLink(
                             "Masukestin",
                             "Masukestin (Server 3)",
-                            linkM3u8!!,
+                            finalUrl,
                             ExtractorLinkType.M3U8
                         ) {
                             this.headers = mapOf(
@@ -279,14 +277,14 @@ class Ngefilm21Provider : MainAPI() {
             } else {
                 var directM3u8 = Regex("""["']([^"']+\.m3u8[^"']*)["']""").find(doc)?.groupValues?.get(1)
                 if (directM3u8 != null) {
-                     directM3u8 = directM3u8!!.replace("\\/", "/")
-                     if (directM3u8!!.startsWith("/")) directM3u8 = "https://$domain$directM3u8"
+                    val cleanUrl = directM3u8.replace("\\/", "/")
+                    val finalUrl = if (cleanUrl.startsWith("/")) "https://$domain$cleanUrl" else cleanUrl
                      
                      callback.invoke(
                         newExtractorLink(
                             "Masukestin",
                             "Masukestin (Direct)",
-                            directM3u8!!,
+                            finalUrl,
                             ExtractorLinkType.M3U8
                         ) {
                             this.headers = mapOf("User-Agent" to UA_BROWSER, "Referer" to "https://$domain/")

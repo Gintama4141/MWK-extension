@@ -18,7 +18,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.net.URLEncoder
-import org.json.JSONObject 
 import java.net.URLDecoder
 import com.cinemax21.Cinemax21Provider.Companion.cinemaOSApi
 import com.cinemax21.Cinemax21Provider.Companion.Player4uApi
@@ -537,7 +536,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val js = retry { app.get("$RiveStreamAPI$appScript").text } ?: return
         val keyList = Regex("""let\s+c\s*=\s*(\[[^]]*])""").findAll(js).firstOrNull { it.groupValues[1].length > 2 }?.groupValues?.get(1)?.let { array -> Regex("\"([^\"]+)\"").findAll(array).map { it.groupValues[1] }.toList() } ?: emptyList()
         val secretKey = retry { app.get("https://rivestream.supe2372.workers.dev/?input=$id&cList=${keyList.joinToString(",")}").text } ?: return
-        sourceList?.data?.forEach { source -> try { val streamUrl = if (season == null) "$RiveStreamAPI/api/backendfetch?requestID=movieVideoProvider&id=$id&service=$source&secretKey=$secretKey" else "$RiveStreamAPI/api/backendfetch?requestID=tvVideoProvider&id=$id&season=$season&episode=$episode&service=$source&secretKey=$secretKey"; val responseString = retry { app.get(streamUrl, headers, timeout = 10).text } ?: return@forEach; try { val json = JSONObject(responseString); val sourcesArray = json.optJSONObject("data")?.optJSONArray("sources") ?: return@forEach; for (i in 0 until sourcesArray.length()) { val src = sourcesArray.getJSONObject(i); val label = if(src.optString("source").contains("AsiaCloud",ignoreCase = true)) "RiveStream ${src.optString("source")}[${src.optString("quality")}]" else "RiveStream ${src.optString("source")}"; val quality = Qualities.P1080.value; val url = src.optString("url"); try { if (url.contains("proxy?url=")) { try { val fullyDecoded = URLDecoder.decode(url, "UTF-8"); val encodedUrl = fullyDecoded.substringAfter("proxy?url=").substringBefore("&headers="); val decodedUrl = URLDecoder.decode(encodedUrl, "UTF-8"); val encodedHeaders = fullyDecoded.substringAfter("&headers="); val headersMap = try { val jsonStr = URLDecoder.decode(encodedHeaders, "UTF-8"); JSONObject(jsonStr).let { json -> json.keys().asSequence().associateWith { json.getString(it) } } } catch (e: Exception) { emptyMap() }; val referer = headersMap["Referer"] ?: ""; val origin = headersMap["Origin"] ?: ""; val videoHeaders = mapOf("Referer" to referer, "Origin" to origin); val type = if (decodedUrl.contains(".m3u8", ignoreCase = true)) ExtractorLinkType.M3U8 else INFER_TYPE; callback.invoke(newExtractorLink(label, label, decodedUrl, type) { this.quality = quality; this.referer = referer; this.headers = videoHeaders }) } catch (e: Exception) {} } else { val type = if (url.contains(".m3u8", ignoreCase = true)) ExtractorLinkType.M3U8 else INFER_TYPE; callback.invoke(newExtractorLink("$label (VLC)", "$label (VLC)", url, type) { this.referer = ""; this.quality = quality }) } } catch (e: Exception) {} } } catch (e: Exception) {} } catch (e: Exception) {} }
+        sourceList?.data?.forEach { source -> try { val streamUrl = if (season == null) "$RiveStreamAPI/api/backendfetch?requestID=movieVideoProvider&id=$id&service=$source&secretKey=$secretKey" else "$RiveStreamAPI/api/backendfetch?requestID=tvVideoProvider&id=$id&season=$season&episode=$episode&service=$source&secretKey=$secretKey"; val responseString = retry { app.get(streamUrl, headers, timeout = 10).text } ?: return@forEach; try { val riveData = tryParseJson<RiveStreamResponse>(responseString); val sources = riveData?.data?.sources ?: return@forEach; for (src in sources) { val label = if(src.source.contains("AsiaCloud",ignoreCase = true)) "RiveStream ${src.source}[${src.quality}]" else "RiveStream ${src.source}"; val quality = Qualities.P1080.value; val url = src.url; try { if (url.contains("proxy?url=")) { try { val fullyDecoded = URLDecoder.decode(url, "UTF-8"); val encodedUrl = fullyDecoded.substringAfter("proxy?url=").substringBefore("&headers="); val decodedUrl = URLDecoder.decode(encodedUrl, "UTF-8"); val encodedHeaders = fullyDecoded.substringAfter("&headers="); val headersMap = try { URLDecoder.decode(encodedHeaders, "UTF-8").let { tryParseJson<Map<String, String>>(it) } } catch (e: Exception) { null } ?: emptyMap(); val referer = headersMap["Referer"] ?: ""; val origin = headersMap["Origin"] ?: ""; val videoHeaders = mapOf("Referer" to referer, "Origin" to origin); val type = if (decodedUrl.contains(".m3u8", ignoreCase = true)) ExtractorLinkType.M3U8 else INFER_TYPE; callback.invoke(newExtractorLink(label, label, decodedUrl, type) { this.quality = quality; this.referer = referer; this.headers = videoHeaders }) } catch (e: Exception) {} } else { val type = if (url.contains(".m3u8", ignoreCase = true)) ExtractorLinkType.M3U8 else INFER_TYPE; callback.invoke(newExtractorLink("$label (VLC)", "$label (VLC)", url, type) { this.referer = ""; this.quality = quality }) } } catch (e: Exception) {} } } catch (e: Exception) {} } catch (e: Exception) {} }
     }
 
     suspend fun invokeMoviebox2(
@@ -565,25 +564,17 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val detailRes = app.get(detailUrl, headers = detailHeaders).text
         
         val subjectList = mutableListOf<Pair<String, String>>()
+        subjectList.add(mainSubjectId to "Original Audio")
         try {
-            val json = JSONObject(detailRes)
-            val data = json.optJSONObject("data")
-            subjectList.add(mainSubjectId to "Original Audio")
-            
-            val dubs = data?.optJSONArray("dubs")
-            if (dubs != null) {
-                for (i in 0 until dubs.length()) {
-                    val dub = dubs.optJSONObject(i)
-                    val dubId = dub?.optString("subjectId")
-                    val dubName = dub?.optString("lanName") ?: "Dub"
-                    if (!dubId.isNullOrEmpty() && dubId != mainSubjectId) {
-                        subjectList.add(dubId to dubName)
-                    }
+            val moviebox2Data = tryParseJson<Moviebox2DetailResponse>(detailRes)
+            moviebox2Data?.data?.dubs?.forEach { dub ->
+                val dubId = dub.subjectId
+                val dubName = dub.lanName ?: "Dub"
+                if (!dubId.isNullOrEmpty() && dubId != mainSubjectId) {
+                    subjectList.add(dubId to dubName)
                 }
             }
-        } catch (e: Exception) {
-            subjectList.add(mainSubjectId to "Original Audio")
-        }
+        } catch (e: Exception) { }
 
         val s = season ?: 0
         val e = episode ?: 0

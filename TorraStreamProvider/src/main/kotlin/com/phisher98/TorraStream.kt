@@ -38,8 +38,6 @@ import com.lagradost.cloudstream3.toNewSearchResponseList
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import org.json.JSONArray
-import org.json.JSONObject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
@@ -373,12 +371,12 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
         val year = dataObj.year
         val aniResponse = runCatching { app.get("https://api.ani.zip/mappings?imdb_id=$id") }.getOrNull()
         val anijson = aniResponse?.text.orEmpty()
-        val aniJson = runCatching { JSONObject(anijson) }.getOrNull()
-        val mappings = aniJson?.optJSONObject("mappings")
-        val kitsuId = mappings?.optInt("kitsu_id")
+        val aniData = tryParseJson<AniZipData>(anijson)
+        val mappings = aniData?.mappings
+        val kitsuId = mappings?.kitsuId
 
         val isMovie = mappings
-            ?.optString("type", "")
+            ?.type
             ?.contains("MOVIE", ignoreCase = true) == true
 
         episode = if (isMovie) 1 else episode
@@ -447,8 +445,16 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                 )
             }
         }
-        return true
     }
+}
+
+data class AniZipData(
+    val mappings: AniZipMappings? = null
+)
+data class AniZipMappings(
+    val kitsuId: Int? = null,
+    val type: String? = null
+)
 
 
     private fun getStatus(t: String?): ShowStatus {
@@ -502,66 +508,16 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
         val limit = sharedPref.getString("limit", "0") ?: "0"
         val sizeFilter = sharedPref.getString("sizefilter", "0") ?: "0"
 
-        val preferredLanguages = JSONArray().apply {
-            if (languagesPref.isNotEmpty()) {
-                languagesPref.split(",").forEach { put(it.lowercase()) }
-            } else {
-                put("en")
-                put("multi")
-            }
+        val preferredLangs = if (languagesPref.isNotEmpty()) {
+            languagesPref.split(",").joinToString(",") { "\"${it.lowercase()}\"" }
+        } else {
+            "\"en\",\"multi\""
         }
 
-        val languages = JSONObject().apply {
-            put("preferred", preferredLanguages)
-            put("required", JSONArray())
-            put("exclude", JSONArray())
-        }
-
-        val json = JSONObject().apply {
-            put("debridService", debridProvider.lowercase())
-            put("debridApiKey", debridKey)
-            put("cachedOnly", false)
-            put("removeTrash", true)
-            put("removeSamples", true)
-            put("removeAdult", false)
-            put("exclude3D", false)
-            put("enableSeaDex", false)
-
-            put("minSeeders", 0)
-            put("maxResults", limit.toIntOrNull() ?: 0)
-            put("maxResultsPerRes", 0)
-            put("maxSize", sizeFilter.toIntOrNull() ?: 0)
-
-            put("resolutions", JSONArray())
-            put("languages", languages)
-
-            put(
-                "resultFormat",
-                JSONArray().apply {
-                    put("title")
-                    put("quality")
-                    put("size")
-                    put("audio")
-                }
-            )
-
-            put(
-                "sortOrder",
-                JSONArray().apply {
-                    put("cached")
-                    put("resolution")
-                    put("quality")
-                    put("seeders")
-                    put("size")
-                    put("pack")
-                    put("language")
-                    put("seadex")
-                }
-            )
-        }
+        val jsonStr = """{"debridService":"${debridProvider.lowercase()}","debridApiKey":"$debridKey","cachedOnly":false,"removeTrash":true,"removeSamples":true,"removeAdult":false,"exclude3D":false,"enableSeaDex":false,"minSeeders":0,"maxResults":${limit.toIntOrNull() ?: 0},"maxResultsPerRes":0,"maxSize":${sizeFilter.toIntOrNull() ?: 0},"resolutions":[],"languages":{"preferred":[$preferredLangs],"required":[],"exclude":[]},"resultFormat":["title","quality","size","audio"],"sortOrder":["cached","resolution","quality","seeders","size","pack","language","seadex"]}"""
 
         val encoded = Base64.encodeToString(
-            json.toString().toByteArray(),
+            jsonStr.toByteArray(),
             Base64.URL_SAFE or Base64.NO_WRAP
         )
 

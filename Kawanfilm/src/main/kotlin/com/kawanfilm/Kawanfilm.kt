@@ -47,7 +47,7 @@ class Kawanfilm : MainAPI() {
 
     private fun Element.toSearchResult(): SearchResponse? {
         val title = this.selectFirst("h2.entry-title > a")?.text()?.trim() ?: return null
-        val href = fixUrl(this.selectFirst("a")!!.attr("href"))
+        val href = fixUrl(this.selectFirst("a")?.attr("href") ?: return null)
         val posterUrl = fixUrlNull(this.selectFirst("a > img")?.getImageAttr()).fixImageQuality()
         val quality = this.select("div.gmr-qual, div.gmr-quality-item > a").text().trim().replace("-", "")
 		val ratingText = this.selectFirst("div.gmr-rating-item")?.ownText()?.trim()
@@ -80,7 +80,7 @@ class Kawanfilm : MainAPI() {
 
     private fun Element.toRecommendResult(): SearchResponse? {
         val title = this.selectFirst("h2.entry-title > a")?.text()?.trim() ?: return null
-        val href = fixUrl(this.selectFirst("a")!!.attr("href"))
+        val href = fixUrl(this.selectFirst("a")?.attr("href") ?: return null)
         val posterUrl = fixUrlNull(this.selectFirst("a > img")?.getImageAttr()).fixImageQuality()
         val quality = this.select("div.gmr-qual, div.gmr-quality-item > a").text().trim().replace("-", "")
 		val ratingText = this.selectFirst("div.gmr-rating-item")?.ownText()?.trim()

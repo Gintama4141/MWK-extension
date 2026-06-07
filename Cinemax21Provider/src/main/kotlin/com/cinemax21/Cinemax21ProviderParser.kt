@@ -570,3 +570,16 @@ data class Moviebox2Caption(
     @JsonProperty("lanName") val lanName: String? = null,
     @JsonProperty("lan") val lan: String? = null
 )
+
+data class Moviebox2DetailResponse(
+    @JsonProperty("data") val data: Moviebox2DetailData? = null
+)
+
+data class Moviebox2DetailData(
+    @JsonProperty("dubs") val dubs: ArrayList<Moviebox2Dub>? = arrayListOf()
+)
+
+data class Moviebox2Dub(
+    @JsonProperty("subjectId") val subjectId: String? = null,
+    @JsonProperty("lanName") val lanName: String? = null
+)

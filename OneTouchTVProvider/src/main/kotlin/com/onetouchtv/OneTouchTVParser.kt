@@ -1,8 +1,7 @@
 package com.onetouchtv
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import org.json.JSONArray
-import org.json.JSONObject
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 
 data class OneTouchTVParser(
     val day: List<Day>? = emptyList(),
@@ -70,50 +69,33 @@ data class TrackItem(
     val format: String?
 )
 
+data class ParserResponse(
+    val result: ParserResult? = null,
+    val sources: List<SourceItem>? = null,
+    val track: List<TrackItem>? = null,
+    val tracks: List<TrackItem>? = null
+)
+data class ParserResult(
+    val sources: List<SourceItem>? = null,
+    val track: List<TrackItem>? = null,
+    val tracks: List<TrackItem>? = null
+)
+
 fun parseSourcesAndTracks(decryptedJson: String): Pair<List<SourceItem>, List<TrackItem>> {
     val sourcesList = mutableListOf<SourceItem>()
     val tracksList = mutableListOf<TrackItem>()
-    val root = JSONObject(decryptedJson)
-    val result = if (root.has("result")) root.optJSONObject("result") else root
-    val sourcesArray: JSONArray? = result?.optJSONArray("sources")
+    val root = tryParseJson<ParserResponse>(decryptedJson)
+    val result = root?.result ?: root
+    val sourcesArray = result?.sources
     if (sourcesArray != null) {
-        for (i in 0 until sourcesArray.length()) {
-            val s = sourcesArray.optJSONObject(i) ?: continue
-            val headersMap = mutableMapOf<String, String>()
-            val headersObj = s.optJSONObject("headers")
-            if (headersObj != null) {
-                val keys = headersObj.keys()
-                while (keys.hasNext()) {
-                    val k = keys.next()
-                    headersMap[k] = headersObj.optString(k, "")
-                }
-            }
-            sourcesList.add(
-                SourceItem(
-                    type = s.optString("type", ""),
-                    contentId = s.optString("contentId", ""),
-                    id = s.optString("id", ""),
-                    name = s.optString("name", ""),
-                    quality = s.optString("quality", ""),
-                    url = s.optString("url", ""),
-                    headers = headersMap
-                )
-            )
+        for (s in sourcesArray) {
+            sourcesList.add(s)
         }
     }
-    val tracksArray: JSONArray? = result?.optJSONArray("track") ?: result?.optJSONArray("tracks")
+    val tracksArray = result?.track ?: result?.tracks
     if (tracksArray != null) {
-        for (i in 0 until tracksArray.length()) {
-            val t = tracksArray.optJSONObject(i) ?: continue
-            tracksList.add(
-                TrackItem(
-                    file = t.optString("file", ""),
-                    name = t.optString("name", ""),
-                    isDefault = t.optBoolean("default", false),
-                    kind = t.optString("kind", ""),
-                    format = t.optString("format", "")
-                )
-            )
+        for (t in tracksArray) {
+            tracksList.add(t)
         }
     }
     return Pair(sourcesList, tracksList)

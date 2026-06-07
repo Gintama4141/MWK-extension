@@ -13,8 +13,8 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import kotlinx.coroutines.runBlocking
-import org.json.JSONObject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -72,7 +72,7 @@ class OtakudesuProvider : MainAPI() {
 
     private fun Element.toSearchResult(): AnimeSearchResponse? {
         val title = this.selectFirst("h2.jdlflm")?.text()?.trim() ?: return null
-        val href = this.selectFirst("a")!!.attr("href")
+        val href = this.selectFirst("a")?.attr("href") ?: return null
         val posterUrl = this.select("div.thumbz > img").attr("src").toString()
         val epNum = this.selectFirst("div.epz")?.ownText()?.replace(Regex("\\D"), "")?.trim()
             ?.toIntOrNull()
@@ -84,10 +84,10 @@ class OtakudesuProvider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         return app.get("$mainUrl/?s=$query&post_type=anime").document.select("ul.chivsrc > li")
-            .map {
-                val title = it.selectFirst("h2 > a")!!.ownText().trim()
-                val href = it.selectFirst("h2 > a")!!.attr("href")
-                val posterUrl = it.selectFirst("img")!!.attr("src").toString()
+            .mapNotNull {
+                val title = it.selectFirst("h2 > a")?.ownText()?.trim() ?: return@mapNotNull null
+                val href = it.selectFirst("h2 > a")?.attr("href") ?: return@mapNotNull null
+                val posterUrl = it.selectFirst("img")?.attr("src") ?: ""
                 newAnimeSearchResponse(title, href, TvType.Anime) {
                     this.posterUrl = posterUrl
                 }
@@ -111,9 +111,9 @@ class OtakudesuProvider : MainAPI() {
             document.select("div.infozingle > p:nth-child(9) > span").text()
         )?.groupValues?.get(1)?.toIntOrNull()
         val status = getStatus(
-            document.selectFirst("div.infozingle > p:nth-child(6) > span")!!.ownText()
-                .replace(":", "")
-                .trim()
+            document.selectFirst("div.infozingle > p:nth-child(6) > span")?.ownText()
+                ?.replace(":", "")
+                ?.trim() ?: ""
         )
         val description = document.select("div.sinopc > p").text()
 
@@ -147,7 +147,7 @@ class OtakudesuProvider : MainAPI() {
             val name = element.selectFirst("a")?.text() ?: return@amap null
             var episodeNum = Regex("Episode\\s?(\\d+)").find(name)?.groupValues?.getOrNull(1)?.toIntOrNull()
             val fallbackName = Regex("Episode\\s?(\\d+)").find(name)?.groupValues?.getOrNull(0) ?: name
-            val link = fixUrl(element.selectFirst("a")!!.attr("href"))
+            val link = fixUrl(element.selectFirst("a")?.attr("href") ?: return@amap null)
 
             if (type == TvType.AnimeMovie && episodeNum == null) {
                 episodeNum = 1
@@ -179,10 +179,10 @@ class OtakudesuProvider : MainAPI() {
         }.filterNotNull().reversed()
 
         val recommendations =
-            document.select("div.isi-recommend-anime-series > div.isi-konten").map {
-                val recName = it.selectFirst("span.judul-anime > a")!!.text()
-                val recHref = it.selectFirst("a")!!.attr("href")
-                val recPosterUrl = it.selectFirst("a > img")?.attr("src").toString()
+            document.select("div.isi-recommend-anime-series > div.isi-konten").mapNotNull {
+                val recName = it.selectFirst("span.judul-anime > a")?.text() ?: return@mapNotNull null
+                val recHref = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+                val recPosterUrl = it.selectFirst("a > img")?.attr("src") ?: ""
                 newAnimeSearchResponse(recName, recHref, TvType.Anime) {
                     this.posterUrl = recPosterUrl
                 }
@@ -310,7 +310,7 @@ class OtakudesuProvider : MainAPI() {
         quality: Int = Qualities.Unknown.value,
     ) {
         loadExtractor(url, referer, subtitleCallback) { link ->
-            runBlocking {
+            withContext(Dispatchers.IO) {
                 callback.invoke(
                     newExtractorLink(
                         link.name,
@@ -385,6 +385,19 @@ class OtakudesuProvider : MainAPI() {
         tryParseJson(jsonString)
 }
 
+data class TmdbImagesResponse(
+    val logos: List<TmdbLogo>? = null
+)
+data class TmdbLogo(
+    @param:JsonProperty("aspect_ratio") val aspectRatio: Double? = null,
+    val height: Int? = null,
+    @param:JsonProperty("iso_639_1") val iso6391: String? = null,
+    @param:JsonProperty("file_path") val filePath: String? = null,
+    @param:JsonProperty("vote_average") val voteAverage: Double? = null,
+    @param:JsonProperty("vote_count") val voteCount: Int? = null,
+    val width: Int? = null
+)
+
 suspend fun fetchTmdbLogoUrl(
     tmdbAPI: String,
     apiKey: String,
@@ -399,24 +412,24 @@ suspend fun fetchTmdbLogoUrl(
     else
         "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
 
-    val json = runCatching { JSONObject(app.get(url).text) }.getOrNull() ?: return null
-    val logos = json.optJSONArray("logos") ?: return null
-    if (logos.length() == 0) return null
+    val imageResponse = runCatching {
+        app.get(url).text.let { tryParseJson<TmdbImagesResponse>(it) }
+    }.getOrNull() ?: return null
+    val logos = imageResponse.logos?.filter { !it.filePath.isNullOrBlank() } ?: return null
 
     val lang = appLangCode?.trim()?.lowercase()
 
-    fun path(o: JSONObject) = o.optString("file_path")
-    fun isSvg(o: JSONObject) = path(o).endsWith(".svg", true)
-    fun urlOf(o: JSONObject) = "https://image.tmdb.org/t/p/w500${path(o)}"
+    fun path(o: TmdbLogo) = o.filePath ?: ""
+    fun isSvg(o: TmdbLogo) = path(o).endsWith(".svg", true)
+    fun urlOf(o: TmdbLogo) = "https://image.tmdb.org/t/p/w500${path(o)}"
 
-    var svgFallback: JSONObject? = null
+    var svgFallback: TmdbLogo? = null
 
-    for (i in 0 until logos.length()) {
-        val logo = logos.optJSONObject(i) ?: continue
+    for (logo in logos) {
         val p = path(logo)
         if (p.isBlank()) continue
 
-        val l = logo.optString("iso_639_1").trim().lowercase()
+        val l = logo.iso6391?.trim()?.lowercase()
         if (l == lang) {
             if (!isSvg(logo)) return urlOf(logo)
             if (svgFallback == null) svgFallback = logo
@@ -424,23 +437,21 @@ suspend fun fetchTmdbLogoUrl(
     }
     svgFallback?.let { return urlOf(it) }
 
-    var best: JSONObject? = null
-    var bestSvg: JSONObject? = null
+    var best: TmdbLogo? = null
+    var bestSvg: TmdbLogo? = null
 
-    fun voted(o: JSONObject) = o.optDouble("vote_average", 0.0) > 0 && o.optInt("vote_count", 0) > 0
-    fun better(a: JSONObject?, b: JSONObject): Boolean {
+    fun voted(o: TmdbLogo) = (o.voteAverage ?: 0.0) > 0 && (o.voteCount ?: 0) > 0
+    fun better(a: TmdbLogo?, b: TmdbLogo): Boolean {
         if (a == null) return true
-        val aAvg = a.optDouble("vote_average", 0.0)
-        val aCnt = a.optInt("vote_count", 0)
-        val bAvg = b.optDouble("vote_average", 0.0)
-        val bCnt = b.optInt("vote_count", 0)
+        val aAvg = a.voteAverage ?: 0.0
+        val aCnt = a.voteCount ?: 0
+        val bAvg = b.voteAverage ?: 0.0
+        val bCnt = b.voteCount ?: 0
         return bAvg > aAvg || (bAvg == aAvg && bCnt > aCnt)
     }
 
-    for (i in 0 until logos.length()) {
-        val logo = logos.optJSONObject(i) ?: continue
+    for (logo in logos) {
         if (!voted(logo)) continue
-
         if (isSvg(logo)) {
             if (better(bestSvg, logo)) bestSvg = logo
         } else {
@@ -450,7 +461,6 @@ suspend fun fetchTmdbLogoUrl(
 
     best?.let { return urlOf(it) }
     bestSvg?.let { return urlOf(it) }
-
     return null
 }
 

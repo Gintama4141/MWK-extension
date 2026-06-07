@@ -3,7 +3,6 @@ package com.phisher98
 import android.content.SharedPreferences
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.google.gson.annotations.SerializedName
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -11,7 +10,6 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.SubtitleHelper
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.getQualityFromName
-import org.json.JSONObject
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -89,18 +87,19 @@ data class Subtitle(
 )
 
 
+data class AniZipEpisodes(
+    val episodes: Map<String, AniZipEpisode>? = null
+)
+data class AniZipEpisode(
+    val anidbEid: Int? = null
+)
+
 fun getAnidbEid(jsonString: String, episodeNumber: Int?): Int? {
     if (episodeNumber == null) return null
-
     return try {
-        val jsonObject = JSONObject(jsonString)
-        val episodes = jsonObject.optJSONObject("episodes") ?: return null
-
-        episodes.optJSONObject(episodeNumber.toString())
-            ?.optInt("anidbEid", -1)
-            ?.takeIf { it != -1 }
+        val response = tryParseJson<AniZipEpisodes>(jsonString)
+        response?.episodes?.get(episodeNumber.toString())?.anidbEid
     } catch (e: Exception) {
-        e.printStackTrace()
         null
     }
 }
@@ -148,29 +147,38 @@ data class MetaAnimeData(
     @param:JsonProperty("mappings") val mappings: MetaMappings? = null
 )
 
+data class StreamsResponse(
+    val streams: List<StreamItem>? = null
+)
+data class StreamItem(
+    val infoHash: String? = null,
+    val name: String? = null,
+    val sources: List<String>? = null,
+    val behaviorHints: BehaviorHintsItem? = null
+)
+data class BehaviorHintsItem(
+    val bingeGroup: String? = null
+)
+
 fun parseStreamsToMagnetLinks(jsonString: String): List<MagnetStream> {
-    val json = JSONObject(jsonString)
-    val streams = json.getJSONArray("streams")
+    val response = tryParseJson<StreamsResponse>(jsonString)
+    val streams = response?.streams ?: return emptyList()
 
-    return (0 until streams.length()).mapNotNull { i ->
-        val item = streams.getJSONObject(i)
+    return streams.mapNotNull { item ->
+        val infoHash = item.infoHash
+        if (infoHash.isNullOrBlank()) return@mapNotNull null
 
-        val infoHash = item.optString("infoHash")
-        if (infoHash.isBlank()) return@mapNotNull null
+        val originalName = item.name ?: "Unnamed"
+        val sources = item.sources ?: return@mapNotNull null
 
-        val originalName = item.optString("name", "Unnamed")
-        val sources = item.optJSONArray("sources") ?: return@mapNotNull null
-
-        val behaviorHints = item.optJSONObject("behaviorHints")
-        val bingeGroup = behaviorHints?.optString("bingeGroup").orEmpty()
+        val bingeGroup = item.behaviorHints?.bingeGroup.orEmpty()
         bingeGroup.split("|").filter { it.isNotBlank() && it != "Unknown" }
 
         val qualityRegex = Regex("""\b(4K|2160p|1080p|720p|WEB[-\s]?DL|BluRay|HDRip|DVDRip)\b""", RegexOption.IGNORE_CASE)
         val qualityMatch = qualityRegex.find(originalName)?.value ?: "Unknown"
 
         val encodedName = URLEncoder.encode(originalName, "UTF-8")
-        val trackers = (0 until sources.length()).joinToString("&") {
-            val tracker = sources.optString(it)
+        val trackers = sources.joinToString("&") { tracker ->
             "tr=${URLEncoder.encode(tracker, "UTF-8")}"
         }
 
@@ -211,6 +219,19 @@ fun getDate(): TmdbDate {
     return TmdbDate(today, nextWeek, lastWeekStart, monthStart)
 }
 
+data class TmdbImagesResponse(
+    val logos: List<TmdbLogo>? = null
+)
+data class TmdbLogo(
+    @param:JsonProperty("aspect_ratio") val aspectRatio: Double? = null,
+    val height: Int? = null,
+    @param:JsonProperty("iso_639_1") val iso6391: String? = null,
+    @param:JsonProperty("file_path") val filePath: String? = null,
+    @param:JsonProperty("vote_average") val voteAverage: Double? = null,
+    @param:JsonProperty("vote_count") val voteCount: Int? = null,
+    val width: Int? = null
+)
+
 suspend fun fetchTmdbLogoUrl(
     tmdbAPI: String,
     apiKey: String,
@@ -226,24 +247,24 @@ suspend fun fetchTmdbLogoUrl(
     else
         "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
 
-    val json = runCatching { JSONObject(app.get(url).text) }.getOrNull() ?: return null
-    val logos = json.optJSONArray("logos") ?: return null
-    if (logos.length() == 0) return null
+    val imageResponse = runCatching {
+        app.get(url).text.let { tryParseJson<TmdbImagesResponse>(it) }
+    }.getOrNull() ?: return null
+    val logos = imageResponse.logos?.filter { !it.filePath.isNullOrBlank() } ?: return null
 
     val lang = appLangCode?.trim()?.lowercase()
 
-    fun path(o: JSONObject) = o.optString("file_path")
-    fun isSvg(o: JSONObject) = path(o).endsWith(".svg", true)
-    fun urlOf(o: JSONObject) = "https://image.tmdb.org/t/p/w500${path(o)}"
+    fun path(o: TmdbLogo) = o.filePath ?: ""
+    fun isSvg(o: TmdbLogo) = path(o).endsWith(".svg", true)
+    fun urlOf(o: TmdbLogo) = "https://image.tmdb.org/t/p/w500${path(o)}"
 
-    var svgFallback: JSONObject? = null
+    var svgFallback: TmdbLogo? = null
 
-    for (i in 0 until logos.length()) {
-        val logo = logos.optJSONObject(i) ?: continue
+    for (logo in logos) {
         val p = path(logo)
         if (p.isBlank()) continue
 
-        val l = logo.optString("iso_639_1").trim().lowercase()
+        val l = logo.iso6391?.trim()?.lowercase()
         if (l == lang) {
             if (!isSvg(logo)) return urlOf(logo)
             if (svgFallback == null) svgFallback = logo
@@ -251,24 +272,22 @@ suspend fun fetchTmdbLogoUrl(
     }
     svgFallback?.let { return urlOf(it) }
 
-    var best: JSONObject? = null
-    var bestSvg: JSONObject? = null
+    var best: TmdbLogo? = null
+    var bestSvg: TmdbLogo? = null
 
-    fun voted(o: JSONObject) = o.optDouble("vote_average", 0.0) > 0 && o.optInt("vote_count", 0) > 0
+    fun voted(o: TmdbLogo) = (o.voteAverage ?: 0.0) > 0 && (o.voteCount ?: 0) > 0
 
-    fun better(a: JSONObject?, b: JSONObject): Boolean {
+    fun better(a: TmdbLogo?, b: TmdbLogo): Boolean {
         if (a == null) return true
-        val aAvg = a.optDouble("vote_average", 0.0)
-        val aCnt = a.optInt("vote_count", 0)
-        val bAvg = b.optDouble("vote_average", 0.0)
-        val bCnt = b.optInt("vote_count", 0)
+        val aAvg = a.voteAverage ?: 0.0
+        val aCnt = a.voteCount ?: 0
+        val bAvg = b.voteAverage ?: 0.0
+        val bCnt = b.voteCount ?: 0
         return bAvg > aAvg || (bAvg == aAvg && bCnt > aCnt)
     }
 
-    for (i in 0 until logos.length()) {
-        val logo = logos.optJSONObject(i) ?: continue
+    for (logo in logos) {
         if (!voted(logo)) continue
-
         if (isSvg(logo)) {
             if (better(bestSvg, logo)) bestSvg = logo
         } else {

@@ -15,10 +15,10 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.nicehttp.RequestBodyTypes
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
 import org.jsoup.nodes.Element
 import java.net.URI
 import java.util.ArrayList
@@ -328,7 +328,7 @@ class KuronimeProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ) {
         loadExtractor(url ?: return, referer, subtitleCallback) { link ->
-            runBlocking {
+            withContext(Dispatchers.IO) {
                 callback.invoke(
                     newExtractorLink(
                         link.name,
@@ -422,6 +422,19 @@ class KuronimeProvider : MainAPI() {
     )
 }
 
+data class TmdbImagesResponse(
+    val logos: List<TmdbLogo>? = null
+)
+data class TmdbLogo(
+    @param:JsonProperty("aspect_ratio") val aspectRatio: Double? = null,
+    val height: Int? = null,
+    @param:JsonProperty("iso_639_1") val iso6391: String? = null,
+    @param:JsonProperty("file_path") val filePath: String? = null,
+    @param:JsonProperty("vote_average") val voteAverage: Double? = null,
+    @param:JsonProperty("vote_count") val voteCount: Int? = null,
+    val width: Int? = null
+)
+
 suspend fun fetchTmdbLogoUrl(
     tmdbAPI: String,
     apiKey: String,
@@ -436,24 +449,24 @@ suspend fun fetchTmdbLogoUrl(
     else
         "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
 
-    val json = runCatching { JSONObject(app.get(url).text) }.getOrNull() ?: return null
-    val logos = json.optJSONArray("logos") ?: return null
-    if (logos.length() == 0) return null
+    val imageResponse = runCatching {
+        app.get(url).text.let { tryParseJson<TmdbImagesResponse>(it) }
+    }.getOrNull() ?: return null
+    val logos = imageResponse.logos?.filter { !it.filePath.isNullOrBlank() } ?: return null
 
     val lang = appLangCode?.trim()?.lowercase()
 
-    fun path(o: JSONObject) = o.optString("file_path")
-    fun isSvg(o: JSONObject) = path(o).endsWith(".svg", true)
-    fun urlOf(o: JSONObject) = "https://image.tmdb.org/t/p/w500${path(o)}"
+    fun path(o: TmdbLogo) = o.filePath ?: ""
+    fun isSvg(o: TmdbLogo) = path(o).endsWith(".svg", true)
+    fun urlOf(o: TmdbLogo) = "https://image.tmdb.org/t/p/w500${path(o)}"
 
-    var svgFallback: JSONObject? = null
+    var svgFallback: TmdbLogo? = null
 
-    for (i in 0 until logos.length()) {
-        val logo = logos.optJSONObject(i) ?: continue
+    for (logo in logos) {
         val p = path(logo)
         if (p.isBlank()) continue
 
-        val l = logo.optString("iso_639_1").trim().lowercase()
+        val l = logo.iso6391?.trim()?.lowercase()
         if (l == lang) {
             if (!isSvg(logo)) return urlOf(logo)
             if (svgFallback == null) svgFallback = logo
@@ -461,23 +474,21 @@ suspend fun fetchTmdbLogoUrl(
     }
     svgFallback?.let { return urlOf(it) }
 
-    var best: JSONObject? = null
-    var bestSvg: JSONObject? = null
+    var best: TmdbLogo? = null
+    var bestSvg: TmdbLogo? = null
 
-    fun voted(o: JSONObject) = o.optDouble("vote_average", 0.0) > 0 && o.optInt("vote_count", 0) > 0
-    fun better(a: JSONObject?, b: JSONObject): Boolean {
+    fun voted(o: TmdbLogo) = (o.voteAverage ?: 0.0) > 0 && (o.voteCount ?: 0) > 0
+    fun better(a: TmdbLogo?, b: TmdbLogo): Boolean {
         if (a == null) return true
-        val aAvg = a.optDouble("vote_average", 0.0)
-        val aCnt = a.optInt("vote_count", 0)
-        val bAvg = b.optDouble("vote_average", 0.0)
-        val bCnt = b.optInt("vote_count", 0)
+        val aAvg = a.voteAverage ?: 0.0
+        val aCnt = a.voteCount ?: 0
+        val bAvg = b.voteAverage ?: 0.0
+        val bCnt = b.voteCount ?: 0
         return bAvg > aAvg || (bAvg == aAvg && bCnt > aCnt)
     }
 
-    for (i in 0 until logos.length()) {
-        val logo = logos.optJSONObject(i) ?: continue
+    for (logo in logos) {
         if (!voted(logo)) continue
-
         if (isSvg(logo)) {
             if (better(bestSvg, logo)) bestSvg = logo
         } else {
@@ -487,6 +498,5 @@ suspend fun fetchTmdbLogoUrl(
 
     best?.let { return urlOf(it) }
     bestSvg?.let { return urlOf(it) }
-
     return null
 }
