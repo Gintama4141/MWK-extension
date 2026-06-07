@@ -2,6 +2,7 @@ package com.donghub
 
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
@@ -47,7 +48,7 @@ open class Dailymotion : ExtractorApi() {
             subRegex.findAll(subtitleJson).forEach { match ->
                 val label = match.groupValues[1]
                 val subUrl = match.groupValues[2]
-                subtitleCallback(SubtitleFile(label, subUrl))
+                subtitleCallback(newSubtitleFile(label, subUrl))
             }
         }
     }
