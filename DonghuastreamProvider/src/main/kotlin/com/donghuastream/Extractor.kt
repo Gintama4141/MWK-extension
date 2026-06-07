@@ -17,6 +17,7 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 
 open class Vtbe : ExtractorApi() {
     override var name = "Vtbe"
@@ -65,7 +66,7 @@ open class Ultrahd : ExtractorApi() {
         val response = app.get(url, referer = mainUrl).document
         val html = response.toString()
         val ajaxUrl = Regex("""\$\s*\.\s*ajax\(\s*\{\s*url:\s*"(.*?)"""").find(html)?.groupValues?.get(1) ?: return
-        val root = app.get(ajaxUrl).parsedSafe<Root>() ?: return
+        val root = app.get(ajaxUrl).text.let { tryParseJson<Root>(it) } ?: return
         root.sources.forEach { source ->
             val m3u8 = httpsify(source.file)
             if (m3u8.contains(".mp4")) {
@@ -137,7 +138,7 @@ open class PlayStreamplay : ExtractorApi() {
         val packedCode = Regex("""eval\(.*?\)\)\)""", RegexOption.DOT_MATCHES_ALL).find(packedScript)?.value ?: return
         val unpackedJs = JsUnpacker(packedCode).unpack() ?: return
         val token = Regex("""kaken="(.*?)"""").find(unpackedJs)?.groupValues?.getOrNull(1) ?: return
-        val response = app.get("$mainUrl/api/?$token", timeout = 10000).parsedSafe<Response>() ?: return
+        val response = app.get("$mainUrl/api/?$token", timeout = 10000).text.let { tryParseJson<Response>(it) } ?: return
         val m3u8Url = response.sources.find { it.file.isNotBlank() }?.file
         if (!m3u8Url.isNullOrEmpty()) {
             val headers = mapOf(
