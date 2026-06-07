@@ -188,7 +188,7 @@ class Nomat : MainAPI() {
 		callback: (ExtractorLink) -> Unit
 	): Boolean {
 		return try {
-			val nhDoc = app.get(data, referer = mainUrl, timeout = 100L).document
+			val nhDoc = app.get(data, referer = mainUrl, timeout = 30_000L).document
 
 			nhDoc.select("div.server-item").amap { el ->
 				val encoded = el.attr("data-url")

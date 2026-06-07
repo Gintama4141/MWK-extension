@@ -11,8 +11,8 @@ Maintain and optimize the MWK-extension CloudStream3 plugin repo; fix `NoSuchMet
 - `lang` left as-is per provider — not forced to "id".
 - `AesHelper` is allowed — used for AES content decryption, not JSON parsing.
 
-## Active Providers (16)
-Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Kuronime, Moviebox, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream, plus Anichin extractors.
+## Active Providers (17)
+Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Klikxxi, Kuronime, Moviebox, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream, plus Anichin extractors.
 
 ## Status: ✅ All providers clean
 - All 16 providers fixed from `NoSuchMethodError: No virtual method parseJson(...)`.

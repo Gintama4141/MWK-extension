@@ -24,6 +24,6 @@ cloudstream {
     )
 
 
-    iconUrl = "https://klikxxi.me/wp-content/uploads/2024/02/cropped-site-icon.png"
+    iconUrl = "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://cinemax21.cfd&size=%size%"
 
 }
