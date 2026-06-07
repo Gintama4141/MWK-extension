@@ -93,8 +93,8 @@ suspend fun tmdbToAnimeId(title: String?, year: Int?, season: String?, type: TvT
         "query" to query,
         "variables" to variables
     ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
-    val res = app.post(anilistAPI, requestBody = data)
-        .parsedSafe<AniSearch>()?.data?.Page?.media?.firstOrNull()
+    val res = app.post(anilistAPI, requestBody = data).text
+        .let { tryParseJson<AniSearch>(it) }?.data?.Page?.media?.firstOrNull()
     return AniIds(res?.id, res?.idMal)
 }
 fun safeBase64Decode(input: String): String {

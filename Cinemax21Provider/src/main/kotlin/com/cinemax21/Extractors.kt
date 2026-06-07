@@ -30,7 +30,7 @@ class Jeniusplay : ExtractorApi() {
             data = mapOf("hash" to hash, "r" to "$referer"),
             referer = referer,
             headers = mapOf("X-Requested-With" to "XMLHttpRequest")
-        ).parsedSafe<ResponseSource>()?.videoSource
+        ).text.let { tryParseJson<ResponseSource>(it) }?.videoSource
 
         if (m3uLink != null) {
             callback.invoke(
