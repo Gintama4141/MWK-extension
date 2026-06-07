@@ -5,6 +5,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
 import com.lagradost.cloudstream3.extractors.VidStack
 import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import java.net.URI
 
@@ -87,13 +88,13 @@ open class Gofile : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1)
-        val token = app.get("$mainApi/createAccount").parsedSafe<Account>()?.data?.get("token")
+        val token = app.get("$mainApi/createAccount").text.let { tryParseJson<Account>(it) }?.data?.get("token")
         val websiteToken = app.get("$mainUrl/dist/js/alljs.js").text.let {
             Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
         }
 
         app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
-            .parsedSafe<Source>()?.data?.contents?.forEach {
+            .text.let { tryParseJson<Source>(it) }?.data?.contents?.forEach {
                 val link = it.value["link"] ?: return@forEach
                 callback(
                     newExtractorLink(name, name, link) {
