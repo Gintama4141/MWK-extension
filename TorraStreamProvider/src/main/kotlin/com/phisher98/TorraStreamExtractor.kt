@@ -13,6 +13,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import java.util.Locale
 
 suspend fun invokeTorrentio(
@@ -34,7 +35,7 @@ suspend fun invokeTorrentio(
             "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
         )
-        val res = app.get(url, headers = headers, timeout = 100L).parsedSafe<TorrentioResponse>()
+        val res = app.get(url, headers = headers, timeout = 100L).text.let { tryParseJson<TorrentioResponse>(it) }
     res?.streams?.forEach { stream ->
         val formattedTitleName = stream.title
             ?.let { title ->
@@ -83,7 +84,7 @@ suspend fun invokeTorrentioDebian(
     } else {
         "$mainUrl/stream/series/$id:$season:$episode.json"
     }
-    val res = app.get(url).parsedSafe<DebianRoot>()
+    val res = app.get(url).text.let { tryParseJson<DebianRoot>(it) }
     res?.streams?.forEach { stream ->
         val fileUrl = stream.url
 
@@ -137,7 +138,7 @@ suspend fun invokeTorrentioAnimeDebian(
     } else {
         "$mainUrl/stream/series/kitsu:$id:$episode.json"
     }
-    val res = app.get(url).parsedSafe<DebianRoot>()
+    val res = app.get(url).text.let { tryParseJson<DebianRoot>(it) }
     res?.streams?.forEach { stream ->
         val fileUrl = stream.url
 
@@ -194,7 +195,7 @@ suspend fun invokeTorrentioAnimeType(
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
-    val res = app.get(url, headers = headers, timeout = 100L).parsedSafe<TorrentioResponse>()
+    val res = app.get(url, headers = headers, timeout = 100L).text.let { tryParseJson<TorrentioResponse>(it) }
     res?.streams?.forEach { stream ->
         val formattedTitleName = stream.title
             ?.let { title ->
@@ -243,7 +244,7 @@ suspend fun invokeThepiratebay(
         else {
             "$thepiratebayApi/stream/series/$imdbId:$season:$episode.json"
         }
-        val res = app.get(url, timeout = 10).parsedSafe<TBPResponse>()
+        val res = app.get(url, timeout = 10).text.let { tryParseJson<TBPResponse>(it) }
         for(stream in res?.streams!!)
         {
             val magnetLink = generateMagnetLink(TRACKER_LIST_URL,stream.infoHash).trim()
@@ -276,8 +277,8 @@ suspend fun invokeSubtitleAPI(
     val headers = mapOf(
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
-    app.get(url, headers = headers, timeout = 100L)
-        .parsedSafe<SubtitlesAPI>()?.subtitles?.amap { it ->
+    app.get(url, headers = headers, timeout = 100L).text
+        .let { tryParseJson<SubtitlesAPI>(it) }?.subtitles?.amap { it ->
             val lan = getLanguage(it.lang) ?:"Unknown"
             val suburl = it.url
             subtitleCallback.invoke(
@@ -340,7 +341,7 @@ suspend fun invokeTorrentioAnime(
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
-    val res = app.get(url, headers = headers, timeout = 100L).parsedSafe<TorrentioResponse>()
+    val res = app.get(url, headers = headers, timeout = 100L).text.let { tryParseJson<TorrentioResponse>(it) }
     res?.streams?.forEach { stream ->
         val magnet = generateMagnetLink(TRACKER_LIST_URL, stream.infoHash)
         val formattedTitleName = stream.title
@@ -384,7 +385,7 @@ suspend fun invokeAIOStreamsDebian(
         "$base/stream/series/$id:$season:$episode.json"
     }
 
-    val res = app.get(url, timeout = 5000L).parsedSafe<AIODebian>() ?: return
+    val res = app.get(url, timeout = 5000L).text.let { tryParseJson<AIODebian>(it) } ?: return
 
     val qualityRegex = Regex(
         """\b(4K|2160p|1080p|720p|WEB[-\s]?DL|BluRay|HDRip|DVDRip)\b""",
@@ -429,7 +430,7 @@ suspend fun invokeDebianTorbox(
         "$torBoxAPI/$key/stream/series/$id:$season:$episode.json"
     }
 
-    val response = app.get(url, timeout = 10_000).parsedSafe<TorBoxDebian>() ?: return
+    val response = app.get(url, timeout = 10_000).text.let { tryParseJson<TorBoxDebian>(it) } ?: return
 
     response.streams.forEach { stream ->
 
@@ -707,7 +708,7 @@ suspend fun invokeTorboxAnimeDebian(
     } else {
         "$mainUrl/$key/stream/series/kitsu:$id:$episode.json"
     }
-    val res = app.get(url, timeout = 10_000).parsedSafe<DebianRoot>()
+    val res = app.get(url, timeout = 10_000).text.let { tryParseJson<DebianRoot>(it) }
     res?.streams?.forEach { stream ->
         val fileUrl = stream.url
 
@@ -769,8 +770,8 @@ suspend fun invokeTorrentsDB(
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
 
-    val response = app.get(url, headers = headers, timeout = 100L)
-        .parsedSafe<TorrentsDBResponse>() ?: return
+    val response = app.get(url, headers = headers, timeout = 100L).text
+        .let { tryParseJson<TorrentsDBResponse>(it) } ?: return
 
     response.streams?.amap { stream ->
 
@@ -819,8 +820,8 @@ suspend fun invokeTorrentsDBAnime(
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
 
-    val response = app.get(url, headers = headers, timeout = 100L)
-        .parsedSafe<TorrentsDBResponse>() ?: return
+    val response = app.get(url, headers = headers, timeout = 100L).text
+        .let { tryParseJson<TorrentsDBResponse>(it) } ?: return
 
     response.streams?.amap { stream ->
 
@@ -862,7 +863,7 @@ suspend fun invokeMeteorDebian(
         "$mainUrl/stream/series/$id:$season:$episode.json"
     }
 
-    val res = app.get(url).parsedSafe<MeteorRoot>()
+    val res = app.get(url).text.let { tryParseJson<MeteorRoot>(it) }
 
     res?.streams?.forEach { stream ->
 
@@ -926,7 +927,7 @@ suspend fun invokeMeteorAnimeDebian(
         "$mainUrl/stream/series/kitsu:$id:$episode.json"
     }
 
-    val res = app.get(url).parsedSafe<MeteorRoot>()
+    val res = app.get(url).text.let { tryParseJson<MeteorRoot>(it) }
 
     res?.streams?.forEach { stream ->
 

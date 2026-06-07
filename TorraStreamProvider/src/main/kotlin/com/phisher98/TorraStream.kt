@@ -35,7 +35,7 @@ import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.runAllAsync
 import com.lagradost.cloudstream3.syncproviders.SyncIdName
 import com.lagradost.cloudstream3.toNewSearchResponseList
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import org.json.JSONArray
@@ -119,8 +119,8 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
         val adultQuery =
             if (settingsForProvider.enableAdult) "" else "&without_keywords=190370|13059|226161|195669|190370"
         val type = if (request.data.contains("/movie")) "movie" else "tv"
-        val home = app.get("${request.data}$adultQuery&page=$page")
-            .parsedSafe<Results>()?.results?.mapNotNull { media ->
+        val home = app.get("${request.data}$adultQuery&page=$page").text
+            .let { tryParseJson<Results>(it) }?.results?.mapNotNull { media ->
                 media.toSearchResponse(type)
             } ?: throw ErrorLoadingException("Invalid Json reponse")
         return newHomePageResponse(request.name, home)
@@ -142,21 +142,21 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
     override suspend fun search(query: String, page: Int): SearchResponseList? {
         return app.get(
             "$tmdbAPI/search/multi?api_key=$apiKey&language=en-US&query=$query&page=$page&include_adult=${settingsForProvider.enableAdult}"
-        ).parsedSafe<Results>()?.results?.mapNotNull { media ->
+        ).text.let { tryParseJson<Results>(it) }?.results?.mapNotNull { media ->
             media.toSearchResponse()
         }?.toNewSearchResponseList()
     }
 
 
     override suspend fun load(url: String): LoadResponse? {
-        val data = parseJson<Data>(url)
+        val data = tryParseJson<Data>(url) ?: return null
         val type = getType(data.type)
         val resUrl = if (type == TvType.Movie) {
             "$tmdbAPI/movie/${data.id}?api_key=$apiKey&append_to_response=keywords,credits,external_ids,videos,recommendations"
         } else {
             "$tmdbAPI/tv/${data.id}?api_key=$apiKey&append_to_response=keywords,credits,external_ids,videos,recommendations"
         }
-        val res = app.get(resUrl).parsedSafe<MediaDetail>()
+        val res = app.get(resUrl).text.let { tryParseJson<MediaDetail>(it) }
             ?: throw ErrorLoadingException("Invalid Json Response")
 
         val title = res.title ?: res.name ?: return null
@@ -202,13 +202,13 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
         )
         val animeType = if (data.type?.contains("tv", ignoreCase = true) == true) "series" else "movie"
         val imdbId = res.external_ids?.imdb_id.orEmpty()
-        val cineRes = app.get("$Cinemeta/meta/$animeType/$imdbId.json").parsedSafe<CinemetaRes>()
+        val cineRes = app.get("$Cinemeta/meta/$animeType/$imdbId.json").text.let { tryParseJson<CinemetaRes>(it) }
 
         return if (type == TvType.TvSeries) {
             val episodes = res.seasons?.amap { season ->
                 val mediaType = data.type ?: "tv"
-                app.get("$tmdbAPI/$mediaType/${data.id}/season/${season.seasonNumber}?api_key=$apiKey")
-                    .parsedSafe<MediaDetailEpisodes>()?.episodes?.map { eps ->
+                app.get("$tmdbAPI/$mediaType/${data.id}/season/${season.seasonNumber}?api_key=$apiKey").text
+                    .let { tryParseJson<MediaDetailEpisodes>(it) }?.episodes?.map { eps ->
                         newEpisode(LoadData(
                             res.title,
                             year,
@@ -346,7 +346,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
     ): Boolean {
         val provider = sharedPref.getString("debrid_provider", null)
         val key = sharedPref.getString("debrid_key", null)
-        val dataObj = parseJson<LoadData>(data)
+        val dataObj = tryParseJson<LoadData>(data) ?: return false
         val isAnime = dataObj.isAnime
         val title = dataObj.title
         val season = dataObj.season

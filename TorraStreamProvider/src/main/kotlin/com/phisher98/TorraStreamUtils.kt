@@ -3,13 +3,13 @@ package com.phisher98
 import android.content.SharedPreferences
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.gson.annotations.SerializedName
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.SubtitleHelper
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -107,12 +107,7 @@ fun getAnidbEid(jsonString: String, episodeNumber: Int?): Int? {
 
 
 fun parseAnimeData(jsonString: String): MetaAnimeData? {
-    return try {
-        val objectMapper = ObjectMapper()
-        objectMapper.readValue(jsonString, MetaAnimeData::class.java)
-    } catch (_: Exception) {
-        null
-    }
+    return tryParseJson(jsonString)
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)

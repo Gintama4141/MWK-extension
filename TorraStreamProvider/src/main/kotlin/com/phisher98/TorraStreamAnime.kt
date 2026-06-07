@@ -39,6 +39,7 @@ import com.lagradost.cloudstream3.syncproviders.providers.AniListApi.SeasonNextA
 import com.lagradost.cloudstream3.syncproviders.providers.AniListApi.Title
 import com.lagradost.cloudstream3.utils.AppUtils
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.nicehttp.RequestBodyTypes
 import com.phisher98.TorraStream.Companion.Meteorfortheweebs
@@ -75,7 +76,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         val data = mapOf("query" to query)
         val test = app.post(apiUrl, headers = headerJSON, data = data)
         val res =
-            test.parsedSafe<AnilistAPIResponse>()
+            test.text.let { tryParseJson<AnilistAPIResponse>(it) }
                 ?: throw Exception("Unable to fetch or parse Anilist api response")
         return res
     }
@@ -266,7 +267,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
 
         val provider = sharedPref.getString("debrid_provider", null)
         val key = sharedPref.getString("debrid_key", null)
-        val mediaData = AppUtils.parseJson<LinkData>(data)
+        val mediaData = tryParseJson<LinkData>(data) ?: return false
         var episode = mediaData.episode
         val aniid = mediaData.aniId
         var kitsuId = -1
@@ -455,8 +456,8 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
             "variables" to variables
         ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
 
-        val res = app.post(anilistAPI, requestBody = data)
-            .parsedSafe<AniSearch>()
+        val res = app.post(anilistAPI, requestBody = data).text
+            .let { tryParseJson<AniSearch>(it) }
             ?.data
             ?.let { it.Page?.media ?: it.media }
             ?.firstOrNull()
