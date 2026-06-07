@@ -176,7 +176,7 @@ class KisskhProvider : MainAPI() {
             tryParseJson<List<Subtitle>>(res)?.map { sub ->
                 if (sub.src!!.contains(".txt")) {
                     subtitleCallback.invoke(
-                        SubtitleFile(
+                        newSubtitleFile(
                             getLanguage(sub.label ?: return@map),
                             sub.src
                         )
@@ -184,7 +184,7 @@ class KisskhProvider : MainAPI() {
                 }
                 else
                 subtitleCallback.invoke(
-                    SubtitleFile(
+                    newSubtitleFile(
                         getLanguage(sub.label ?: return@map),
                         sub.src
                     )
