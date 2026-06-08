@@ -165,9 +165,6 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
                 }
             }
         }
-        log("Success: Moviebox2")
-    }
-
             val docPage = app.get(targetUrl, headers = DramaHelper.headers).document
             val allScripts = docPage.select("script").joinToString(" ") { it.data() }
             val signedUrl = Regex("""signedUrl\s*=\s*["']([^"']+)["']""").find(allScripts)?.groupValues?.get(1)?.replace("\\/", "/") ?: return
@@ -513,6 +510,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         callback: (ExtractorLink) -> Unit, subtitleCallback: (SubtitleFile) -> Unit,
     ) {
         log("Start: CinemaOS [$title S${season}E${episode}]")
+        val sourceHeaders = mapOf(
             "Accept" to "*/*",
             "Accept-Language" to "en-US,en;q=0.9",
             "Referer" to cinemaOSApi,
@@ -664,6 +662,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
                 }
             }
         }
+        log("Success: Moviebox2")
     }
 
     private object Moviebox2Helper {
