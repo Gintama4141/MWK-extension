@@ -447,16 +447,6 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
         }
         return true
     }
-}
-
-data class AniZipData(
-    val mappings: AniZipMappings? = null
-)
-data class AniZipMappings(
-    val kitsuId: Int? = null,
-    val type: String? = null
-)
-
 
     private fun getStatus(t: String?): ShowStatus {
         return when (t?.lowercase()) {
@@ -525,6 +515,14 @@ data class AniZipMappings(
         return "$baseUrl/$encoded"
     }
 }
+
+data class AniZipData(
+    val mappings: AniZipMappings? = null
+)
+data class AniZipMappings(
+    val kitsuId: Int? = null,
+    val type: String? = null
+)
 
 suspend fun generateMagnetLink(
     trackerUrls: List<String>,
