@@ -183,7 +183,17 @@ class DutaMovie : MainAPI() {
 
         document.select("div.gmr-embed-responsive iframe").forEach { iframe ->
             iframe.getIframeAttr()?.let { src ->
-                loadExtractor(httpsify(src), "$directUrl/", subtitleCallback, callback)
+                val embedUrl = httpsify(src)
+                try {
+                    val embedDoc = app.get(embedUrl).document
+                    val directSrc = embedDoc.selectFirst("source[type*=mpegurl]")
+                        ?.attr("src")?.takeIf { it.isNotBlank() }
+                    if (directSrc != null) {
+                        callback(newExtractorLink("Server", "Server", httpsify(directSrc), ExtractorLinkType.VIDEO))
+                        return@forEach
+                    }
+                } catch (_: Exception) { }
+                loadExtractor(embedUrl, "$directUrl/", subtitleCallback, callback)
             }
         }
 
