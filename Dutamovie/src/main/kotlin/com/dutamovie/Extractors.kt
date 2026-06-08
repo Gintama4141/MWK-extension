@@ -142,3 +142,69 @@ class Dm21upns : VidStack() {
     override var mainUrl = "https://dm21.upns.live"
     override var requiresReferer = true
 }
+
+open class Lulustream : ExtractorApi() {
+    override val name = "Lulustream"
+    override val mainUrl = "https://placeholder.com"
+    override val requiresReferer = true
+
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val embedUrl = getEmbedUrl(url)
+        if (embedUrl.isEmpty()) return
+
+        val response = app.get(embedUrl, referer = referer)
+
+        val script = if (!getPacked(response.text).isNullOrEmpty()) {
+            var result = getAndUnpack(response.text)
+            if (result.contains("var links")) result = result.substringAfter("var links")
+            result
+        } else {
+            response.document.selectFirst("script:containsData(sources:)")?.data()
+        } ?: return
+
+        Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
+            val m3u8Url = match.value
+            generateM3u8(
+                name,
+                fixUrl(m3u8Url),
+                referer = "$mainUrl/",
+                headers = mapOf(
+                    "Origin" to mainUrl,
+                    "Sec-Fetch-Dest" to "empty",
+                    "Sec-Fetch-Mode" to "cors",
+                    "Sec-Fetch-Site" to "cross-site",
+                    "User-Agent" to USER_AGENT
+                )
+            ).forEach(callback)
+        }
+    }
+
+    protected open fun getEmbedUrl(url: String): String {
+        return when {
+            url.contains("/d/") -> url.replace("/d/", "/v/")
+            url.contains("/download/") -> url.replace("/download/", "/v/")
+            url.contains("/file/") -> url.replace("/file/", "/v/")
+            else -> url.replace("/f/", "/v/")
+        }
+    }
+}
+
+class Luluvid : Lulustream() {
+    override var name = "Luluvid"
+    override var mainUrl = "https://luluvid.com"
+}
+
+class Embedpyrox : Lulustream() {
+    override var name = "Embedpyrox"
+    override var mainUrl = "https://embedpyrox.xyz"
+}
+
+class Hgcloud : Lulustream() {
+    override var name = "Hgcloud"
+    override var mainUrl = "https://hgcloud.to"
+}
