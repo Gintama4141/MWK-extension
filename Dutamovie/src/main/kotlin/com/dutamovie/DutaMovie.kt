@@ -183,27 +183,17 @@ class DutaMovie : MainAPI() {
 
         document.select("div.gmr-embed-responsive iframe").forEach { iframe ->
             iframe.getIframeAttr()?.let { src ->
-                val embedUrl = httpsify(src)
-                try {
-                    val embedDoc = app.get(embedUrl).document
-                    val directSrc = embedDoc.selectFirst("source[type*=mpegurl]")
-                        ?.attr("src")?.takeIf { it.isNotBlank() }
-                    if (directSrc != null) {
-                        callback(newExtractorLink("Server", "Server", httpsify(directSrc), ExtractorLinkType.VIDEO))
-                        return@forEach
-                    }
-                } catch (_: Exception) { }
-                loadExtractor(embedUrl, "$directUrl/", subtitleCallback, callback)
+                resolveEmbed(httpsify(src), "$directUrl/", subtitleCallback, callback)
             }
         }
 
         val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
         if (id.isNullOrEmpty()) {
             document.select("ul.muvipro-player-tabs li a").amap { ele ->
-                val iframe = app.get(fixUrl(ele.attr("href"))).document
+                val src = app.get(fixUrl(ele.attr("href"))).document
                     .selectFirst("div.gmr-embed-responsive iframe")
                     ?.getIframeAttr()?.let { httpsify(it) } ?: return@amap
-                loadExtractor(iframe, "$directUrl/", subtitleCallback, callback)
+                resolveEmbed(src, "$directUrl/", subtitleCallback, callback)
             }
         } else {
             document.select("div.tab-content-ajax").amap { ele ->
@@ -215,18 +205,68 @@ class DutaMovie : MainAPI() {
                         "post_id" to "$id"
                     )
                 ).document.select("iframe").attr("src").let { httpsify(it) }
-                loadExtractor(server, "$directUrl/", subtitleCallback, callback)
+                resolveEmbed(server, "$directUrl/", subtitleCallback, callback)
             }
         }
 
         document.select("div.gmr-movie-data a[href], ul.gmr-download-list li a").forEach { link ->
             val href = link.attr("href")
             if (href.isNotBlank()) {
-                loadExtractor(href, data, subtitleCallback, callback)
+                val direct = tryExtractDirect(href)
+                if (direct != null) {
+                    callback(newExtractorLink("Download", "Download", httpsify(direct), ExtractorLinkType.VIDEO))
+                } else {
+                    loadExtractor(href, data, subtitleCallback, callback)
+                }
             }
         }
 
         return true
+    }
+
+    private suspend fun resolveEmbed(
+        embedUrl: String,
+        referer: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val direct = tryExtractDirect(embedUrl)
+        if (direct != null) {
+            callback(newExtractorLink("Server", "Server", httpsify(direct), ExtractorLinkType.VIDEO))
+        } else {
+            loadExtractor(embedUrl, referer, subtitleCallback, callback)
+        }
+    }
+
+    private suspend fun tryExtractDirect(embedUrl: String): String? {
+        return try {
+            val text = app.get(embedUrl).text
+            val sourceRegex = Regex("""<source[^>]+src\s*=\s*["']([^"']+\.m3u8[^"']*)["']""", RegexOption.IGNORE_CASE)
+            sourceRegex.find(text)?.groupValues?.getOrNull(1)
+                ?: decodeJSPacker(text)
+                ?: Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").find(text)?.value
+        } catch (_: Exception) { null }
+    }
+
+    private fun decodeJSPacker(html: String): String? {
+        return try {
+            val packerRegex = Regex(
+                """eval\(function\(p,a,c,k,e,\w\)\{.*?\}\('(.*?)',\s*(\d+),\s*(\d+),'(.*?)'\.split\('\|'\)""",
+                RegexOption.DOT_MATCHES_ALL
+            )
+            val match = packerRegex.find(html) ?: return null
+            val encoded = match.groupValues[1]
+            val base = match.groupValues[2].toIntOrNull() ?: 36
+            val count = match.groupValues[3].toIntOrNull() ?: return null
+            val keywords = match.groupValues[4].split("|")
+            var decoded = encoded
+            for (i in count - 1 downTo 0) {
+                keywords.getOrNull(i)?.let { kw ->
+                    decoded = decoded.replace(Regex("\\b${i.toString(base)}\\b"), kw)
+                }
+            }
+            Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").find(decoded)?.value
+        } catch (_: Exception) { null }
     }
 
     private fun Element.getImageAttr(): String = when {
