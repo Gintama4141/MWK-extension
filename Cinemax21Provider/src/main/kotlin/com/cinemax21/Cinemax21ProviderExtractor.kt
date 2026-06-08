@@ -665,6 +665,71 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         log("Success: Moviebox2")
     }
 
+    suspend fun invokeVidsrccx(
+        tmdbId: Int?, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit
+    ) {
+        log("Start: Vidsrccx [tmdb=$tmdbId S${season}E${episode}]")
+        try {
+            val type = if (season == null) "movie" else "tv"
+            val url = if (season == null) "${Cinemax21Provider.vidsrccxAPI}/embed/movie/$tmdbId"
+                      else "${Cinemax21Provider.vidsrccxAPI}/embed/tv/$tmdbId/$season/$episode"
+            loadExtractor(url, url, subtitleCallback, callback)
+            log("Success: Vidsrccx")
+        } catch (e: Exception) { log("Fail: Vidsrccx - ${e.message}", error = true) }
+    }
+
+    suspend fun invoke2embed(
+        tmdbId: Int?, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit
+    ) {
+        log("Start: 2embed [tmdb=$tmdbId S${season}E${episode}]")
+        try {
+            val type = if (season == null) "movie" else "tv"
+            val url = if (season == null) "https://www.2embed.cc/embed/$type/$tmdbId"
+                      else "https://www.2embed.cc/embed/$type/$tmdbId/$season/$episode"
+            loadExtractor(url, url, subtitleCallback, callback)
+            log("Success: 2embed")
+        } catch (e: Exception) { log("Fail: 2embed - ${e.message}", error = true) }
+    }
+
+    suspend fun invokeEzvid(
+        tmdbId: Int?, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit
+    ) {
+        log("Start: Ezvid [tmdb=$tmdbId S${season}E${episode}]")
+        try {
+            val type = if (season == null) "movie" else "tv"
+            val url = if (season == null) "https://ezvidapi.com/embed/$type/$tmdbId"
+                      else "https://ezvidapi.com/embed/$type/$tmdbId/$season/$episode"
+            val res = app.get(url).text
+            val parsed = tryParseJson<Map<String, Any>>(res)
+            val sources = parsed?.get("sources") as? List<Map<String, Any>>
+            if (sources != null) {
+                sources.forEach { source ->
+                    val videoUrl = source["url"] as? String ?: return@forEach
+                    val quality = source["quality"] as? String ?: "Unknown"
+                    callback.invoke(newExtractorLink("Ezvid", "Ezvid [$quality]", videoUrl, INFER_TYPE) {
+                        this.referer = "https://ezvidapi.com/"
+                    })
+                }
+            } else {
+                loadExtractor(url, "https://ezvidapi.com/", subtitleCallback, callback)
+            }
+            log("Success: Ezvid")
+        } catch (e: Exception) { log("Fail: Ezvid - ${e.message}", error = true) }
+    }
+
+    suspend fun invokeAutoEmbed(
+        tmdbId: Int?, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit
+    ) {
+        log("Start: AutoEmbed [tmdb=$tmdbId S${season}E${episode}]")
+        try {
+            val type = if (season == null) "movie" else "tv"
+            val url = if (season == null) "https://autoembed.cc/embed/$type/$tmdbId"
+                      else "https://autoembed.cc/embed/$type/$tmdbId?s=$season&e=$episode"
+            loadExtractor(url, url, subtitleCallback, callback)
+            log("Success: AutoEmbed")
+        } catch (e: Exception) { log("Fail: AutoEmbed - ${e.message}", error = true) }
+    }
+
     private object Moviebox2Helper {
         private val secretKeyDefault = base64Decode("NzZpUmwwN3MweFNOOWpxbUVXQXQ3OUVCSlp1bElRSXNWNjRGWnIyTw==")
         fun getHeaders(url: String, body: String? = null, method: String = "POST"): Map<String, String> {

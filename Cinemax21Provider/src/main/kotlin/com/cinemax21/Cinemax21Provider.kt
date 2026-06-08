@@ -20,6 +20,11 @@ import com.cinemax21.Cinemax21ProviderExtractor.invokeXprime
 import com.cinemax21.Cinemax21ProviderExtractor.invokeCinemaOS
 import com.cinemax21.Cinemax21ProviderExtractor.invokePlayer4U
 import com.cinemax21.Cinemax21ProviderExtractor.invokeRiveStream
+import com.cinemax21.Cinemax21ProviderExtractor.invokeVidrock
+import com.cinemax21.Cinemax21ProviderExtractor.invokeVidsrccx
+import com.cinemax21.Cinemax21ProviderExtractor.invoke2embed
+import com.cinemax21.Cinemax21ProviderExtractor.invokeEzvid
+import com.cinemax21.Cinemax21ProviderExtractor.invokeAutoEmbed
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.metaproviders.TmdbProvider
@@ -99,6 +104,12 @@ open class Cinemax21Provider : TmdbProvider() {
         "$tmdbAPI/discover/movie?api_key=$apiKey&with_genres=14&sort_by=popularity.desc&without_genres=16&primary_release_date.gte=2020-01-01" to "Fantasy Movies",
         "$tmdbAPI/discover/movie?api_key=$apiKey&with_genres=10752&sort_by=popularity.desc&without_genres=16&primary_release_date.gte=2020-01-01" to "War Movies",
         "$tmdbAPI/discover/movie?api_key=$apiKey&with_genres=80&sort_by=popularity.desc&without_genres=16&primary_release_date.gte=2020-01-01" to "Crime Movies",
+        "$tmdbAPI/trending/tv/day?api_key=$apiKey&without_genres=16" to "Trending TV Shows",
+        "$tmdbAPI/discover/movie?api_key=$apiKey&sort_by=vote_average.desc&vote_count.gte=200&without_genres=16" to "Top Rated Movies",
+        "$tmdbAPI/discover/tv?api_key=$apiKey&sort_by=vote_average.desc&vote_count.gte=100&without_genres=16" to "Top Rated TV Shows",
+        "$tmdbAPI/discover/movie?api_key=$apiKey&with_genres=16&with_original_language=en&sort_by=popularity.desc" to "Western Animation",
+        "$tmdbAPI/discover/movie?api_key=$apiKey&with_genres=99&sort_by=popularity.desc" to "Documentaries",
+        "$tmdbAPI/discover/tv?api_key=$apiKey&with_genres=10764&sort_by=popularity.desc" to "Reality TV",
     )
     private fun getImageUrl(link: String?): String? {
         if (link == null) return null
@@ -418,6 +429,27 @@ open class Cinemax21Provider : TmdbProvider() {
                     subtitleCallback,
                     callback
                 )
+            },
+            {
+                invokeGomovies(res.title, res.year, res.season, res.episode, callback)
+            },
+            {
+                invokeXprime(res.id, res.title, res.year, res.season, res.episode, subtitleCallback, callback)
+            },
+            {
+                invokeVidrock(res.id, res.season, res.episode, subtitleCallback, callback)
+            },
+            {
+                invokeVidsrccx(res.id, res.season, res.episode, subtitleCallback, callback)
+            },
+            {
+                invoke2embed(res.id, res.season, res.episode, subtitleCallback, callback)
+            },
+            {
+                invokeEzvid(res.id, res.season, res.episode, subtitleCallback, callback)
+            },
+            {
+                invokeAutoEmbed(res.id, res.season, res.episode, subtitleCallback, callback)
             }
         )
         return true
