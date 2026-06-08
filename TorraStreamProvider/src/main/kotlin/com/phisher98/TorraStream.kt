@@ -445,6 +445,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                 )
             }
         }
+        return true
     }
 }
 

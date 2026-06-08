@@ -40,33 +40,33 @@ fun getLanguage(language: String?): String? {
 
 
 data class TorrentioResponse(
-    @SerializedName("streams") val streams: List<TorrentioStream> = emptyList()
+    @JsonProperty("streams") val streams: List<TorrentioStream> = emptyList()
 )
 
 data class TorrentioStream(
-    @SerializedName("name") val name: String? = null,
-    @SerializedName("title") val title: String? = null,
-    @SerializedName("infoHash") val infoHash: String? = null,
-    @SerializedName("fileIdx") val fileIdx: Int? = null
+    @JsonProperty("name") val name: String? = null,
+    @JsonProperty("title") val title: String? = null,
+    @JsonProperty("infoHash") val infoHash: String? = null,
+    @JsonProperty("fileIdx") val fileIdx: Int? = null
 )
 
 data class DebianRoot(
-    @SerializedName("streams") val streams: List<Stream> = emptyList(),
-    @SerializedName("cacheMaxAge") val cacheMaxAge: Long = 0,
-    @SerializedName("staleRevalidate") val staleRevalidate: Long = 0,
-    @SerializedName("staleError") val staleError: Long = 0
+    @JsonProperty("streams") val streams: List<Stream> = emptyList(),
+    @JsonProperty("cacheMaxAge") val cacheMaxAge: Long = 0,
+    @JsonProperty("staleRevalidate") val staleRevalidate: Long = 0,
+    @JsonProperty("staleError") val staleError: Long = 0
 )
 
 data class Stream(
-    @SerializedName("name") val name: String = "",
-    @SerializedName("title") val title: String = "",
-    @SerializedName("url") val url: String = "",
-    @SerializedName("behaviorHints") val behaviorHints: BehaviorHints = BehaviorHints()
+    @JsonProperty("name") val name: String = "",
+    @JsonProperty("title") val title: String = "",
+    @JsonProperty("url") val url: String = "",
+    @JsonProperty("behaviorHints") val behaviorHints: BehaviorHints = BehaviorHints()
 )
 
 data class BehaviorHints(
-    @SerializedName("bingeGroup") val bingeGroup: String? = null,
-    @SerializedName("filename") val filename: String? = null
+    @JsonProperty("bingeGroup") val bingeGroup: String? = null,
+    @JsonProperty("filename") val filename: String? = null
 )
 
 //Subtitles

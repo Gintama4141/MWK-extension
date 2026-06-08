@@ -210,7 +210,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
 
         val episodes = (1..data.totalEpisodes()).map { createEpisode(it) }
 
-        return if (data.format.contains("Movie",ignoreCase = true)) {
+        return if (data.format?.contains("Movie",ignoreCase = true) == true) {
             newMovieLoadResponse(data.getTitle(), url, TvType.AnimeMovie, href) {
                 addAniListId(id.toInt())
                 addMalId(ids.idMal)
