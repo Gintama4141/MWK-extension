@@ -85,14 +85,14 @@ fun parseSourcesAndTracks(decryptedJson: String): Pair<List<SourceItem>, List<Tr
     val sourcesList = mutableListOf<SourceItem>()
     val tracksList = mutableListOf<TrackItem>()
     val root = tryParseJson<ParserResponse>(decryptedJson)
-    val result = root?.result ?: root
-    val sourcesArray = result?.sources
+    val result = root?.result
+    val sourcesArray = result?.sources ?: root?.sources
     if (sourcesArray != null) {
         for (s in sourcesArray) {
             sourcesList.add(s)
         }
     }
-    val tracksArray = result?.track ?: result?.tracks
+    val tracksArray = result?.track ?: result?.tracks ?: root?.track ?: root?.tracks
     if (tracksArray != null) {
         for (t in tracksArray) {
             tracksList.add(t)
