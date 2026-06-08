@@ -208,3 +208,85 @@ class Hgcloud : Lulustream() {
     override var name = "Hgcloud"
     override var mainUrl = "https://hgcloud.to"
 }
+
+class P2PPlay : ExtractorApi() {
+    override val name = "P2PPlay"
+    override val mainUrl = "https://pm21.p2pplay.pro"
+    override val requiresReferer = true
+
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val id = url.substringAfter("#")
+        if (id.isEmpty()) return
+
+        val embedUrl = "$mainUrl/#$id"
+        val response = app.get(embedUrl, referer = referer)
+
+        val script = if (!getPacked(response.text).isNullOrEmpty()) {
+            var result = getAndUnpack(response.text)
+            if (result.contains("var links")) result = result.substringAfter("var links")
+            result
+        } else {
+            response.document.selectFirst("script:containsData(sources:)")?.data()
+        } ?: return
+
+        Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
+            generateM3u8(
+                name,
+                fixUrl(match.value),
+                referer = "$mainUrl/",
+                headers = mapOf(
+                    "Origin" to mainUrl,
+                    "Sec-Fetch-Dest" to "empty",
+                    "Sec-Fetch-Mode" to "cors",
+                    "Sec-Fetch-Site" to "cross-site",
+                    "User-Agent" to USER_AGENT
+                )
+            ).forEach(callback)
+        }
+    }
+}
+
+class Luluvdoo : Lulustream() {
+    override var name = "Luluvdoo"
+    override var mainUrl = "https://luluvdoo.com"
+}
+
+class Veev : Lulustream() {
+    override var name = "Veev"
+    override var mainUrl = "https://veev.to"
+}
+
+class Video4Me : ExtractorApi() {
+    override val name = "Video4Me"
+    override val mainUrl = "https://video.4meplayer.com"
+    override val requiresReferer = true
+
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val response = app.get(url, referer = referer)
+
+        val sourceRegex = Regex("""<source[^>]+src\s*=\s*["']([^"']+\.m3u8[^"']*)["']""", RegexOption.IGNORE_CASE)
+        sourceRegex.find(response.text)?.groupValues?.getOrNull(1)?.let { m3u8Url ->
+            generateM3u8(
+                name,
+                fixUrl(m3u8Url),
+                referer = referer ?: mainUrl,
+                headers = mapOf(
+                    "Sec-Fetch-Dest" to "empty",
+                    "Sec-Fetch-Mode" to "cors",
+                    "Sec-Fetch-Site" to "cross-site",
+                    "User-Agent" to USER_AGENT
+                )
+            ).forEach(callback)
+        }
+    }
+}
