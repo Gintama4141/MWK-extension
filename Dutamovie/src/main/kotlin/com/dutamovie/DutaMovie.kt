@@ -180,8 +180,14 @@ class DutaMovie : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data).document
-        val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
 
+        document.select("div.gmr-embed-responsive iframe").forEach { iframe ->
+            iframe.getIframeAttr()?.let { src ->
+                loadExtractor(httpsify(src), "$directUrl/", subtitleCallback, callback)
+            }
+        }
+
+        val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
         if (id.isNullOrEmpty()) {
             document.select("ul.muvipro-player-tabs li a").amap { ele ->
                 val iframe = app.get(fixUrl(ele.attr("href"))).document
@@ -203,10 +209,10 @@ class DutaMovie : MainAPI() {
             }
         }
 
-        document.select("ul.gmr-download-list li a").forEach { link ->
-            val downloadUrl = link.attr("href")
-            if (downloadUrl.isNotBlank()) {
-                loadExtractor(downloadUrl, data, subtitleCallback, callback)
+        document.select("div.gmr-movie-data a[href], ul.gmr-download-list li a").forEach { link ->
+            val href = link.attr("href")
+            if (href.isNotBlank()) {
+                loadExtractor(href, data, subtitleCallback, callback)
             }
         }
 
