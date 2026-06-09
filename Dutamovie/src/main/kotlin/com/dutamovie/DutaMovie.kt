@@ -216,7 +216,12 @@ class DutaMovie : MainAPI() {
                 if (direct != null) {
                     callback(newExtractorLink("Download", "Download", httpsify(direct), ExtractorLinkType.VIDEO))
                 } else {
-                    loadExtractor(href, data, subtitleCallback, callback)
+                    val streamingUrl = extractStreamingUrl(href)
+                    if (streamingUrl != null) {
+                        resolveEmbed(streamingUrl, "$directUrl/", subtitleCallback, callback)
+                    } else {
+                        loadExtractor(href, data, subtitleCallback, callback)
+                    }
                 }
             }
         }
@@ -287,4 +292,18 @@ class DutaMovie : MainAPI() {
 
     private fun getBaseUrl(url: String): String =
         URI(url).let { "${it.scheme}://${it.host}" }
+
+    private fun extractStreamingUrl(downloadUrl: String): String? {
+        return try {
+            val url = downloadUrl.substringBefore("&dl=1").substringBefore("?dl=1")
+            if (url.contains("#")) {
+                val base = url.substringBefore("#")
+                val hash = url.substringAfter("#")
+                if (base.isNotBlank() && hash.isNotBlank()) {
+                    return url.substringBefore("&").substringBefore("?")
+                }
+            }
+            null
+        } catch (_: Exception) { null }
+    }
 }
