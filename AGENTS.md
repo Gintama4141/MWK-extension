@@ -23,6 +23,7 @@ Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Kuroni
 - Build/deploy via GitHub Actions → `builds` branch.
 
 ## Recent Pushes
+- `b60b6d6` Stage 2: 10 bug fixes across 6 providers (Cinemax21 v10, Moviebox v6, OneTouchTV v5, Anichin v6, Kuronime v12, TorraStream v88)
 - `eda6242` Dutamovie v16: optimize loadLinks — remove double fetch, dupes, wrong selectors
 - `006ef77` Dutamovie v15: Embed4meVip + LivePlayerP2P extractors
 - `ae6bfcb` Donghub v4: `newSubtitleFile` migration
@@ -54,10 +55,14 @@ Analyzed `seoulschool.org/page/kdrama/...` stream page — WordPress Muvipro the
 - voe.sx and minochinos.com have strong anti-scraping (JW encrypted / reCAPTCHA) — may need user input
 
 ## Key Files
-- `KuronimeProvider/src/main/kotlin/com/kuronime/KuronimeProvider.kt` — AES key `"3&!Z0M,;dZWVIZ=="`, `decryptCryptoJS()`, `tryParseJson`, `src_sd` support.
-- `TorraStreamProvider/src/main/kotlin/com/torrastream/` — `TorraStreamProvider.kt` (v85), magnet tracker cache, `getQuality` fix.
-- `MovieboxProvider/src/main/kotlin/com/moviebox/MovieboxProvider.kt` (v5) — `tryParseJson<LoadData>()` + 7× `tryParseJson` migrations.
+- `KuronimeProvider/src/main/kotlin/com/kuronime/KuronimeProvider.kt` — AES key `"3&!Z0M,;dZWVIZ=="`, `decryptCryptoJS()`, `tryParseJson`, `src_sd` support, AES/CBC/PKCS5Padding.
+- `TorraStreamProvider/src/main/kotlin/com/torrastream/` — `TorraStreamProvider.kt` (v88), magnet tracker cache, getQuality fix, 30s timeouts.
+- `MovieboxProvider/src/main/kotlin/com/moviebox/MovieboxProvider.kt` (v6) — `tryParseJson<LoadData>()`, null-safe `maxEp`.
+- `Cinemax21Provider/src/main/kotlin/com/cinemax21/Cinemax21ProviderExtractor.kt` (v10) — Mapple subtitle season/episode fix, Elements.toString() fix.
+- `AnichinProvider/src/main/kotlin/com/anichin/ExtractorsVidGuard.kt` (v6) — tryParseJson fix, sigDecode bounds check.
+- `AnichinProvider/src/main/kotlin/com/anichin/ExtractorsStreamRuby.kt` (v6) — m3u8 null early return.
 - `KawanfilmProvider/src/main/kotlin/com/kawanfilm/KawanfilmProvider.kt` (v4) — `jacksonObjectMapper` removed, `tryParseJson` for 2 call sites.
+- `OneTouchTVProvider/src/main/kotlin/com/onetouchtv/OneTouchTVParser.kt` (v5) — default values for data class fields.
 - `repo.json` — plugin repo config pointing to `builds` branch.
 - `README.md` — provider list.
 - `build.gradle.kts` — root dep list (Jackson + Gson still bundled for `@JsonProperty`/`@SerializedName` annotations only).

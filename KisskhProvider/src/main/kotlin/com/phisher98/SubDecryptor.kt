@@ -23,7 +23,7 @@ fun decrypt(encryptedB64: String): String {
         try {
             return decryptWithKeyIv(keyBytes, ivBytes, encryptedBytes)
         } catch (ex: Exception) {
-            println("Decryption attempt failed with key/IV pair. Error: ${ex.message}")
+            // Key/IV pair failed, trying next pair
         }
     }
     return "Decryption failed: All keys/IVs failed"

@@ -196,9 +196,9 @@ class Nomat : MainAPI() {
 					try {
 						val decoded = base64Decode(encoded)
 						loadExtractor(decoded, data, subtitleCallback, callback)
-					} catch (_: Exception) {
-						println("Decode Error")
-					}
+				} catch (_: Exception) {
+					// Decode failed, skip silently
+				}
 				}
 			}
 			true
