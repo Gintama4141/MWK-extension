@@ -63,8 +63,9 @@ open class Ultrahd : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val response = app.get(url, referer = mainUrl).document
-        val html = response.toString()
+        val response = app.get(url, referer = mainUrl)
+        val doc = response.document
+        val html = response.text
         val ajaxUrl = Regex("""\$\s*\.\s*ajax\(\s*\{\s*url:\s*"(.*?)"""").find(html)?.groupValues?.get(1) ?: return
         val root = app.get(ajaxUrl).text.let { tryParseJson<Root>(it) } ?: return
         root.sources.forEach { source ->

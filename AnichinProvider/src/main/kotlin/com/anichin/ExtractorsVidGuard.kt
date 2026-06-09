@@ -40,7 +40,7 @@ open class Vidguardto : ExtractorApi() {
         val res = app.get(getEmbedUrl(url))
         val resc = res.document.select("script:containsData(eval)").firstOrNull()?.data()
         resc?.let {
-            val jsonStr2 = AppUtils.parseJson<SvgObject>(runJS2(it))
+            val jsonStr2 = AppUtils.tryParseJson<SvgObject>(runJS2(it)) ?: return@let
             val watchlink = sigDecode(jsonStr2.stream)
 
             callback.invoke(

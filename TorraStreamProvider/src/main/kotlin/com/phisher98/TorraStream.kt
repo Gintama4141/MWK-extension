@@ -149,7 +149,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
             TvType.Movie,
         ) {
             this.posterUrl = getImageUrl(posterPath)
-            this.score= Score.from10(voteAverage)
+            this.score= Score.from10(voteAverage?.toString())
         }
     }
 
@@ -299,7 +299,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                     this.plot = res.overview
                     this.tags = keywords?.map { it.replaceFirstChar { c -> c.titlecase() } }
                         ?.takeIf { it.isNotEmpty() } ?: genres
-                    this.score = Score.from10(res.vote_average.toString())
+                    this.score = Score.from10((res.vote_average as? Double)?.toString())
                     this.showStatus = getStatus(res.status)
                     this.recommendations = recommendations
                     this.actors = actors
@@ -319,7 +319,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                 this.year = year
                 this.plot = res.overview
                 this.tags =  keywords.takeIf { !it.isNullOrEmpty() } ?: genres
-                this.score = Score.from10(res.vote_average.toString())
+                this.score = Score.from10((res.vote_average as? Double)?.toString())
                 this.showStatus = getStatus(res.status)
                 this.recommendations = recommendations
                 this.actors = actors
@@ -343,7 +343,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                 this.plot = res.overview
                 this.duration = res.runtime
                 this.tags = keywords.takeIf { !it.isNullOrEmpty() } ?: genres
-                this.score = Score.from10(res.vote_average.toString())
+                this.score = Score.from10((res.vote_average as? Double)?.toString())
                 this.recommendations = recommendations
                 this.actors = actors
                 this.contentRating = cineRes?.meta?.appExtras?.certification

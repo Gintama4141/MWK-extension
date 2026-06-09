@@ -257,10 +257,10 @@ fun getIndexSize(str: String?): String? {
 }
 fun getQuality(str: String): Int {
     return when (str) {
-        "360p" -> Qualities.P240.value
-        "480p" -> Qualities.P360.value
-        "720p" -> Qualities.P480.value
-        "1080p" -> Qualities.P720.value
+        "360p" -> Qualities.P360.value
+        "480p" -> Qualities.P480.value
+        "720p" -> Qualities.P720.value
+        "1080p" -> Qualities.P1080.value
         "1080p Ultra" -> Qualities.P1080.value
         else -> getQualityFromName(str)
     }
@@ -455,15 +455,15 @@ fun cinemaOSGenerateHash(t: CinemaOsSecretKeyRequest, isSeries: Boolean): String
     return finalDigest
 }
 fun cinemaOSDecryptResponse(e: CinemaOSReponseData?): Any {
-    val encrypted = e?.encrypted
-    val cin = e?.cin
-    val mao = e?.mao
-    val salt = e?.salt
+    val encrypted = e?.encrypted ?: return ""
+    val cin = e.cin ?: return ""
+    val mao = e.mao ?: return ""
+    val salt = e.salt ?: return ""
     val keyBytes = "a1b2c3d4e4f6477658455678901477567890abcdef1234567890abcdef123456".toByteArray()
-    val ivBytes = hexStringToByteArray(cin.toString())
-    val authTagBytes = hexStringToByteArray(mao.toString())
-    val encryptedBytes = hexStringToByteArray(encrypted.toString())
-    val saltBytes = hexStringToByteArray(salt.toString())
+    val ivBytes = hexStringToByteArray(cin)
+    val authTagBytes = hexStringToByteArray(mao)
+    val encryptedBytes = hexStringToByteArray(encrypted)
+    val saltBytes = hexStringToByteArray(salt)
     val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
     val spec = PBEKeySpec(keyBytes.map { it.toInt().toChar() }.toCharArray(), saltBytes, 100000, 256)
     val tmp = factory.generateSecret(spec)

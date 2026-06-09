@@ -107,14 +107,14 @@ class KuronimeProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(baseUrl: String): AnimeSearchResponse {
-        val href = getProperAnimeLink(fixUrlNull(this.selectFirst("a")?.attr("href")).toString(), baseUrl)
+        val href = getProperAnimeLink(fixUrlNull(this.selectFirst("a")?.attr("href")) ?: "", baseUrl)
         val title = this.selectFirst("h2, .bsuxtt, .tt > h4, .entry-title")?.text()?.trim() ?: "Unknown"
         
         val img = this.selectFirst("img[itemprop=image]") ?: this.select("img").lastOrNull()
         val posterUrl = fixUrlNull(img?.getImageAttr())
         
         val epNum = this.select(".ep").text().replace(Regex("\\D"), "").trim().toIntOrNull()
-        val tvType = getType(this.selectFirst(".bt > span, .bt > .type")?.text().toString())
+        val tvType = getType(this.selectFirst(".bt > span, .bt > .type")?.text() ?: "")
         
         return newAnimeSearchResponse(title, href, tvType) {
             this.posterUrl = posterUrl
@@ -148,7 +148,7 @@ class KuronimeProvider : MainAPI() {
         val document = app.get(url).document
         val currentBaseUrl = getBaseUrl(url)
 
-        val title = document.selectFirst(".entry-title")?.text().toString().trim()
+        val title = document.selectFirst(".entry-title")?.text()?.trim() ?: "Unknown"
         val poster = document.selectFirst("div.l[itemprop=image] > img, .l > img")?.getImageAttr()
         val tags = document.select(".infodetail > ul > li:nth-child(2) > a").map { it.text() }
         val typeString = document.selectFirst(".infodetail > ul > li:nth-child(7)")?.ownText()?.removePrefix(":")?.trim() ?: "tv"
@@ -327,25 +327,24 @@ class KuronimeProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val cb = callback
         loadExtractor(url ?: return, referer, subtitleCallback) { link ->
             runBlocking {
-                cb.invoke(
+                callback.invoke(
                     newExtractorLink(
-                    link.name,
-                    link.name,
-                    link.url,
-                    link.type,
-                ) {
-                    this.referer = link.referer
-                    this.headers = link.headers
-                    this.extractorData = link.extractorData
-                    this.quality = getQualityFromName(quality)
-                }
-            )
+                        link.name,
+                        link.name,
+                        link.url,
+                        link.type,
+                    ) {
+                        this.referer = link.referer
+                        this.headers = link.headers
+                        this.extractorData = link.extractorData
+                        this.quality = getQualityFromName(quality)
+                    }
+                )
+            }
         }
     }
-}
 
     private fun getBaseUrl(url: String): String {
         return URI(url).let {

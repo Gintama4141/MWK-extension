@@ -243,7 +243,7 @@ suspend fun invokeThepiratebay(
         else {
             "$thepiratebayApi/stream/series/$imdbId:$season:$episode.json"
         }
-        val res = app.get(url, timeout = 10).text.let { tryParseJson<TBPResponse>(it) }
+        val res = app.get(url, timeout = 10_000L).text.let { tryParseJson<TBPResponse>(it) }
         for(stream in res?.streams ?: emptyList())
         {
             val magnetLink = generateMagnetLink(TRACKER_LIST_URL,stream.infoHash).trim()
