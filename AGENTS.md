@@ -23,6 +23,7 @@ Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Kuroni
 - Build/deploy via GitHub Actions → `builds` branch.
 
 ## Recent Pushes
+- `f266985` Stage 3: remove debug println from Kisskh v7, Nomat v5
 - `b60b6d6` Stage 2: 10 bug fixes across 6 providers (Cinemax21 v10, Moviebox v6, OneTouchTV v5, Anichin v6, Kuronime v12, TorraStream v88)
 - `eda6242` Dutamovie v16: optimize loadLinks — remove double fetch, dupes, wrong selectors
 - `006ef77` Dutamovie v15: Embed4meVip + LivePlayerP2P extractors

@@ -132,6 +132,16 @@ open class Donghuastream : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val html = app.get(data).document
+
+        // First, try to extract direct iframe URLs from the page (handles lazy-loaded iframes)
+        html.select("#pembed iframe").forEach { iframe ->
+            val iframeUrl = iframe.attr("data-litespeed-src").ifEmpty { iframe.attr("src") }.let(::httpsify)
+            if (!iframeUrl.isNullOrEmpty() && iframeUrl != "about:blank") {
+                processIframeUrl(iframeUrl, "Default", subtitleCallback, callback)
+            }
+        }
+
+        // Then process base64-encoded options
         val options = html.select("option[data-index]")
         options.amap { option ->
             val base64 = option.attr("value")
@@ -142,31 +152,56 @@ open class Donghuastream : MainAPI() {
             } catch (_: Exception) {
                 return@amap
             }
-            val iframeUrl = Jsoup.parse(decodedHtml).selectFirst("iframe")?.attr("src")?.let(::httpsify)
-            if (iframeUrl.isNullOrEmpty()) return@amap
-            when {
-                "vidmoly" in iframeUrl -> {
-                    val cleanedUrl = "http:" + iframeUrl.substringAfter("=\"").substringBefore("\"")
-                    loadExtractor(cleanedUrl, referer = iframeUrl, subtitleCallback, callback)
-                }
-                iframeUrl.endsWith(".mp4") -> {
-                    callback(
-                        newExtractorLink(
-                            label,
-                            label,
-                            url = iframeUrl,
-                            INFER_TYPE
-                        ) {
-                            this.referer = ""
-                            this.quality = getQualityFromName(label)
-                        }
-                    )
-                }
-                else -> {
-                    loadExtractor(iframeUrl, referer = iframeUrl, subtitleCallback, callback)
-                }
+
+            // Try to find iframe src first
+            var iframeUrl = Jsoup.parse(decodedHtml).selectFirst("iframe")?.attr("src")?.let(::httpsify)
+
+            // If no iframe found, try meta itemprop="embedUrl" (Dailymotion pattern)
+            if (iframeUrl.isNullOrEmpty()) {
+                iframeUrl = Jsoup.parse(decodedHtml)
+                    .selectFirst("meta[itemprop=embedUrl]")?.attr("content")
+                    ?.let { metaContent ->
+                        // meta content example: "https://geo.dailymotion.com/player/xir9c.html?video=x8ohp79"
+                        val videoId = Regex("""video=([^&]+)""").find(metaContent)?.groupValues?.get(1)
+                        if (!videoId.isNullOrBlank()) {
+                            "https://geo.dailymotion.com/player/xir9c.html?video=$videoId"
+                        } else null
+                    }?.let(::httpsify)
             }
+
+            if (iframeUrl.isNullOrEmpty()) return@amap
+            processIframeUrl(iframeUrl, label, subtitleCallback, callback)
         }
         return true
+    }
+
+    private suspend fun processIframeUrl(
+        iframeUrl: String,
+        label: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        when {
+            "vidmoly" in iframeUrl -> {
+                val cleanedUrl = "http:" + iframeUrl.substringAfter("=\"").substringBefore("\"")
+                loadExtractor(cleanedUrl, referer = iframeUrl, subtitleCallback, callback)
+            }
+            iframeUrl.endsWith(".mp4") -> {
+                callback(
+                    newExtractorLink(
+                        label,
+                        label,
+                        url = iframeUrl,
+                        INFER_TYPE
+                    ) {
+                        this.referer = ""
+                        this.quality = getQualityFromName(label)
+                    }
+                )
+            }
+            else -> {
+                loadExtractor(iframeUrl, referer = iframeUrl, subtitleCallback, callback)
+            }
+        }
     }
 }
