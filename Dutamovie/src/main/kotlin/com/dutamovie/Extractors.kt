@@ -223,7 +223,7 @@ class Hgcloud : Lulustream() {
     override var mainUrl = "https://hgcloud.to"
 }
 
-class P2PPlay : ExtractorApi() {
+open class P2PPlay : ExtractorApi() {
     override val name = "P2PPlay"
     override val mainUrl = "https://pm21.p2pplay.pro"
     override val requiresReferer = true

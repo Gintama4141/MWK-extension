@@ -23,6 +23,7 @@ Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Kuroni
 - Build/deploy via GitHub Actions → `builds` branch.
 
 ## Recent Pushes
+- `006ef77` Dutamovie v15: Embed4meVip + LivePlayerP2P extractors
 - `f97f8e4` Kisskh v5: `newSubtitleFile` migration
 - `ae6bfcb` Donghub v4: `newSubtitleFile` migration
 - `52f0c09` Kawanfilm v4: removed `jacksonObjectMapper`

@@ -180,20 +180,28 @@ class DutaMovie : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data).document
+        val referer = "$directUrl/"
 
         document.select("div.gmr-embed-responsive iframe").forEach { iframe ->
             iframe.getIframeAttr()?.let { src ->
-                resolveEmbed(httpsify(src), "$directUrl/", subtitleCallback, callback)
+                loadExtractor(httpsify(src), referer, subtitleCallback, callback)
             }
         }
 
         val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
         if (id.isNullOrEmpty()) {
-            document.select("ul.muvipro-player-tabs li a").amap { ele ->
-                val src = app.get(fixUrl(ele.attr("href"))).document
-                    .selectFirst("div.gmr-embed-responsive iframe")
-                    ?.getIframeAttr()?.let { httpsify(it) } ?: return@amap
-                resolveEmbed(src, "$directUrl/", subtitleCallback, callback)
+            document.select("ul.muvipro-player-tabs li a").forEach { ele ->
+                val serverUrl = fixUrl(ele.attr("href"))
+                if (serverUrl == data) return@forEach
+                try {
+                    app.get(serverUrl).document
+                        .select("div.gmr-embed-responsive iframe")
+                        .forEach { iframe ->
+                            iframe.getIframeAttr()?.let { src ->
+                                loadExtractor(httpsify(src), referer, subtitleCallback, callback)
+                            }
+                        }
+                } catch (_: Exception) {}
             }
         } else {
             document.select("div.tab-content-ajax").amap { ele ->
@@ -205,75 +213,11 @@ class DutaMovie : MainAPI() {
                         "post_id" to "$id"
                     )
                 ).document.select("iframe").attr("src").let { httpsify(it) }
-                resolveEmbed(server, "$directUrl/", subtitleCallback, callback)
-            }
-        }
-
-        document.select("div.gmr-movie-data a[href], ul.gmr-download-list li a").forEach { link ->
-            val href = link.attr("href")
-            if (href.isNotBlank()) {
-                val direct = tryExtractDirect(href)
-                if (direct != null) {
-                    callback(newExtractorLink("Download", "Download", httpsify(direct), ExtractorLinkType.VIDEO))
-                } else {
-                    val streamingUrl = extractStreamingUrl(href)
-                    if (streamingUrl != null) {
-                        resolveEmbed(streamingUrl, "$directUrl/", subtitleCallback, callback)
-                    } else {
-                        loadExtractor(href, data, subtitleCallback, callback)
-                    }
-                }
+                loadExtractor(server, referer, subtitleCallback, callback)
             }
         }
 
         return true
-    }
-
-    private suspend fun resolveEmbed(
-        embedUrl: String,
-        referer: String,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
-    ) {
-        val direct = tryExtractDirect(embedUrl)
-        if (direct != null) {
-            callback(newExtractorLink("Server", "Server", httpsify(direct), ExtractorLinkType.VIDEO) {
-                this.referer = referer
-            })
-        } else {
-            loadExtractor(embedUrl, referer, subtitleCallback, callback)
-        }
-    }
-
-    private suspend fun tryExtractDirect(embedUrl: String): String? {
-        return try {
-            val text = app.get(embedUrl).text
-            val sourceRegex = Regex("""<source[^>]+src\s*=\s*["']([^"']+\.m3u8[^"']*)["']""", RegexOption.IGNORE_CASE)
-            sourceRegex.find(text)?.groupValues?.getOrNull(1)
-                ?: decodeJSPacker(text)
-                ?: Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").find(text)?.value
-        } catch (_: Exception) { null }
-    }
-
-    private fun decodeJSPacker(html: String): String? {
-        return try {
-            val packerRegex = Regex(
-                """eval\(function\(p,a,c,k,e,\w\)\{.*?\}\('(.*?)',\s*(\d+),\s*(\d+),'(.*?)'\.split\('\|'\)""",
-                RegexOption.DOT_MATCHES_ALL
-            )
-            val match = packerRegex.find(html) ?: return null
-            val encoded = match.groupValues[1]
-            val base = match.groupValues[2].toIntOrNull() ?: 36
-            val count = match.groupValues[3].toIntOrNull() ?: return null
-            val keywords = match.groupValues[4].split("|")
-            var decoded = encoded
-            for (i in count - 1 downTo 0) {
-                keywords.getOrNull(i)?.let { kw ->
-                    decoded = decoded.replace(Regex("\\b${i.toString(base)}\\b"), kw)
-                }
-            }
-            Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").find(decoded)?.value
-        } catch (_: Exception) { null }
     }
 
     private fun Element.getImageAttr(): String = when {
@@ -294,18 +238,4 @@ class DutaMovie : MainAPI() {
 
     private fun getBaseUrl(url: String): String =
         URI(url).let { "${it.scheme}://${it.host}" }
-
-    private fun extractStreamingUrl(downloadUrl: String): String? {
-        return try {
-            val url = downloadUrl.substringBefore("&dl=1").substringBefore("?dl=1")
-            if (url.contains("#")) {
-                val base = url.substringBefore("#")
-                val hash = url.substringAfter("#")
-                if (base.isNotBlank() && hash.isNotBlank()) {
-                    return url.substringBefore("&").substringBefore("?")
-                }
-            }
-            null
-        } catch (_: Exception) { null }
-    }
 }
