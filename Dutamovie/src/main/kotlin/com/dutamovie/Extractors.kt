@@ -285,6 +285,16 @@ class Luluvdoo : Lulustream() {
     override var mainUrl = "https://luluvdoo.com"
 }
 
+class Embed4meVip : P2PPlay() {
+    override var name = "Embed4meVip"
+    override var mainUrl = "https://dm21.embed4me.vip"
+}
+
+class LivePlayerP2P : P2PPlay() {
+    override var name = "LivePlayerP2P"
+    override var mainUrl = "https://live.playerp2p.online"
+}
+
 class Veev : Lulustream() {
     override var name = "Veev"
     override var mainUrl = "https://veev.to"

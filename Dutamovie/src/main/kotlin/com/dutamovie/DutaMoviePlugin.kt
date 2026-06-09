@@ -27,6 +27,8 @@ class DutaMoviePlugin : Plugin() {
         registerExtractorAPI(Dhcplay())
         registerExtractorAPI(Streamcasthub())
         registerExtractorAPI(Dm21upns())
+        registerExtractorAPI(Embed4meVip())
+        registerExtractorAPI(LivePlayerP2P())
         registerExtractorAPI(Gofile())
     }
 }

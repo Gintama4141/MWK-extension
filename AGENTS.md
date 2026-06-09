@@ -33,6 +33,25 @@ Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Kuroni
 - `9ef627c` Donghuastream v2: `tryParseJson` migration
 - `52b03c9` Kuronime v9: `tryParseJson` migration
 
+## Seoulschool.org Analysis (2025-06)
+Analyzed `seoulschool.org/page/kdrama/...` stream page — WordPress Muvipro theme with 8 player servers:
+
+| Server | Domain | Player Tech | Status |
+|--------|--------|-------------|--------|
+| 1 | abyssplayer.com | Encrypted JW + SoTrym AES-CTR | ❌ Skipped (404 on desktop + heavy obfuscation) |
+| 2 | dm21.embed4me.vip | Vidstack SPA + AES `/api/v1/` | ❌ Encrypted API |
+| 3 | live.playerp2p.online | Vidstack SPA (#hash) | ❌ Same pattern as embed4me |
+| 4 | voe.sx → jessicayeahcatch.com | JW Player encrypted config | ❌ Encrypted JW |
+| 5 | minochinos.com | EarnVids file host + reCAPTCHA | ❌ CAPTCHA-protected |
+| 6 | hgcloud.to | Lulustream-compatible | ✅ Already supported (Hgcloud) |
+| 7 | dm21.upns.live | SPWA Vidstack | ✅ Supported (Dm21upns→VidStack) |
+| 8 | veev.to | Lulustream-compatible | ✅ Already supported (Veev) |
+
+### Practical additions
+- **Embed4meVip**: extends P2PPlay with `mainUrl = "https://dm21.embed4me.vip"` — tries packed script approach
+- **LivePlayerP2P**: extends P2PPlay with `mainUrl = "https://live.playerp2p.online"`
+- voe.sx and minochinos.com have strong anti-scraping (JW encrypted / reCAPTCHA) — may need user input
+
 ## Key Files
 - `KuronimeProvider/src/main/kotlin/com/kuronime/KuronimeProvider.kt` — AES key `"3&!Z0M,;dZWVIZ=="`, `decryptCryptoJS()`, `tryParseJson`, `src_sd` support.
 - `TorraStreamProvider/src/main/kotlin/com/torrastream/` — `TorraStreamProvider.kt` (v85), magnet tracker cache, `getQuality` fix.
