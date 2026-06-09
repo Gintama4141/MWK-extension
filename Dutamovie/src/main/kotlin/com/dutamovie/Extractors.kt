@@ -157,7 +157,7 @@ open class Lulustream : ExtractorApi() {
         val embedUrl = getEmbedUrl(url)
         if (embedUrl.isEmpty()) return
 
-        val response = app.get(embedUrl, referer = referer)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
 
         val script = if (!getPacked(response.text).isNullOrEmpty()) {
             var result = getAndUnpack(response.text)
@@ -169,12 +169,14 @@ open class Lulustream : ExtractorApi() {
 
         Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
             val m3u8Url = match.value
+            if (!isValidStreamingUrl(m3u8Url)) return@forEach
+            val actualReferer = referer ?: mainUrl
             generateM3u8(
                 name,
                 fixUrl(m3u8Url),
-                referer = "$mainUrl/",
+                referer = actualReferer,
                 headers = mapOf(
-                    "Origin" to mainUrl,
+                    "Origin" to actualReferer.removeSuffix("/"),
                     "Sec-Fetch-Dest" to "empty",
                     "Sec-Fetch-Mode" to "cors",
                     "Sec-Fetch-Site" to "cross-site",
@@ -191,6 +193,13 @@ open class Lulustream : ExtractorApi() {
             url.contains("/file/") -> url.replace("/file/", "/v/")
             else -> url.replace("/f/", "/v/")
         }
+    }
+
+    private fun isValidStreamingUrl(url: String): Boolean {
+        val queryStart = url.indexOf('?')
+        if (queryStart == -1) return true
+        val query = url.substring(queryStart)
+        return !query.startsWith("?=") && (query.startsWith("?t=") || query.startsWith("?s=") || query.startsWith("?e="))
     }
 }
 
@@ -224,7 +233,7 @@ class P2PPlay : ExtractorApi() {
         if (id.isEmpty()) return
 
         val embedUrl = "$mainUrl/#$id"
-        val response = app.get(embedUrl, referer = referer)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
 
         val script = if (!getPacked(response.text).isNullOrEmpty()) {
             var result = getAndUnpack(response.text)
@@ -235,12 +244,15 @@ class P2PPlay : ExtractorApi() {
         } ?: return
 
         Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
+            val m3u8Url = match.value
+            if (!isValidStreamingUrl(m3u8Url)) return@forEach
+            val actualReferer = referer ?: mainUrl
             generateM3u8(
                 name,
-                fixUrl(match.value),
-                referer = "$mainUrl/",
+                fixUrl(m3u8Url),
+                referer = actualReferer,
                 headers = mapOf(
-                    "Origin" to mainUrl,
+                    "Origin" to actualReferer.removeSuffix("/"),
                     "Sec-Fetch-Dest" to "empty",
                     "Sec-Fetch-Mode" to "cors",
                     "Sec-Fetch-Site" to "cross-site",
@@ -248,6 +260,13 @@ class P2PPlay : ExtractorApi() {
                 )
             ).forEach(callback)
         }
+    }
+
+    private fun isValidStreamingUrl(url: String): Boolean {
+        val queryStart = url.indexOf('?')
+        if (queryStart == -1) return true
+        val query = url.substring(queryStart)
+        return !query.startsWith("?=") && (query.startsWith("?t=") || query.startsWith("?s=") || query.startsWith("?e="))
     }
 }
 
@@ -305,7 +324,7 @@ open class StreamHG : ExtractorApi() {
         val embedUrl = getEmbedUrl(url)
         if (embedUrl.isEmpty()) return
 
-        val response = app.get(embedUrl, referer = referer)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
 
         val script = if (!getPacked(response.text).isNullOrEmpty()) {
             var result = getAndUnpack(response.text)
@@ -316,12 +335,15 @@ open class StreamHG : ExtractorApi() {
         } ?: return
 
         Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
+            val m3u8Url = match.value
+            if (!isValidStreamingUrl(m3u8Url)) return@forEach
+            val actualReferer = referer ?: mainUrl
             generateM3u8(
                 name,
-                fixUrl(match.value),
-                referer = "$mainUrl/",
+                fixUrl(m3u8Url),
+                referer = actualReferer,
                 headers = mapOf(
-                    "Origin" to mainUrl,
+                    "Origin" to actualReferer.removeSuffix("/"),
                     "Sec-Fetch-Dest" to "empty",
                     "Sec-Fetch-Mode" to "cors",
                     "Sec-Fetch-Site" to "cross-site",
@@ -339,6 +361,13 @@ open class StreamHG : ExtractorApi() {
             url.contains("/file/") -> url.replace("/file/", "/v/")
             else -> url
         }
+    }
+
+    private fun isValidStreamingUrl(url: String): Boolean {
+        val queryStart = url.indexOf('?')
+        if (queryStart == -1) return true
+        val query = url.substring(queryStart)
+        return !query.startsWith("?=") && (query.startsWith("?t=") || query.startsWith("?s=") || query.startsWith("?e="))
     }
 }
 
