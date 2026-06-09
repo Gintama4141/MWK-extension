@@ -199,7 +199,12 @@ open class Lulustream : ExtractorApi() {
         val queryStart = url.indexOf('?')
         if (queryStart == -1) return true
         val query = url.substring(queryStart)
-        return !query.startsWith("?=") && (query.startsWith("?t=") || query.startsWith("?s=") || query.startsWith("?e="))
+        if (query.startsWith("?=")) return false
+        val hasT = query.contains("?t=") || query.contains("&t=")
+        val hasS = query.contains("&s=")
+        val hasE = query.contains("&e=")
+        val hasF = query.contains("&f=")
+        return hasT && hasS && hasE && hasF
     }
 }
 
@@ -266,7 +271,12 @@ class P2PPlay : ExtractorApi() {
         val queryStart = url.indexOf('?')
         if (queryStart == -1) return true
         val query = url.substring(queryStart)
-        return !query.startsWith("?=") && (query.startsWith("?t=") || query.startsWith("?s=") || query.startsWith("?e="))
+        if (query.startsWith("?=")) return false
+        val hasT = query.contains("?t=") || query.contains("&t=")
+        val hasS = query.contains("&s=")
+        val hasE = query.contains("&e=")
+        val hasF = query.contains("&f=")
+        return hasT && hasS && hasE && hasF
     }
 }
 
@@ -367,7 +377,12 @@ open class StreamHG : ExtractorApi() {
         val queryStart = url.indexOf('?')
         if (queryStart == -1) return true
         val query = url.substring(queryStart)
-        return !query.startsWith("?=") && (query.startsWith("?t=") || query.startsWith("?s=") || query.startsWith("?e="))
+        if (query.startsWith("?=")) return false
+        val hasT = query.contains("?t=") || query.contains("&t=")
+        val hasS = query.contains("&s=")
+        val hasE = query.contains("&e=")
+        val hasF = query.contains("&f=")
+        return hasT && hasS && hasE && hasF
     }
 }
 

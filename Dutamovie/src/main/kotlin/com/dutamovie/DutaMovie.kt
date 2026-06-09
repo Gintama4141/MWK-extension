@@ -237,7 +237,9 @@ class DutaMovie : MainAPI() {
     ) {
         val direct = tryExtractDirect(embedUrl)
         if (direct != null) {
-            callback(newExtractorLink("Server", "Server", httpsify(direct), ExtractorLinkType.VIDEO))
+            callback(newExtractorLink("Server", "Server", httpsify(direct), ExtractorLinkType.VIDEO) {
+                this.referer = referer
+            })
         } else {
             loadExtractor(embedUrl, referer, subtitleCallback, callback)
         }
