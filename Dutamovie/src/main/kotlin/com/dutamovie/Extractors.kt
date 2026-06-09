@@ -290,3 +290,64 @@ class Video4Me : ExtractorApi() {
         }
     }
 }
+
+open class StreamHG : ExtractorApi() {
+    override val name = "StreamHG"
+    override val mainUrl = "https://placeholder.com"
+    override val requiresReferer = true
+
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val embedUrl = getEmbedUrl(url)
+        if (embedUrl.isEmpty()) return
+
+        val response = app.get(embedUrl, referer = referer)
+
+        val script = if (!getPacked(response.text).isNullOrEmpty()) {
+            var result = getAndUnpack(response.text)
+            if (result.contains("var links")) result = result.substringAfter("var links")
+            result
+        } else {
+            response.document.selectFirst("script:containsData(sources:)")?.data()
+        } ?: return
+
+        Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
+            generateM3u8(
+                name,
+                fixUrl(match.value),
+                referer = "$mainUrl/",
+                headers = mapOf(
+                    "Origin" to mainUrl,
+                    "Sec-Fetch-Dest" to "empty",
+                    "Sec-Fetch-Mode" to "cors",
+                    "Sec-Fetch-Site" to "cross-site",
+                    "User-Agent" to USER_AGENT
+                )
+            ).forEach(callback)
+        }
+    }
+
+    protected open fun getEmbedUrl(url: String): String {
+        return when {
+            url.contains("/f/") -> url.replace("/f/", "/v/")
+            url.contains("/d/") -> url.replace("/d/", "/v/")
+            url.contains("/download/") -> url.replace("/download/", "/v/")
+            url.contains("/file/") -> url.replace("/file/", "/v/")
+            else -> url
+        }
+    }
+}
+
+class Hanerix : StreamHG() {
+    override var name = "Hanerix"
+    override var mainUrl = "https://hanerix.com"
+}
+
+class Masukestin : StreamHG() {
+    override var name = "Masukestin"
+    override var mainUrl = "https://masukestin.com"
+}

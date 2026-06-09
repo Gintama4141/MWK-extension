@@ -15,6 +15,8 @@ class DutaMoviePlugin : Plugin() {
         registerExtractorAPI(Veev())
         registerExtractorAPI(P2PPlay())
         registerExtractorAPI(Video4Me())
+        registerExtractorAPI(Hanerix())
+        registerExtractorAPI(Masukestin())
         registerExtractorAPI(Dingtezuni())
         registerExtractorAPI(Movearnpre())
         registerExtractorAPI(Mivalyo())
