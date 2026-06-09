@@ -24,6 +24,7 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.max
 import kotlin.text.isLowerCase
+@Volatile
 var gomoviesCookies: Map<String, String>? = null
 val mimeType = arrayOf(
     "video/x-matroska",
@@ -110,7 +111,7 @@ fun getSeason(month: Int?): String? {
         "Summer", "Summer", "Fall", "Fall", "Fall", "Winter"
     )
     if (month == null) return null
-    return seasons[month - 1]
+    return seasons.getOrNull(month - 1)
 }
 fun getEpisodeSlug(
     season: Int? = null,

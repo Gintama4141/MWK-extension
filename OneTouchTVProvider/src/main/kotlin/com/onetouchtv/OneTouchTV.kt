@@ -147,7 +147,7 @@ class OneTouchTV : MainAPI() {
         val decryptedJson = try { decryptString(rawResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
         val (sources, tracks) = parseSourcesAndTracks(decryptedJson)
         launch { for (track in tracks) subtitleCallback(newSubtitleFile(track.name ?: "Unknown", track.file ?: continue)) }
-        launch { for (src in sources) callback(newExtractorLink(src.name?.capitalize() ?: "Source", src.name?.capitalize() ?: "Source", src.url ?: continue, INFER_TYPE) { this.quality = getQualityFromName(src.quality ?: ""); this.headers = src.headers }) }
+        launch { for (src in sources) callback(newExtractorLink(src.name?.capitalize() ?: "Source", src.name?.capitalize() ?: "Source", src.url ?: continue, INFER_TYPE) { this.quality = getQualityFromName(src.quality ?: ""); this.headers = src.headers ?: emptyMap() }) }
         true
     }
 

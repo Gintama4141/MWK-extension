@@ -58,13 +58,13 @@ data class SourceItem(
     val name: String?,
     val quality: String?,
     val url: String?,
-    val headers: Map<String, String>
+    val headers: Map<String, String>? = null
 )
 
 data class TrackItem(
     val file: String?,
     val name: String?,
-    val isDefault: Boolean,
+    val isDefault: Boolean = false,
     val kind: String?,
     val format: String?
 )

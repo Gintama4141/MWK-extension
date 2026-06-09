@@ -131,8 +131,9 @@ class MovieboxProvider : MainAPI() {
                 }
 
         return if (tvType == TvType.TvSeries) {
-            val episode = document?.resource?.seasons?.map { seasons ->
-                (if (seasons.allEp.isNullOrEmpty()) (1..seasons.maxEp!!) else seasons.allEp.split(",")
+            val episode = document?.resource?.seasons?.mapNotNull { seasons ->
+                val maxEp = seasons.maxEp ?: return@mapNotNull null
+                (if (seasons.allEp.isNullOrEmpty()) (1..maxEp) else seasons.allEp.split(",")
                     .map { it.toInt() })
                     .map { episode ->
                         newEpisode(

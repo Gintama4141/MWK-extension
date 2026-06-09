@@ -36,12 +36,12 @@ open class StreamRuby : ExtractorApi() {
         } else {
             response.document.selectFirst("script:containsData(sources:)")?.data()
         }
-        val m3u8 = Regex("file:\\s*\"(.*?m3u8.*?)\"").find(script ?: return)?.groupValues?.getOrNull(1)
+        val m3u8 = Regex("file:\\s*\"(.*?m3u8.*?)\"").find(script ?: return)?.groupValues?.getOrNull(1) ?: return
 //        Log.d("streamrubby", "m3u8 = $m3u8")
         callback.invoke(newExtractorLink(
             source = this.name,
             name = this.name,
-            url  = m3u8.toString(),
+            url  = m3u8,
             type = ExtractorLinkType.M3U8,
             {
                 quality = Qualities.Unknown.value

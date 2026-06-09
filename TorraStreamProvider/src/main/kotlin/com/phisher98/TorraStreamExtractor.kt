@@ -383,7 +383,7 @@ suspend fun invokeAIOStreamsDebian(
         "$base/stream/series/$id:$season:$episode.json"
     }
 
-    val res = app.get(url, timeout = 5000L).text.let { tryParseJson<AIODebian>(it) } ?: return
+    val res = app.get(url, timeout = 30_000L).text.let { tryParseJson<AIODebian>(it) } ?: return
 
     val qualityRegex = Regex(
         """\b(4K|2160p|1080p|720p|WEB[-\s]?DL|BluRay|HDRip|DVDRip)\b""",

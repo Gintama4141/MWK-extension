@@ -280,7 +280,7 @@ class KuronimeProvider : MainAPI() {
                     base64Decode(servers?.src ?: return@runAllAsync),
                     KEY.toByteArray(),
                     false,
-                    "AES/CBC/NoPadding"
+                    "AES/CBC/PKCS5Padding"
                 )
                 val source =
                     tryParseJson<Sources>(decrypt?.toJsonFormat())?.src?.replace("\\", "")
@@ -296,7 +296,7 @@ class KuronimeProvider : MainAPI() {
                     base64Decode(servers?.mirror ?: return@runAllAsync),
                     KEY.toByteArray(),
                     false,
-                    "AES/CBC/NoPadding"
+                    "AES/CBC/PKCS5Padding"
                 )
                 tryParseJson<Mirrors>(decrypt)?.embed?.map { embed ->
                     embed.value.forEach { entry ->

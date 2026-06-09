@@ -57,7 +57,9 @@ open class Vidguardto : ExtractorApi() {
 
     @OptIn(ExperimentalEncodingApi::class)
     private fun sigDecode(url: String): String {
-        val sig = url.split("sig=")[1].split("&")[0]
+        val sigPart = url.substringAfter("sig=", "")
+        if (sigPart.isBlank()) return url
+        val sig = sigPart.split("&")[0]
         val t = sig.chunked(2)
             .joinToString("") { (Integer.parseInt(it, 16) xor 2).toChar().toString() }
             .let {
