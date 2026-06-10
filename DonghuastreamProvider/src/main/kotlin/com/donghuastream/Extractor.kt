@@ -3,6 +3,7 @@ package com.donghuastream
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.base64Decode
 import com.lagradost.cloudstream3.extractors.Filesim
 import com.lagradost.cloudstream3.extractors.StreamSB
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
@@ -50,6 +51,38 @@ class waaw : StreamSB() {
 class FileMoonSx : Filesim() {
     override val mainUrl = "https://filemoon.sx"
     override val name = "FileMoonSx"
+}
+
+class Okru : ExtractorApi() {
+    override var name = "Okru"
+    override var mainUrl = "https://ok.ru"
+    override val requiresReferer = false
+
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val document = app.get(url, referer = "$mainUrl/").document
+        val playerInit = document.selectFirst("data[name=flashvars]")?.attr("value") ?: return
+        val metadata = tryParseJson<OkruMetadata>(base64Decode(playerInit))
+        val m3u8 = metadata?.metadata?.hlsMasterUrl ?: metadata?.metadata?.hlsTrailerUrl
+        if (!m3u8.isNullOrBlank()) {
+            M3u8Helper.generateM3u8(name, m3u8, referer.orEmpty()).forEach(callback)
+        }
+        metadata?.metadata?.subtitles?.forEach { sub ->
+            subtitleCallback.invoke(newSubtitleFile(sub.label ?: "Unknown", sub.url))
+        }
+    }
+
+    data class OkruMetadata(val metadata: OkruVideoData?)
+    data class OkruVideoData(
+        val hlsMasterUrl: String?,
+        val hlsTrailerUrl: String?,
+        val subtitles: List<OkruSubtitle>?
+    )
+    data class OkruSubtitle(val label: String?, val url: String)
 }
 
 open class Ultrahd : ExtractorApi() {

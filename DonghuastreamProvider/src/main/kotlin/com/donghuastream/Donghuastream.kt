@@ -25,6 +25,8 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.donghuastream.Okru
+import com.donghuastream.Rumble
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -185,6 +187,12 @@ open class Donghuastream : MainAPI() {
             "vidmoly" in iframeUrl -> {
                 val cleanedUrl = "http:" + iframeUrl.substringAfter("=\"").substringBefore("\"")
                 loadExtractor(cleanedUrl, referer = iframeUrl, subtitleCallback, callback)
+            }
+            "rumble.com" in iframeUrl -> {
+                Rumble().getUrl(iframeUrl, iframeUrl, subtitleCallback, callback)
+            }
+            "ok.ru" in iframeUrl || "okko.tv" in iframeUrl -> {
+                Okru().getUrl(iframeUrl, iframeUrl, subtitleCallback, callback)
             }
             iframeUrl.endsWith(".mp4") -> {
                 callback(
