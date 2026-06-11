@@ -77,14 +77,13 @@ open class Donghuastream : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val searchResponse = mutableListOf<SearchResponse>()
         for (i in 1..3) {
-            val document = app.get("${mainUrl}/pagg/$i/?s=$query").document
-            val results = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
-            if (!searchResponse.containsAll(results)) {
+            try {
+                val doc = app.get("${mainUrl}/?s=$query" + if (i > 1) "&page=$i" else "").document
+                val results = doc.select("div.listupd > article").mapNotNull { it.toSearchResult() }
+                if (results.isEmpty()) break
+                if (searchResponse.containsAll(results)) break
                 searchResponse.addAll(results)
-            } else {
-                break
-            }
-            if (results.isEmpty()) break
+            } catch (_: Exception) { break }
         }
         return searchResponse
     }
@@ -96,34 +95,33 @@ open class Donghuastream : MainAPI() {
         val type = document.selectFirst(".spe")?.text().orEmpty()
         val isMovie = type.contains("Movie")
 
-        var poster = document.select("div.ime > img").attr("data-src")
+        var poster = document.selectFirst("div.ime > img")?.getImageAttr()?.trim().orEmpty()
         if (poster.isEmpty()) {
             poster = document.selectFirst("meta[property=og:image]")?.attr("content")?.trim().orEmpty()
         }
 
-        return if (isMovie) {
+        if (isMovie) {
             val href = document.selectFirst(".eplister li > a")?.attr("href").orEmpty()
-            newMovieLoadResponse(title, url, TvType.Movie, href) {
+            return newMovieLoadResponse(title, url, TvType.Movie, href) {
                 this.posterUrl = poster
                 this.plot = description
             }
-        } else {
-            val episodeUrl = document.selectFirst(".eplister li > a")?.attr("href").orEmpty()
-            val doc = app.get(episodeUrl).document
-            val episodes = doc.select("div.episodelist > ul > li").map { info ->
-                val href1 = info.select("a").attr("href")
-                val episode = info.select("a span").text().substringAfter("-").substringBeforeLast("-")
-                val posterr = info.selectFirst("a img")?.attr("data-src").orEmpty()
-                newEpisode(href1) {
-                    this.name = episode.replace(title, "", ignoreCase = true)
-                    this.episode = episode.toIntOrNull()
-                    this.posterUrl = posterr
-                }
+        }
+
+        val episodes = document.select(".eplister ul li a").mapNotNull { a ->
+            val href = a.attr("href")
+            val numText = a.selectFirst(".epl-num")?.text()?.trim()
+            val titleText = a.selectFirst(".epl-title")?.text()?.trim() ?: ""
+            val epNum = numText?.substringBefore(" ")?.toIntOrNull()
+            if (href.isBlank()) return@mapNotNull null
+            newEpisode(href) {
+                this.name = titleText.replace(title, "", ignoreCase = true).trim()
+                this.episode = epNum
             }
-            newTvSeriesLoadResponse(title, url, TvType.Anime, episodes.reversed()) {
-                this.posterUrl = poster
-                this.plot = description
-            }
+        }
+        return newTvSeriesLoadResponse(title, url, TvType.Anime, episodes.reversed()) {
+            this.posterUrl = poster
+            this.plot = description
         }
     }
 
