@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://anichin.ro/wp-content/uploads/2026/02/cropped-favicon-anichin-192x192.webp",
-        "fileHash": "sha256-18809415a9e4fd4f6ca48f29a3f9eef96967447c02aeb00be92c65322cb11e4b",
+        "fileHash": "sha256-db6515048b607f9ca5b63d8552846984bfe6d76c6e6972d3e69099396071dad8",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 35928,
+        "fileSize": 36151,
         "status": 1,
         "language": "id",
         "authors": [
@@ -23,10 +23,10 @@
     },
     {
         "iconUrl": "https://klikxxi.me/wp-content/uploads/2024/02/cropped-site-icon.png",
-        "fileHash": "sha256-42f8aef3ffb99d537e5ef7dd7203682471b828e5c5d76b7710da67537100c12c",
+        "fileHash": "sha256-9e34301ada87d49f284d152e32d0696c688f3bdb87c5cb8550cc56c268821eb2",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 261113,
+        "fileSize": 264323,
         "status": 1,
         "language": "id",
         "authors": [
@@ -46,10 +46,10 @@
     },
     {
         "iconUrl": "https://raw.githubusercontent.com/Kohi-den/extensions-source/927f9c68fd64ce52f6212ae633d0f0585eca3545/src/en/donghuastream/res/mipmap-xxxhdpi/ic_launcher.png",
-        "fileHash": "sha256-3d81acf83ecda36a0539fbf7acff35b311e35fa8e041c02e3b6e6d5d5acb0a1a",
+        "fileHash": "sha256-31d330b0edffb4d8ff897403ad15f2677b82424361232a9131b5e51bcb686ad1",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 43631,
+        "fileSize": 43988,
         "status": 1,
         "language": "id",
         "authors": [
@@ -59,7 +59,7 @@
         "tvTypes": [
             "Anime"
         ],
-        "version": 7,
+        "version": 8,
         "internalName": "DonghuastreamProvider",
         "description": "Donghuastream \u2014 Streaming Donghua Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/DonghuastreamProvider.cs3",
@@ -89,10 +89,10 @@
         "name": "DonghubProvider"
     },
     {
-        "fileHash": "sha256-987ff53ad85862c6b8f4169fe9a8bfe53db988687108eafb802d300b91f46f2c",
+        "fileHash": "sha256-2a8adcc3904f8e700bdbf15cb19100740d53ac5947e6749d122b6748dd16605f",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 40544,
+        "fileSize": 40686,
         "status": 1,
         "language": "id",
         "authors": [
@@ -111,10 +111,10 @@
         "name": "Dutamovie"
     },
     {
-        "fileHash": "sha256-65a33e96ef57540ef97a7746c5a112343eb68510707d8e9168c5a5034e44d187",
+        "fileHash": "sha256-6497d17c5d2f5aacca2a8e885e94e0896bfc04fd102fbb4a9b431f9ef24e07e7",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 30233,
+        "fileSize": 30350,
         "status": 1,
         "language": "id",
         "authors": [
@@ -133,10 +133,10 @@
     },
     {
         "iconUrl": "https://www.google.com/s2/favicons?domain=kisskh.co&sz=%size%",
-        "fileHash": "sha256-4bbaad4faf1bbec1c250fd6c84d6ccc14ac748502fa5f3f3f7ba8d98f3903095",
+        "fileHash": "sha256-1b7a2caf35d73e6fc0cdf02645552be82e419ed64250185e58fba292aebc842b",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 30630,
+        "fileSize": 31235,
         "status": 1,
         "language": "en",
         "authors": [
@@ -178,10 +178,10 @@
     },
     {
         "iconUrl": "https://play-lh.googleusercontent.com/EFMkS1T-8txjLFIl9QxjcTRLa7a7Muv08C04b7ongYgodoY_b2T3GpxzGAQEx-eitfQ=w256",
-        "fileHash": "sha256-31a863abf1685ce09d641553d29131b4f101b4b0f8491e7e9f7d4a26b2f29876",
+        "fileHash": "sha256-b8589dd4e79a2057eb0afc29d4d74613b4c5b54f20f0f38390d6f05b901b7a76",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 42256,
+        "fileSize": 42550,
         "status": 1,
         "language": "id",
         "authors": [
@@ -201,10 +201,10 @@
     },
     {
         "iconUrl": "https://movieboxph.app/wp-content/uploads/2025/11/Movie-Box-icon.webp",
-        "fileHash": "sha256-e8d2d82c578706550d2912d7221d889e84b8de26f568031234002bd1635c834b",
+        "fileHash": "sha256-e7887f8c65da0f87d0c9a3f851b41daeb5e4ef518dfbe6a9e7c32ddaee5d7ca2",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 33905,
+        "fileSize": 34254,
         "status": 1,
         "language": "id",
         "authors": [
@@ -289,10 +289,10 @@
     },
     {
         "iconUrl": "https://www.google.com/s2/favicons?domain=onetouchtv.xyz/&sz=%size%",
-        "fileHash": "sha256-4ea553d7cb75ea4c44563f792cc537f93bc2097e2b0a334425e6874589f1954a",
+        "fileHash": "sha256-04b1111c3d4c83ab99a88666dee53e70eb6dd9f31590a50fbd256c7810d272bc",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 44551,
+        "fileSize": 44884,
         "status": 1,
         "language": "id",
         "authors": [
@@ -310,10 +310,10 @@
     },
     {
         "iconUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRr-sfek8gXmLpcAppEpaYbUDVtndQbCm_boh1-E91QrmSvsw-2l3-s2JOP&s=10",
-        "fileHash": "sha256-1a0b2e959051b242be84513f32d61d935d2667f477f3ef09e98a0107c71f4391",
+        "fileHash": "sha256-c0d1108d9adf5204c0f929acddb61d338e4d98935491dbbb7d858516c072803f",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 39654,
+        "fileSize": 39936,
         "status": 1,
         "language": "id",
         "authors": [
@@ -354,10 +354,10 @@
     },
     {
         "iconUrl": "https://torrentio.strem.fun/images/logo_v1.png",
-        "fileHash": "sha256-c00322127da934ab8acf430633846675ab97b755c36bed9a32bbf7a9323685f7",
+        "fileHash": "sha256-34eeec6e19a291801e9c8a2481d5c85c0c034e68d15c3541802e467ba057eee7",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 206599,
+        "fileSize": 207840,
         "status": 1,
         "language": "en",
         "authors": [
