@@ -9,6 +9,48 @@ import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import java.net.URI
 
+object ExtractorUtils {
+    val m3u8Regex = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
+
+    fun extractSources(text: String): String? {
+        val packed = getPacked(text)
+        if (!packed.isNullOrEmpty()) {
+            var result = getAndUnpack(text)
+            if (result.contains("var links")) result = result.substringAfter("var links")
+            return result
+        }
+        return null
+    }
+
+    fun isValidStreamingUrl(url: String): Boolean {
+        val queryStart = url.indexOf('?')
+        if (queryStart == -1) return true
+        val query = url.substring(queryStart)
+        if (query.startsWith("?=")) return false
+        val hasT = query.contains("?t=") || query.contains("&t=")
+        val hasS = query.contains("&s=")
+        val hasE = query.contains("&e=")
+        val hasF = query.contains("&f=")
+        return hasT && hasS && hasE && hasF
+    }
+
+    fun getEmbedUrl(url: String): String = when {
+        url.contains("/d/") -> url.replace("/d/", "/v/")
+        url.contains("/download/") -> url.replace("/download/", "/v/")
+        url.contains("/file/") -> url.replace("/file/", "/v/")
+        url.contains("/f/") -> url.replace("/f/", "/v/")
+        else -> url
+    }
+
+    fun commonHeaders(referer: String) = mapOf(
+        "Sec-Fetch-Dest" to "empty",
+        "Sec-Fetch-Mode" to "cors",
+        "Sec-Fetch-Site" to "cross-site",
+        "Origin" to referer,
+        "User-Agent" to USER_AGENT
+    )
+}
+
 open class Dingtezuni : ExtractorApi() {
     override val name = "Earnvids"
     override val mainUrl = "https://dingtezuni.com"
@@ -20,22 +62,12 @@ open class Dingtezuni : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val headers = mapOf(
-            "Sec-Fetch-Dest" to "empty",
-            "Sec-Fetch-Mode" to "cors",
-            "Sec-Fetch-Site" to "cross-site",
-            "Origin" to mainUrl,
-            "User-Agent" to USER_AGENT,
-        )
+        val headers = ExtractorUtils.commonHeaders(mainUrl)
 
-        val response = app.get(getEmbedUrl(url), referer = referer)
-        val script = if (!getPacked(response.text).isNullOrEmpty()) {
-            var result = getAndUnpack(response.text)
-            if (result.contains("var links")) result = result.substringAfter("var links")
-            result
-        } else {
-            response.document.selectFirst("script:containsData(sources:)")?.data()
-        } ?: return
+        val response = app.get(ExtractorUtils.getEmbedUrl(url), referer = referer)
+        val script = ExtractorUtils.extractSources(response.text)
+            ?: response.document.selectFirst("script:containsData(sources:)")?.data()
+            ?: return
 
         Regex(":\\s*\"(.*?m3u8.*?)\"").findAll(script).forEach { match ->
             generateM3u8(
@@ -45,13 +77,6 @@ open class Dingtezuni : ExtractorApi() {
                 headers = headers
             ).forEach(callback)
         }
-    }
-
-    private fun getEmbedUrl(url: String): String = when {
-        url.contains("/d/") -> url.replace("/d/", "/v/")
-        url.contains("/download/") -> url.replace("/download/", "/v/")
-        url.contains("/file/") -> url.replace("/file/", "/v/")
-        else -> url.replace("/f/", "/v/")
     }
 }
 
@@ -81,28 +106,47 @@ open class Gofile : ExtractorApi() {
     override val requiresReferer = false
     private val mainApi = "https://api.gofile.io"
 
+    private var cachedToken: Pair<String, Long>? = null
+    private var cachedWebsiteToken: String? = null
+
     override suspend fun getUrl(
         url: String,
         referer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1)
-        val token = app.get("$mainApi/createAccount").text.let { tryParseJson<Account>(it) }?.data?.get("token")
-        val websiteToken = app.get("$mainUrl/dist/js/alljs.js").text.let {
-            Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
-        }
+        val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1) ?: return
 
-        app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
-            .text.let { tryParseJson<Source>(it) }?.data?.contents?.forEach {
-                val link = it.value["link"] ?: return@forEach
-                callback(
-                    newExtractorLink(name, name, link) {
-                        this.quality = getQuality(it.value["name"])
-                        this.headers = mapOf("Cookie" to "accountToken=$token")
-                    }
-                )
-            }
+        val now = System.currentTimeMillis()
+        val token = cachedToken?.takeIf { now - it.second < 600_000 }?.first
+            ?: run {
+                val newToken = app.get("$mainApi/createAccount").text
+                    .let { tryParseJson<Account>(it) }?.data?.get("token")
+                if (newToken != null) cachedToken = newToken to now
+                newToken
+            } ?: return
+
+        val websiteToken = cachedWebsiteToken
+            ?: run {
+                val newWt = app.get("$mainUrl/dist/js/alljs.js").text.let {
+                    Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
+                }
+                if (newWt != null) cachedWebsiteToken = newWt
+                newWt
+            } ?: return
+
+        val content = app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
+            .text.let { tryParseJson<Source>(it) }?.data?.contents ?: return
+
+        content.forEach {
+            val link = it.value["link"] ?: return@forEach
+            callback(
+                newExtractorLink(name, name, link) {
+                    this.quality = getQuality(it.value["name"])
+                    this.headers = mapOf("Cookie" to "accountToken=$token")
+                }
+            )
+        }
     }
 
     private fun getQuality(name: String?): Int {
@@ -154,58 +198,29 @@ open class Lulustream : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val embedUrl = getEmbedUrl(url)
+        val embedUrl = ExtractorUtils.getEmbedUrl(url)
         if (embedUrl.isEmpty()) return
 
         val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
 
-        val script = if (!getPacked(response.text).isNullOrEmpty()) {
-            var result = getAndUnpack(response.text)
-            if (result.contains("var links")) result = result.substringAfter("var links")
-            result
-        } else {
-            response.document.selectFirst("script:containsData(sources:)")?.data()
-        } ?: return
+        val script = ExtractorUtils.extractSources(response.text)
+            ?: response.document.selectFirst("script:containsData(sources:)")?.data()
+            ?: return
 
-        Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
+        ExtractorUtils.m3u8Regex.findAll(script).forEach { match ->
             val m3u8Url = match.value
-            if (!isValidStreamingUrl(m3u8Url)) return@forEach
+            if (!ExtractorUtils.isValidStreamingUrl(m3u8Url)) return@forEach
             val actualReferer = referer ?: mainUrl
             generateM3u8(
                 name,
                 fixUrl(m3u8Url),
                 referer = actualReferer,
-                headers = mapOf(
-                    "Origin" to actualReferer.removeSuffix("/"),
-                    "Sec-Fetch-Dest" to "empty",
-                    "Sec-Fetch-Mode" to "cors",
-                    "Sec-Fetch-Site" to "cross-site",
-                    "User-Agent" to USER_AGENT
-                )
+                headers = ExtractorUtils.commonHeaders(actualReferer)
             ).forEach(callback)
         }
     }
 
-    protected open fun getEmbedUrl(url: String): String {
-        return when {
-            url.contains("/d/") -> url.replace("/d/", "/v/")
-            url.contains("/download/") -> url.replace("/download/", "/v/")
-            url.contains("/file/") -> url.replace("/file/", "/v/")
-            else -> url.replace("/f/", "/v/")
-        }
-    }
-
-    private fun isValidStreamingUrl(url: String): Boolean {
-        val queryStart = url.indexOf('?')
-        if (queryStart == -1) return true
-        val query = url.substring(queryStart)
-        if (query.startsWith("?=")) return false
-        val hasT = query.contains("?t=") || query.contains("&t=")
-        val hasS = query.contains("&s=")
-        val hasE = query.contains("&e=")
-        val hasF = query.contains("&f=")
-        return hasT && hasS && hasE && hasF
-    }
+    protected open fun getEmbedUrl(url: String): String = ExtractorUtils.getEmbedUrl(url)
 }
 
 class Luluvid : Lulustream() {
@@ -240,43 +255,21 @@ open class P2PPlay : ExtractorApi() {
         val embedUrl = "$mainUrl/#$id"
         val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
 
-        val script = if (!getPacked(response.text).isNullOrEmpty()) {
-            var result = getAndUnpack(response.text)
-            if (result.contains("var links")) result = result.substringAfter("var links")
-            result
-        } else {
-            response.document.selectFirst("script:containsData(sources:)")?.data()
-        } ?: return
+        val script = ExtractorUtils.extractSources(response.text)
+            ?: response.document.selectFirst("script:containsData(sources:)")?.data()
+            ?: return
 
-        Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
+        ExtractorUtils.m3u8Regex.findAll(script).forEach { match ->
             val m3u8Url = match.value
-            if (!isValidStreamingUrl(m3u8Url)) return@forEach
+            if (!ExtractorUtils.isValidStreamingUrl(m3u8Url)) return@forEach
             val actualReferer = referer ?: mainUrl
             generateM3u8(
                 name,
                 fixUrl(m3u8Url),
                 referer = actualReferer,
-                headers = mapOf(
-                    "Origin" to actualReferer.removeSuffix("/"),
-                    "Sec-Fetch-Dest" to "empty",
-                    "Sec-Fetch-Mode" to "cors",
-                    "Sec-Fetch-Site" to "cross-site",
-                    "User-Agent" to USER_AGENT
-                )
+                headers = ExtractorUtils.commonHeaders(actualReferer)
             ).forEach(callback)
         }
-    }
-
-    private fun isValidStreamingUrl(url: String): Boolean {
-        val queryStart = url.indexOf('?')
-        if (queryStart == -1) return true
-        val query = url.substring(queryStart)
-        if (query.startsWith("?=")) return false
-        val hasT = query.contains("?t=") || query.contains("&t=")
-        val hasS = query.contains("&s=")
-        val hasE = query.contains("&e=")
-        val hasF = query.contains("&f=")
-        return hasT && hasS && hasE && hasF
     }
 }
 
@@ -341,59 +334,29 @@ open class StreamHG : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val embedUrl = getEmbedUrl(url)
+        val embedUrl = ExtractorUtils.getEmbedUrl(url)
         if (embedUrl.isEmpty()) return
 
         val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
 
-        val script = if (!getPacked(response.text).isNullOrEmpty()) {
-            var result = getAndUnpack(response.text)
-            if (result.contains("var links")) result = result.substringAfter("var links")
-            result
-        } else {
-            response.document.selectFirst("script:containsData(sources:)")?.data()
-        } ?: return
+        val script = ExtractorUtils.extractSources(response.text)
+            ?: response.document.selectFirst("script:containsData(sources:)")?.data()
+            ?: return
 
-        Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(script).forEach { match ->
+        ExtractorUtils.m3u8Regex.findAll(script).forEach { match ->
             val m3u8Url = match.value
-            if (!isValidStreamingUrl(m3u8Url)) return@forEach
+            if (!ExtractorUtils.isValidStreamingUrl(m3u8Url)) return@forEach
             val actualReferer = referer ?: mainUrl
             generateM3u8(
                 name,
                 fixUrl(m3u8Url),
                 referer = actualReferer,
-                headers = mapOf(
-                    "Origin" to actualReferer.removeSuffix("/"),
-                    "Sec-Fetch-Dest" to "empty",
-                    "Sec-Fetch-Mode" to "cors",
-                    "Sec-Fetch-Site" to "cross-site",
-                    "User-Agent" to USER_AGENT
-                )
+                headers = ExtractorUtils.commonHeaders(actualReferer)
             ).forEach(callback)
         }
     }
 
-    protected open fun getEmbedUrl(url: String): String {
-        return when {
-            url.contains("/f/") -> url.replace("/f/", "/v/")
-            url.contains("/d/") -> url.replace("/d/", "/v/")
-            url.contains("/download/") -> url.replace("/download/", "/v/")
-            url.contains("/file/") -> url.replace("/file/", "/v/")
-            else -> url
-        }
-    }
-
-    private fun isValidStreamingUrl(url: String): Boolean {
-        val queryStart = url.indexOf('?')
-        if (queryStart == -1) return true
-        val query = url.substring(queryStart)
-        if (query.startsWith("?=")) return false
-        val hasT = query.contains("?t=") || query.contains("&t=")
-        val hasS = query.contains("&s=")
-        val hasE = query.contains("&e=")
-        val hasF = query.contains("&f=")
-        return hasT && hasS && hasE && hasF
-    }
+    protected open fun getEmbedUrl(url: String): String = ExtractorUtils.getEmbedUrl(url)
 }
 
 class Hanerix : StreamHG() {

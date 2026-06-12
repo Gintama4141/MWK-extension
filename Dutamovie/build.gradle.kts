@@ -1,4 +1,4 @@
-version = 16
+version = 17
 
 cloudstream {
     description = "DutaMovie - Streaming Movie and TV Series"
@@ -9,6 +9,7 @@ cloudstream {
     tvTypes = listOf(
         "Movie",
         "TvSeries",
+        "Anime",
         "AsianDrama",
     )
 }

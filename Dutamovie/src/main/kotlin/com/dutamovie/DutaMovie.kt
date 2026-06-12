@@ -5,12 +5,13 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.*
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.net.URI
+import java.net.URLEncoder
 
 class DutaMovie : MainAPI() {
     override var mainUrl = "https://seoulschool.org"
-	private var directUrl: String? = null
     override var name = "Dutamovie"
     override val hasMainPage = true
     override var lang = "id"
@@ -24,38 +25,39 @@ class DutaMovie : MainAPI() {
     override val mainPage = mainPageOf(
         "box-office/page/%d/" to "Box Office",
         "serial-tv/page/%d/" to "TV Series",
-		"action/page/%d/" to "Action",
-		"adventure/page/%d/" to "Adventure",
-		"animation/page/%d/" to "Animation",
-		"comedy/page/%d/" to "Comedy",
-		"crime/page/%d/" to "Crime",
-		"drama/page/%d/" to "Drama",
-		"fantasy/page/%d/" to "Fantasy",
-		"horror/page/%d/" to "Horror",
-		"mystery/page/%d/" to "Mystery",
-		"romance/page/%d/" to "Romance",
-		"science-fiction/page/%d/" to "Sci-Fi",
-		"thriller/page/%d/" to "Thriller",
-		"country/china/page/%d/" to "China",
-		"country/indonesia/page/%d/" to "Indonesia",
-		"country/korea/page/%d/" to "Korea",
-		"country/philippines/page/%d/" to "Philippines",
+        "action/page/%d/" to "Action",
+        "adventure/page/%d/" to "Adventure",
+        "animation/page/%d/" to "Animation",
+        "comedy/page/%d/" to "Comedy",
+        "crime/page/%d/" to "Crime",
+        "drama/page/%d/" to "Drama",
+        "fantasy/page/%d/" to "Fantasy",
+        "horror/page/%d/" to "Horror",
+        "mystery/page/%d/" to "Mystery",
+        "romance/page/%d/" to "Romance",
+        "science-fiction/page/%d/" to "Sci-Fi",
+        "thriller/page/%d/" to "Thriller",
+        "country/china/page/%d/" to "China",
+        "country/indonesia/page/%d/" to "Indonesia",
+        "country/korea/page/%d/" to "Korea",
+        "country/philippines/page/%d/" to "Philippines",
         "country/thailand/page/%d/" to "Thailand"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get("$mainUrl/${request.data.format(page)}").document
-        val items = document.select("article.item").mapNotNull { it.toSearchResult() }
+        val items = document.select("article.item").mapNotNull { it.toSearchItem() }
         return newHomePageResponse(request.name, items)
     }
 
-    private fun Element.toSearchResult(): SearchResponse? {
+    private fun Element.toSearchItem(): SearchResponse? {
         val title = selectFirst("h2.entry-title > a")?.text()?.trim() ?: return null
-        val href = fixUrl(selectFirst("a")?.attr("href") ?: return null)
+        val href = fixUrl(selectFirst("h2.entry-title > a")?.attr("href")
+            ?: selectFirst("a")?.attr("href") ?: return null)
         val poster = fixUrlNull(selectFirst("a > img")?.getImageAttr())?.fixImageQuality()
         val quality = select("div.gmr-qual, div.gmr-quality-item > a")
             .text().trim().replace("-", "")
-		val ratingText = this.selectFirst("div.gmr-rating-item")?.ownText()?.trim()
+        val ratingText = selectFirst("div.gmr-rating-item")?.ownText()?.trim()
 
         return if (quality.isEmpty()) {
             val episode = Regex("Episode\\s?([0-9]+)").find(title)
@@ -70,48 +72,24 @@ class DutaMovie : MainAPI() {
             newMovieSearchResponse(title, href, TvType.Movie) {
                 posterUrl = poster
                 addQuality(quality)
-				this.score = Score.from10(ratingText?.toDoubleOrNull())
+                this.score = Score.from10(ratingText?.toDoubleOrNull())
             }
         }
     }
-	
-	override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("$mainUrl?s=$query&post_type[]=post&post_type[]=tv").document
-        return document.select("article.item-infinite").mapNotNull { it.toSearchResult() }
-    }
-	
-	private fun Element.toRecommendResult(): SearchResponse? {
-		val title = selectFirst("h2.entry-title > a")?.text()?.trim() ?: return null
-		val href = selectFirst("h2.entry-title > a")?.attr("href") ?: return null
-		val poster = fixUrlNull(selectFirst("div.content-thumbnail img")?.attr("src"))?.fixImageQuality()
-		val quality = select("div.gmr-qual, div.gmr-quality-item > a")
-            .text().trim().replace("-", "")
-		val ratingText = this.selectFirst("div.gmr-rating-item")?.ownText()?.trim()
-		return if (quality.isEmpty()) {
-            val episode = Regex("Episode\\s?([0-9]+)").find(title)
-                ?.groupValues?.getOrNull(1)?.toIntOrNull()
-                ?: select("div.gmr-numbeps > span").text().toIntOrNull()
 
-            newAnimeSearchResponse(title, href, TvType.TvSeries) {
-                posterUrl = poster
-                addSub(episode)
-            }
-        } else {
-            newMovieSearchResponse(title, href, TvType.Movie) {
-                posterUrl = poster
-                addQuality(quality)
-				this.score = Score.from10(ratingText?.toDoubleOrNull())
-            }
-        }
-	}
+    override suspend fun search(query: String): List<SearchResponse> {
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val document = app.get("$mainUrl?s=$encodedQuery&post_type[]=post&post_type[]=tv").document
+        return document.select("article.item-infinite").mapNotNull { it.toSearchItem() }
+    }
 
     override suspend fun load(url: String): LoadResponse {
         val fetch = app.get(url)
         val document = fetch.document
-        directUrl = getBaseUrl(fetch.url)
 
         val title = document.selectFirst("h1.entry-title")?.text()
-            ?.substringBefore("Season")?.substringBefore("Episode")?.trim().orEmpty()
+            ?.replace(Regex("\\s*(Season|Episode)\\s*.*", RegexOption.IGNORE_CASE), "")?.trim()
+            .orEmpty()
 
         val poster = fixUrlNull(document.selectFirst("figure.pull-left > img")?.getImageAttr())
             ?.fixImageQuality()
@@ -123,29 +101,12 @@ class DutaMovie : MainAPI() {
         val trailer = document.selectFirst("ul.gmr-player-nav li a.gmr-trailer-popup")?.attr("href")
         val rating = document.selectFirst("div.gmr-meta-rating span[itemprop=ratingValue]")
             ?.text()?.trim()
-        val actors = document.select("div.gmr-moviedata").last()
-            ?.select("span[itemprop=actors] a")?.map { it.text() }
+        val actors = document.select("span[itemprop=actors] a").map { it.text() }
         val duration = document.selectFirst("div.gmr-moviedata span[property=duration]")
             ?.text()?.replace(Regex("\\D"), "")?.toIntOrNull()
-        val recommendations = document.select("article.item.col-md-20").mapNotNull { it.toRecommendResult() }
-        return if (tvType == TvType.TvSeries) {				
-			val episodes = document.select("div.vid-episodes a, div.gmr-listseries a")
-				.mapNotNull { eps ->
-					val href = fixUrl(eps.attr("href"))
-					val rawTitle = eps.attr("title").takeIf { it.isNotBlank() } ?: eps.text()
-					val cleanTitle = rawTitle.replaceFirst(Regex("(?i)Permalink to\\s*"), "").trim()
-
-					val epNum = Regex("Episode\\s*(\\d+)").find(cleanTitle)?.groupValues?.getOrNull(1)?.toIntOrNull()
-						?: cleanTitle.split(" ").lastOrNull()?.filter { it.isDigit() }?.toIntOrNull()
-
-					val formattedName = epNum?.let { "Episode $it" } ?: cleanTitle
-
-					newEpisode(href) {
-						this.name = formattedName
-						this.episode = epNum
-						this.posterUrl = poster
-					}
-				}.filter { it.episode != null }
+        val recommendations = document.select("article.item.col-md-20").mapNotNull { it.toSearchItem() }
+        return if (tvType == TvType.TvSeries) {
+            val episodes = parseEpisodes(document, poster)
 
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 posterUrl = poster
@@ -173,14 +134,41 @@ class DutaMovie : MainAPI() {
         }
     }
 
+    private fun parseEpisodes(document: Document, poster: String?): List<Episode> {
+        return document.select("div.vid-episodes a, div.gmr-listseries a")
+            .mapNotNull { eps ->
+                val href = fixUrl(eps.attr("href"))
+                val rawTitle = eps.attr("title").takeIf { it.isNotBlank() } ?: eps.text()
+                val cleanTitle = rawTitle.replaceFirst(Regex("(?i)Permalink to\\s*"), "").trim()
+
+                val epNum = Regex("Episode\\s*(\\d+)").find(cleanTitle)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                    ?: cleanTitle.split(" ").lastOrNull()?.filter { it.isDigit() }?.toIntOrNull()
+
+                val formattedName = epNum?.let { "Episode $it" } ?: cleanTitle
+
+                newEpisode(href) {
+                    this.name = formattedName
+                    this.episode = epNum
+                    this.posterUrl = poster
+                }
+            }.filter { it.episode != null }
+    }
+
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data).document
-        val referer = "$directUrl/"
+        val baseUrl = getBaseUrl(data)
+        val referer = "$baseUrl/"
+
+        val response = try {
+            app.get(data)
+        } catch (e: Exception) {
+            return false
+        }
+        val document = response.document
 
         document.select("div.gmr-embed-responsive iframe").forEach { iframe ->
             iframe.getIframeAttr()?.let { src ->
@@ -189,31 +177,38 @@ class DutaMovie : MainAPI() {
         }
 
         val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
-        if (id.isNullOrEmpty()) {
-            document.select("ul.muvipro-player-tabs li a").forEach { ele ->
-                val serverUrl = fixUrl(ele.attr("href"))
-                if (serverUrl == data) return@forEach
+        if (!id.isNullOrEmpty()) {
+            document.select("div.tab-content-ajax").forEach { ele ->
                 try {
-                    app.get(serverUrl).document
-                        .select("div.gmr-embed-responsive iframe")
-                        .forEach { iframe ->
-                            iframe.getIframeAttr()?.let { src ->
-                                loadExtractor(httpsify(src), referer, subtitleCallback, callback)
-                            }
-                        }
-                } catch (_: Exception) {}
+                    val server = app.post(
+                        "$baseUrl/wp-admin/admin-ajax.php",
+                        data = mapOf(
+                            "action" to "muvipro_player_content",
+                            "tab" to ele.attr("id"),
+                            "post_id" to id
+                        )
+                    ).document.select("iframe").attr("src").let { httpsify(it) }
+                    loadExtractor(server, referer, subtitleCallback, callback)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         } else {
-            document.select("div.tab-content-ajax").amap { ele ->
-                val server = app.post(
-                    "$directUrl/wp-admin/admin-ajax.php",
-                    data = mapOf(
-                        "action" to "muvipro_player_content",
-                        "tab" to ele.attr("id"),
-                        "post_id" to "$id"
-                    )
-                ).document.select("iframe").attr("src").let { httpsify(it) }
-                loadExtractor(server, referer, subtitleCallback, callback)
+            val tabs = document.select("ul.muvipro-player-tabs li a")
+                .map { fixUrl(it.attr("href")) }
+                .filter { it != data }
+
+            for (tabUrl in tabs) {
+                try {
+                    val tabDoc = app.get(tabUrl).document
+                    tabDoc.select("div.gmr-embed-responsive iframe").forEach { iframe ->
+                        iframe.getIframeAttr()?.let { src ->
+                            loadExtractor(httpsify(src), referer, subtitleCallback, callback)
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
 
