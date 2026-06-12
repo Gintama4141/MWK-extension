@@ -28,14 +28,19 @@ open class Vtbe : ExtractorApi() {
     override var mainUrl = "https://vtbe.to"
     override val requiresReferer = true
 
-    override suspend fun getUrl(url: String, referer: String?): List<ExtractorLink>? {
-        val response = app.get(url, referer = mainUrl).document
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val response = app.get(url, referer = referer ?: mainUrl).document
         val extractedpack = response.selectFirst("script:containsData(function(p,a,c,k,e,d))")?.data().orEmpty()
-        val unPacked = JsUnpacker(extractedpack).unpack() ?: return null
-        val link = Regex("""sources:\[\{file:"(.*?)"""").find(unPacked)?.groupValues?.get(1) ?: return null
-        return listOf(
+        val unPacked = JsUnpacker(extractedpack).unpack() ?: return
+        val link = Regex("""sources:\[\{file:"(.*?)"""").find(unPacked)?.groupValues?.get(1) ?: return
+        callback.invoke(
             newExtractorLink(this.name, this.name, url = link, ExtractorLinkType.M3U8) {
-                this.referer = referer.orEmpty()
+                this.referer = referer ?: mainUrl
                 this.quality = Qualities.Unknown.value
             }
         )
@@ -108,12 +113,12 @@ open class Ultrahd : ExtractorApi() {
             if (m3u8.contains(".mp4")) {
                 callback.invoke(
                     newExtractorLink("Ultrahd Streamplay", "Ultrahd Streamplay", url = m3u8, INFER_TYPE) {
-                        this.referer = ""
+                        this.referer = referer ?: mainUrl
                         this.quality = getQualityFromName("")
                     }
                 )
             } else {
-                M3u8Helper.generateM3u8(this.name, m3u8, referer.orEmpty()).forEach(callback)
+                M3u8Helper.generateM3u8(this.name, m3u8, referer ?: mainUrl).forEach(callback)
             }
         }
         root.tracks.forEach { track ->
@@ -141,12 +146,12 @@ class Rumble : ExtractorApi() {
             if (fileUrl.contains(".mp4")) {
                 callback.invoke(
                     newExtractorLink(name, "$name Video Server $index", url = fileUrl, INFER_TYPE) {
-                        this.referer = ""
+                        this.referer = referer ?: mainUrl
                         this.quality = getQualityFromName("")
                     }
                 )
             } else {
-                M3u8Helper.generateM3u8(name, fileUrl, mainUrl).forEach(callback)
+                M3u8Helper.generateM3u8(name, fileUrl, referer ?: mainUrl).forEach(callback)
             }
         }
         val trackRegex = """"file"\s*:\s*"(https:[^"]+\.vtt[^"]*)"\s*,\s*"label"\s*:\s*"([^"]+)"""".toRegex()
@@ -175,12 +180,13 @@ open class PlayStreamplay : ExtractorApi() {
     ) {
         val videoId = Regex("""/embed/([a-f0-9-]+)""").find(url)?.groupValues?.get(1) ?: return
 
-        if (extractFromApi(url, subtitleCallback, callback)) return
-        extractFromPl(videoId, url, subtitleCallback, callback)
+        if (extractFromApi(url, referer, subtitleCallback, callback)) return
+        extractFromPl(videoId, url, referer, subtitleCallback, callback)
     }
 
     private suspend fun extractFromApi(
         url: String,
+        pageReferer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
@@ -201,13 +207,14 @@ open class PlayStreamplay : ExtractorApi() {
         } catch (_: Exception) { null }
         if (decryptedJson.isNullOrBlank()) return false
         val videoData = tryParseJson<PlayStreamVideoData>(decryptedJson) ?: return false
-        emitLinks(videoData.sources, videoData.tracks, subtitleCallback, callback)
+        emitLinks(videoData.sources, videoData.tracks, pageReferer, subtitleCallback, callback)
         return true
     }
 
     private suspend fun extractFromPl(
         videoId: String,
         url: String,
+        pageReferer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
@@ -217,23 +224,25 @@ open class PlayStreamplay : ExtractorApi() {
         val encryptedData = tryParseJson<StreamplayEncryptedResponse>(responseText) ?: return
         val decryptedJson = decryptEVP(encryptedData) ?: return
         val videoResponse = tryParseJson<Root>(decryptedJson) ?: return
-        emitLinks(videoResponse.sources, videoResponse.tracks, subtitleCallback, callback)
+        emitLinks(videoResponse.sources, videoResponse.tracks, pageReferer, subtitleCallback, callback)
     }
 
     private suspend fun emitLinks(
         sources: List<Source>?,
         tracks: List<Track>?,
+        pageReferer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
+        val streamReferer = pageReferer ?: mainUrl
         sources?.forEach { source ->
             val sourceUrl = httpsify(source.file)
             if (sourceUrl.contains(".m3u8")) {
-                M3u8Helper.generateM3u8(name, sourceUrl, referer = mainUrl).forEach(callback)
+                M3u8Helper.generateM3u8(name, sourceUrl, referer = streamReferer).forEach(callback)
             } else if (sourceUrl.contains(".mp4")) {
                 callback.invoke(
                     newExtractorLink(name, source.label, sourceUrl, INFER_TYPE) {
-                        this.referer = ""
+                        this.referer = streamReferer
                         this.quality = getQualityFromName(source.label)
                     }
                 )

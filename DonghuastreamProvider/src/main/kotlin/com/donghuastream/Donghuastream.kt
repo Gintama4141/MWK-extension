@@ -227,19 +227,14 @@ open class Donghuastream : MainAPI() {
             "ok.ru" in iframeUrl || "okko.tv" in iframeUrl -> {
                 Okru().getUrl(iframeUrl, iframeUrl, subtitleCallback, callback)
             }
-            iframeUrl.endsWith(".mp4") -> {
-                callback(
-                    newExtractorLink(
-                        label,
-                        label,
-                        url = iframeUrl,
-                        INFER_TYPE
-                    ) {
-                        this.referer = ""
-                        this.quality = getQualityFromName(label)
-                    }
-                )
-            }
+        iframeUrl.endsWith(".mp4") -> {
+            callback(
+                newExtractorLink(label, label, url = iframeUrl, INFER_TYPE) {
+                    this.referer = iframeUrl
+                    this.quality = getQualityFromName(label)
+                }
+            )
+        }
             else -> {
                 loadExtractor(iframeUrl, referer = iframeUrl, subtitleCallback, callback)
             }
@@ -271,7 +266,7 @@ open class Donghuastream : MainAPI() {
             ?.map { it.url }
             ?.filterNotNull()
             ?.filter { it.contains(".m3u8") }
-            ?.forEach { generateM3u8("Dailymotion", it, "").forEach(callback) }
+            ?.forEach { generateM3u8("Dailymotion", it, embedUrl).forEach(callback) }
         meta.subtitles?.data?.values?.flatMap { it?.urls.orEmpty() }
             ?.forEachIndexed { i, subUrl ->
                 subtitleCallback(newSubtitleFile("Sub $i", subUrl))
