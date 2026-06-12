@@ -15,19 +15,19 @@ class ArchiveOrgExtractor : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        Log.d("kraptor","url = $url")
+        Log.d("ArchiveOrg", "url = $url")
 
-            callback.invoke(
-                newExtractorLink(
-                    source = name,
-                    name = name,
-                    url = url,
-                    type = INFER_TYPE,
-                    {
-                        this.referer = referer ?: mainUrl
-                        quality = Qualities.Unknown.value
-                    }
-                )
+        callback.invoke(
+            newExtractorLink(
+                source = name,
+                name = name,
+                url = url,
+                type = INFER_TYPE,
+                {
+                    this.referer = referer ?: mainUrl
+                    quality = Qualities.Unknown.value
+                }
             )
-        }
+        )
     }
+}

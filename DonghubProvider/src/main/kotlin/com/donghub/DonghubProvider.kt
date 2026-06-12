@@ -6,13 +6,10 @@ import com.lagradost.cloudstream3.utils.*
 import org.jsoup.Jsoup
 
 class DonghubProvider : MainAPI() {
-    companion object {
-        var context: android.content.Context? = null
-    }
-    override var mainUrl = "https://donghub.vip"
+    override val mainUrl = "https://donghub.vip"
     override var name = "Donghub"
     override val hasMainPage = true
-    override var lang = "id"
+    override val lang = "id"
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.Movie, TvType.Anime)
 
@@ -26,16 +23,18 @@ class DonghubProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get("$mainUrl/${request.data}&page=$page").document
         val items = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
+        val hasNext = document.selectFirst("a.next.page-numbers, .pagination .next, .next") != null
         return newHomePageResponse(
             HomePageList(request.name, items, isHorizontalImages = false),
-            hasNext = true
+            hasNext = hasNext
         )
     }
 
     private fun Element.toSearchResult(): SearchResponse {
-        val title = select("div.bsx > a").attr("title").trim()
-        val href = fixUrl(select("div.bsx > a").attr("href"))
-        val poster = fixUrlNull(selectFirst("div.bsx > a img")?.getsrcAttribute())
+        val anchor = selectFirst("div.bsx > a") ?: return newAnimeSearchResponse("", "", TvType.Anime)
+        val title = anchor.attr("title").trim()
+        val href = fixUrl(anchor.attr("href"))
+        val poster = fixUrlNull(anchor.selectFirst("img")?.getsrcAttribute())
         return newAnimeSearchResponse(title, href, TvType.Anime) {
             this.posterUrl = poster
         }
@@ -43,11 +42,15 @@ class DonghubProvider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val list = mutableListOf<SearchResponse>()
-        for (i in 1..3) {
-            val document = app.get("$mainUrl/page/$i/?s=$query").document
-            val result = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
-            if (result.isEmpty()) break
-            list.addAll(result)
+        for (i in 1..5) {
+            try {
+                val document = app.get("$mainUrl/page/$i/?s=$query").document
+                val result = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
+                if (result.isEmpty()) break
+                list.addAll(result)
+            } catch (e: Exception) {
+                break
+            }
         }
         return list.distinctBy { it.url }
     }
@@ -62,12 +65,7 @@ class DonghubProvider : MainAPI() {
         var poster = document.select("div.ime > img").first()?.getsrcAttribute()
             ?: document.select("meta[property=og:image]").attr("content")
 
-        val epBlocks =
-            document.select(".eplister li").ifEmpty {
-                document.select("div.list-episode .episode-item")
-            }.ifEmpty {
-                document.select("#episodes a")
-            }
+        val epBlocks = document.select(".eplister li, div.list-episode .episode-item, #episodes a")
 
         return if (!isMovie) {
             val episodes = epBlocks.map { ep ->
@@ -104,12 +102,19 @@ class DonghubProvider : MainAPI() {
         val document = app.get(data).document
         document.select(".mobius option").amap { item ->
             val base64 = item.attr("value")
-            if (base64.isNotBlank()) {
-                val decoded = base64Decode(base64)
-                val doc = Jsoup.parse(decoded)
-                val iframe = doc.select("iframe").attr("src")
-                loadExtractor(fixUrl(iframe), subtitleCallback, callback)
+            if (base64.isBlank()) return@amap
+
+            val decoded = try {
+                base64Decode(base64)
+            } catch (e: Exception) {
+                return@amap
             }
+
+            val doc = Jsoup.parse(decoded)
+            val iframeSrc = doc.select("iframe").attr("src")
+            if (iframeSrc.isBlank()) return@amap
+
+            loadExtractor(fixUrl(iframeSrc), subtitleCallback, callback)
         }
         return true
     }
