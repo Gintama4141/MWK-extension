@@ -89,10 +89,10 @@
         "name": "DonghubProvider"
     },
     {
-        "fileHash": "sha256-2a8adcc3904f8e700bdbf15cb19100740d53ac5947e6749d122b6748dd16605f",
+        "fileHash": "sha256-5d83c74c1d0e0de835e89620824d93cd0262aa9e6dc8dd995755e40227d7da54",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 40686,
+        "fileSize": 41626,
         "status": 1,
         "language": "id",
         "authors": [
@@ -102,9 +102,10 @@
         "tvTypes": [
             "Movie",
             "TvSeries",
+            "Anime",
             "AsianDrama"
         ],
-        "version": 16,
+        "version": 17,
         "internalName": "Dutamovie",
         "description": "DutaMovie - Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Dutamovie.cs3",
