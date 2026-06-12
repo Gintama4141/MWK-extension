@@ -138,7 +138,7 @@ class Rumble : ExtractorApi() {
         val playerScript = document.selectFirst("script:containsData(jwplayer)")?.data() ?: return
         val sourceRegex = """"file"\s*:\s*"(https:[^"]+\.(?:mp4|m3u8)[^"]*)"""".toRegex()
         for ((index, source) in sourceRegex.findAll(playerScript).withIndex()) {
-            val fileUrl = source.groupValues[1].replace("\/", "/")
+            val fileUrl = source.groupValues[1].replace("\\/", "/")
             if (fileUrl.contains(".mp4")) {
                 callback.invoke(
                     newExtractorLink(name, "$name Video Server $index", url = fileUrl, INFER_TYPE) {
@@ -152,7 +152,7 @@ class Rumble : ExtractorApi() {
         }
         val trackRegex = """"file"\s*:\s*"(https:[^"]+\.vtt[^"]*)"\s*,\s*"label"\s*:\s*"([^"]+)"""".toRegex()
         for (track in trackRegex.findAll(playerScript)) {
-            val fileUrl = track.groupValues[1].replace("\/", "/")
+            val fileUrl = track.groupValues[1].replace("\\/", "/")
             val label = track.groupValues[2]
             subtitleCallback.invoke(newSubtitleFile(label, fileUrl))
         }
@@ -199,40 +199,26 @@ open class PlayStreamplay : ExtractorApi() {
         
         try {
             val decryptedJson = decryptAes(encryptedJson, iv, salt)
-            return tryParseJson(decryptedJson) as PlayStreamResponse
+            return tryParseJson(decryptedJson) ?: return encryptedResponse
         } catch (e: Exception) {
             return encryptedResponse
         }
     }
 
     private fun extractEncryptionData(response: PlayStreamResponse): Triple<String?, String?, String?> {
-        val encryptedJson = response.query?.id?.let { base64Decode(it) }
-        val iv = response.query?.source?.let { base64Decode(it) }
-        val salt = response.query?.download?.let { base64Decode(it) }
+        val encryptedJson = response.query?.id
+        val iv = response.query?.source
+        val salt = response.query?.download
         return Triple(encryptedJson, iv, salt)
     }
 
     private fun decryptAes(encryptedData: String, iv: String?, salt: String?): String {
-        val keyMaterial = salt?.let { deriveKey(it) } ?: ""
-        val ivBytes = iv?.let { hexToByteArray(it) } ?: byteArrayOf()
-        
-        val decrypt = AesHelper.cryptoAESHandler(
-            base64Decode(encryptedData),
+        val keyMaterial = salt ?: ""
+        return AesHelper.cryptoAESHandler(
+            encryptedData,
             keyMaterial.toByteArray(),
-            false,
-            "AES/CBC/PKCS5Padding"
-        )
-        
-        val decryptedBytes = decrypt(ivBytes)
-        return String(decryptedBytes, Charsets.UTF_8)
-    }
-
-    private fun deriveKey(salt: String): String {
-        return salt
-    }
-
-    private fun hexToByteArray(hex: String): ByteArray {
-        return hex.chunked(2).map { it.toIntOrNull(16)?.toByte() ?: 0.toByte() }.toByteArray()
+            false
+        ) ?: encryptedData
     }
 
     data class PlayStreamResponse(
