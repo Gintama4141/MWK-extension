@@ -19,6 +19,7 @@ import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
@@ -30,11 +31,16 @@ import com.lagradost.cloudstream3.newSubtitleFile
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
+private data class DmQuality(val url: String?, val type: String?)
+private data class DmSubtitleData(val label: String?, val urls: List<String>?)
+private data class DmSubtitles(val enable: Boolean?, val data: Map<String, DmSubtitleData>?)
+private data class DmMetadata(
+    val qualities: Map<String, List<DmQuality>>?,
+    val subtitles: DmSubtitles?
+)
+
 open class Donghuastream : MainAPI() {
     companion object {
-        private val dmUrlRegex = Regex(""""url"\s*:\s*"([^"]+)"""")
-        private val dmSubOuterRegex = Regex(""""subtitles"\s*:\s*\{[^}]*"data"\s*:\s*(\[[^\]]*\])""")
-        private val dmSubInnerRegex = Regex("""\{\s*"label"\s*:\s*"([^"]+)",\s*"urls"\s*:\s*\["([^"]+)"""")
         private val dmVideoIdRegex = Regex("^[kx][a-zA-Z0-9]+$")
         private val vidmolyUrlRegex = Regex("""https?://(?:www\.)?vidmoly\.[a-z]+/[^"'\s]+""")
     }
@@ -241,17 +247,17 @@ open class Donghuastream : MainAPI() {
             java.net.URI(embedUrl).path.substringAfter("/video/")
         } catch (_: Exception) { return }
         if (!id.matches(dmVideoIdRegex)) return
-        val resp = app.get("https://www.dailymotion.com/player/metadata/video/$id", referer = embedUrl).text
-        dmUrlRegex.findAll(resp)
-            .map { it.groupValues[1] }
-            .filter { it.contains(".m3u8") }
-            .forEach { videoUrl ->
-                generateM3u8("Dailymotion", videoUrl, "").forEach(callback)
+        val meta = tryParseJson<DmMetadata>(
+            app.get("https://www.dailymotion.com/player/metadata/video/$id", referer = embedUrl).text
+        ) ?: return
+        meta.qualities?.values?.flatMap { it.orEmpty() }
+            ?.map { it.url }
+            ?.filterNotNull()
+            ?.filter { it.contains(".m3u8") }
+            ?.forEach { generateM3u8("Dailymotion", it, "").forEach(callback) }
+        meta.subtitles?.data?.values?.flatMap { it?.urls.orEmpty() }
+            ?.forEachIndexed { i, subUrl ->
+                subtitleCallback(newSubtitleFile("Sub $i", subUrl))
             }
-        dmSubOuterRegex.findAll(resp).forEach { m ->
-            dmSubInnerRegex.findAll(m.groupValues[1]).forEach { sm ->
-                subtitleCallback(newSubtitleFile(sm.groupValues[1], sm.groupValues[2]))
-            }
-        }
     }
 }
