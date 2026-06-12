@@ -266,7 +266,7 @@ open class Donghuastream : MainAPI() {
             ?.map { it.url }
             ?.filterNotNull()
             ?.filter { it.contains(".m3u8") }
-            ?.forEach { generateM3u8("Dailymotion", it, embedUrl, mapOf("Origin" to "https://www.dailymotion.com", "Referer" to embedUrl)).forEach(callback) }
+            ?.forEach { generateM3u8("Dailymotion", it, embedUrl, headers = mapOf("Origin" to "https://www.dailymotion.com", "Referer" to embedUrl)).forEach(callback) }
         meta.subtitles?.data?.values?.flatMap { it?.urls.orEmpty() }
             ?.forEachIndexed { i, subUrl ->
                 subtitleCallback(newSubtitleFile("Sub $i", subUrl))
