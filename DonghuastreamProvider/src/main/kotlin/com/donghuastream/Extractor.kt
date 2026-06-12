@@ -20,7 +20,7 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import kotlin.tuple Triple
+import kotlin.Triple
 import com.donghuastream.Source
 import com.donghuastream.Track
 
@@ -191,4 +191,63 @@ open class PlayStreamplay : ExtractorApi() {
         }
     }
 
-    priva
+    private fun decryptResponse(encryptedResponse: PlayStreamResponse): PlayStreamResponse {
+        val (encryptedJson, iv, salt) = extractEncryptionData(encryptedResponse)
+        if (encryptedJson.isNullOrEmpty()) {
+            return encryptedResponse
+        }
+        
+        try {
+            val decryptedJson = decryptAes(encryptedJson, iv, salt)
+            return tryParseJson(decryptedJson) as PlayStreamResponse
+        } catch (e: Exception) {
+            return encryptedResponse
+        }
+    }
+
+    private fun extractEncryptionData(response: PlayStreamResponse): Triple<String?, String?, String?> {
+        val encryptedJson = response.query?.id?.let { base64Decode(it) }
+        val iv = response.query?.source?.let { base64Decode(it) }
+        val salt = response.query?.download?.let { base64Decode(it) }
+        return Triple(encryptedJson, iv, salt)
+    }
+
+    private fun decryptAes(encryptedData: String, iv: String?, salt: String?): String {
+        val keyMaterial = salt?.let { deriveKey(it) } ?: ""
+        val ivBytes = iv?.let { hexToByteArray(it) } ?: byteArrayOf()
+        
+        val decrypt = AesHelper.cryptoAESHandler(
+            base64Decode(encryptedData),
+            keyMaterial.toByteArray(),
+            false,
+            "AES/CBC/PKCS5Padding"
+        )
+        
+        val decryptedBytes = decrypt(ivBytes)
+        return String(decryptedBytes, Charsets.UTF_8)
+    }
+
+    private fun deriveKey(salt: String): String {
+        return salt
+    }
+
+    private fun hexToByteArray(hex: String): ByteArray {
+        return hex.chunked(2).map { it.toIntOrNull(16)?.toByte() ?: 0.toByte() }.toByteArray()
+    }
+
+    data class PlayStreamResponse(
+        val query: PlayStreamQuery?,
+        val status: String,
+        val message: String,
+        @param:JsonProperty("embed_url")
+        val embedUrl: String,
+        @param:JsonProperty("download_url")
+        val downloadUrl: String,
+        val title: String,
+        val poster: String,
+        val filmstrip: String,
+        val sources: List<Source>,
+        val tracks: List<Track>,
+    )
+    data class PlayStreamQuery(val source: String, val id: String, val download: String)
+}
