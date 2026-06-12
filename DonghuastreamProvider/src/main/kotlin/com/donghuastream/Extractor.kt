@@ -180,7 +180,7 @@ open class PlayStreamplay : ExtractorApi() {
     ) {
         val videoId = Regex("""/embed/([a-f0-9-]+)""").find(url)?.groupValues?.get(1) ?: return
 
-        if (extractFromApi(url, referer, subtitleCallback, callback)) return
+        extractFromApi(url, referer, subtitleCallback, callback)
         extractFromPl(videoId, url, referer, subtitleCallback, callback)
     }
 
@@ -189,26 +189,26 @@ open class PlayStreamplay : ExtractorApi() {
         pageReferer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
-    ): Boolean {
-        val doc = try { app.get(url).document } catch (_: Exception) { return false }
-        val packedScript = doc.selectFirst("script:containsData(function(p,a,c,k,e,d))")?.data() ?: return false
-        val packedCode = Regex("""eval\(.*?\)\)""", RegexOption.DOT_MATCHES_ALL).find(packedScript)?.value ?: return false
-        val unpackedJs = JsUnpacker(packedCode).unpack() ?: return false
-        val token = Regex("""kaken="([^"]*)"""").find(unpackedJs)?.groupValues?.getOrNull(1) ?: return false
-        val responseText = app.get("$mainUrl/api/?$token", timeout = 30_000).text
-        val apiResponse = tryParseJson<PlayStreamApiResponse>(responseText) ?: return false
-        if (apiResponse.status != "ok") return false
-        val query = apiResponse.query ?: return false
+    ) {
+        val doc = try { app.get(url, referer = pageReferer).document } catch (_: Exception) { return }
+        val packedScript = doc.selectFirst("script:containsData(function(p,a,c,k,e,d))")?.data() ?: return
+        val packedCode = Regex("""eval\(.*?\)\)""", RegexOption.DOT_MATCHES_ALL).find(packedScript)?.value ?: return
+        val unpackedJs = JsUnpacker(packedCode).unpack() ?: return
+        val token = Regex("""kaken="([^"]*)"""").find(unpackedJs)?.groupValues?.getOrNull(1) ?: return
+        val apiHeaders = mapOf("Referer" to (pageReferer ?: url), "Origin" to mainUrl)
+        val responseText = app.get("$mainUrl/api/?$token", timeout = 30_000, headers = apiHeaders).text
+        val apiResponse = tryParseJson<PlayStreamApiResponse>(responseText) ?: return
+        if (apiResponse.status != "ok") return
+        val query = apiResponse.query ?: return
         val encryptedId = query.id
-        if (encryptedId.isNullOrBlank() || encryptedId.length < 20) return false
+        if (encryptedId.isNullOrBlank() || encryptedId.length < 20) return
         val salt = query.download ?: ""
         val decryptedJson = try {
             AesHelper.cryptoAESHandler(encryptedId, salt.toByteArray(), false)
         } catch (_: Exception) { null }
-        if (decryptedJson.isNullOrBlank()) return false
-        val videoData = tryParseJson<PlayStreamVideoData>(decryptedJson) ?: return false
+        if (decryptedJson.isNullOrBlank()) return
+        val videoData = tryParseJson<PlayStreamVideoData>(decryptedJson) ?: return
         emitLinks(videoData.sources, videoData.tracks, pageReferer, subtitleCallback, callback)
-        return true
     }
 
     private suspend fun extractFromPl(
@@ -235,10 +235,11 @@ open class PlayStreamplay : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val streamReferer = pageReferer ?: mainUrl
+        val streamHeaders = mapOf("Referer" to streamReferer, "Origin" to mainUrl)
         sources?.forEach { source ->
             val sourceUrl = httpsify(source.file)
             if (sourceUrl.contains(".m3u8")) {
-                M3u8Helper.generateM3u8(name, sourceUrl, referer = streamReferer).forEach(callback)
+                M3u8Helper.generateM3u8(name, sourceUrl, referer = streamReferer, headers = streamHeaders).forEach(callback)
             } else if (sourceUrl.contains(".mp4")) {
                 callback.invoke(
                     newExtractorLink(name, source.label, sourceUrl, INFER_TYPE) {
