@@ -248,7 +248,7 @@ open class PlayStreamplay : ExtractorApi() {
         return try {
             val password = AES_PASSWORD.toByteArray(Charsets.UTF_8)
             val salt = hexToBytes(encrypted.s)
-            val ciphertext = java.util.Base64.getDecoder().decode(encrypted.ct)
+            val ciphertext = android.util.Base64.decode(encrypted.ct, android.util.Base64.DEFAULT)
             val iv = hexToBytes(encrypted.iv)
             val md5 = java.security.MessageDigest.getInstance("MD5")
             md5.update(password); md5.update(salt); val d1 = md5.digest()

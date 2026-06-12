@@ -11,8 +11,6 @@ class DonghuastreamProvider : BasePlugin() {
         registerExtractorAPI(waaw())
         registerExtractorAPI(wishfast())
         registerExtractorAPI(FileMoonSx())
-        registerExtractorAPI(Dailymotion())
-        registerExtractorAPI(Geodailymotion())
         registerExtractorAPI(Ultrahd())
         registerExtractorAPI(Rumble())
         registerExtractorAPI(PlayStreamplay())

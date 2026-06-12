@@ -21,10 +21,12 @@ import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.INFER_TYPE
+import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.newSubtitleFile
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -180,7 +182,35 @@ open class Donghuastream : MainAPI() {
     ) {
         when {
             "dailymotion.com" in iframeUrl -> {
-                loadExtractor(iframeUrl, referer = iframeUrl, subtitleCallback, callback)
+                val embedUrl = when {
+                    iframeUrl.contains("/embed/") || iframeUrl.contains("/video/") -> iframeUrl
+                    iframeUrl.contains("geo.dailymotion.com") -> {
+                        val videoId = iframeUrl.substringAfter("video=")
+                        "https://www.dailymotion.com/embed/video/$videoId"
+                    }
+                    else -> null
+                }
+                if (embedUrl != null) {
+                    val id = try {
+                        java.net.URI(embedUrl).path.substringAfter("/video/")
+                    } catch (_: Exception) { null }
+                    if (id != null && id.matches(Regex("^[kx][a-zA-Z0-9]+$"))) {
+                        val metaUrl = "https://www.dailymotion.com/player/metadata/video/$id"
+                        val resp = app.get(metaUrl, referer = embedUrl).text
+                        Regex(""""url"\s*:\s*"([^"]+)"""").findAll(resp)
+                            .map { it.groupValues[1] }
+                            .filter { it.contains(".m3u8") }
+                            .forEach { videoUrl ->
+                                generateM3u8("Dailymotion", videoUrl, "").forEach(callback)
+                            }
+                        Regex(""""subtitles"\s*:\s*\{[^}]*"data"\s*:\s*(\[[^\]]*\])""")
+                            .findAll(resp).forEach { m ->
+                                Regex("""\{\s*"label"\s*:\s*"([^"]+)",\s*"urls"\s*:\s*\["([^"]+)"""").findAll(m.groupValues[1]).forEach { sm ->
+                                    subtitleCallback(newSubtitleFile(sm.groupValues[1], sm.groupValues[2]))
+                                }
+                            }
+                    }
+                }
             }
             "vidmoly" in iframeUrl -> {
                 val cleanedUrl = "http:" + iframeUrl.substringAfter("=\"").substringBefore("\"")
