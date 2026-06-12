@@ -72,25 +72,57 @@ class Okru : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val document = app.get(url, referer = "$mainUrl/").document
-        val playerInit = document.selectFirst("data[name=flashvars]")?.attr("value") ?: return
-        val metadata = tryParseJson<OkruMetadata>(base64Decode(playerInit))
-        val m3u8 = metadata?.metadata?.hlsMasterUrl ?: metadata?.metadata?.hlsTrailerUrl
-        if (!m3u8.isNullOrBlank()) {
-            M3u8Helper.generateM3u8(name, m3u8, referer.orEmpty()).forEach(callback)
+        val document = app.get(url, referer = referer ?: "$mainUrl/").document
+        val okVideoDiv = document.selectFirst("div[data-module=OKVideo]") ?: return
+        val optionsStr = okVideoDiv.attr("data-options")
+        if (optionsStr.isBlank()) return
+        val optionsJson = tryParseJson<OkruOptions>(optionsStr) ?: return
+        val metadataStr = optionsJson.flashvars?.metadata ?: return
+        val metadata = tryParseJson<OkruMetadata>(metadataStr) ?: return
+        val headers = mapOf(
+            "Referer" to "https://ok.ru/",
+            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        val videos = metadata.videos
+        if (!videos.isNullOrEmpty()) {
+            for (v in videos) {
+                val mp4Url = v.url ?: continue
+                val quality = when (v.name) {
+                    "ultra" -> "2160p"
+                    "quad" -> "1440p"
+                    "full" -> "1080p"
+                    "hd" -> "720p"
+                    "sd" -> "480p"
+                    "low" -> "360p"
+                    "lowest" -> "240p"
+                    "mobile" -> "360p"
+                    else -> v.name ?: "Unknown"
+                }
+                callback.invoke(
+                    newExtractorLink(name, name, mp4Url, INFER_TYPE) {
+                        this.referer = "https://ok.ru/"
+                        this.quality = getQualityFromName(quality)
+                        this.headers = headers
+                    }
+                )
+            }
         }
-        metadata?.metadata?.subtitles?.forEach { sub ->
-            subtitleCallback.invoke(newSubtitleFile(sub.label ?: "Unknown", sub.url))
+        val m3u8 = metadata.hlsManifestUrl
+        if (!m3u8.isNullOrBlank()) {
+            M3u8Helper.generateM3u8(name, m3u8, "https://ok.ru/", headers = headers).forEach(callback)
         }
     }
 
-    data class OkruMetadata(val metadata: OkruVideoData?)
-    data class OkruVideoData(
-        val hlsMasterUrl: String?,
-        val hlsTrailerUrl: String?,
-        val subtitles: List<OkruSubtitle>?
+    private data class OkruOptions(val flashvars: OkruFlashvars?)
+    private data class OkruFlashvars(val metadata: String?)
+    private data class OkruMetadata(
+        val videos: List<OkruVideo>?,
+        @param:JsonProperty("hlsManifestUrl") val hlsManifestUrl: String?
     )
-    data class OkruSubtitle(val label: String?, val url: String)
+    private data class OkruVideo(
+        val name: String?,
+        val url: String?
+    )
 }
 
 open class Ultrahd : ExtractorApi() {
