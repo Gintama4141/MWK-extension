@@ -7,6 +7,7 @@ import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.extractors.Filesim
 import com.lagradost.cloudstream3.extractors.StreamSB
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
+import com.lagradost.cloudstream3.extractors.helper.AesHelper
 import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -173,18 +174,59 @@ open class PlayStreamplay : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val videoId = Regex("""/embed/([a-f0-9-]+)""").find(url)?.groupValues?.get(1) ?: return
-        val apiUrl = "$mainUrl/pl/$videoId"
-        val headers = mapOf(
-            "Referer" to url,
-            "Origin" to mainUrl
-        )
-        val responseText = app.get(apiUrl, timeout = 30_000, headers = headers).text
-        val encryptedData = tryParseJson<StreamplayEncryptedResponse>(responseText) ?: return
 
+        if (extractFromApi(url, subtitleCallback, callback)) return
+        extractFromPl(videoId, url, subtitleCallback, callback)
+    }
+
+    private suspend fun extractFromApi(
+        url: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ): Boolean {
+        val doc = try { app.get(url).document } catch (_: Exception) { return false }
+        val packedScript = doc.selectFirst("script:containsData(function(p,a,c,k,e,d))")?.data() ?: return false
+        val packedCode = Regex("""eval\(.*?\)\)""", RegexOption.DOT_MATCHES_ALL).find(packedScript)?.value ?: return false
+        val unpackedJs = JsUnpacker(packedCode).unpack() ?: return false
+        val token = Regex("""kaken="([^"]*)"""").find(unpackedJs)?.groupValues?.getOrNull(1) ?: return false
+        val responseText = app.get("$mainUrl/api/?$token", timeout = 30_000).text
+        val apiResponse = tryParseJson<PlayStreamApiResponse>(responseText) ?: return false
+        if (apiResponse.status != "ok") return false
+        val query = apiResponse.query ?: return false
+        val encryptedId = query.id
+        if (encryptedId.isNullOrBlank() || encryptedId.length < 20) return false
+        val salt = query.download ?: ""
+        val decryptedJson = try {
+            AesHelper.cryptoAESHandler(encryptedId, salt.toByteArray(), false)
+        } catch (_: Exception) { null }
+        if (decryptedJson.isNullOrBlank()) return false
+        val videoData = tryParseJson<PlayStreamVideoData>(decryptedJson) ?: return false
+        emitLinks(videoData.sources, videoData.tracks, subtitleCallback, callback)
+        return true
+    }
+
+    private suspend fun extractFromPl(
+        videoId: String,
+        url: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val apiUrl = "$mainUrl/pl/$videoId"
+        val headers = mapOf("Referer" to url, "Origin" to mainUrl)
+        val responseText = try { app.get(apiUrl, timeout = 30_000, headers = headers).text } catch (_: Exception) { return }
+        val encryptedData = tryParseJson<StreamplayEncryptedResponse>(responseText) ?: return
         val decryptedJson = decryptEVP(encryptedData) ?: return
         val videoResponse = tryParseJson<Root>(decryptedJson) ?: return
+        emitLinks(videoResponse.sources, videoResponse.tracks, subtitleCallback, callback)
+    }
 
-        videoResponse.sources.forEach { source ->
+    private suspend fun emitLinks(
+        sources: List<Source>?,
+        tracks: List<Track>?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        sources?.forEach { source ->
             val sourceUrl = httpsify(source.file)
             if (sourceUrl.contains(".m3u8")) {
                 M3u8Helper.generateM3u8(name, sourceUrl, referer = mainUrl).forEach(callback)
@@ -197,7 +239,7 @@ open class PlayStreamplay : ExtractorApi() {
                 )
             }
         }
-        videoResponse.tracks.forEach { track ->
+        tracks?.forEach { track ->
             subtitleCallback.invoke(newSubtitleFile(lang = track.label, url = track.file))
         }
     }
@@ -208,31 +250,14 @@ open class PlayStreamplay : ExtractorApi() {
             val salt = hexToBytes(encrypted.s)
             val ciphertext = java.util.Base64.getDecoder().decode(encrypted.ct)
             val iv = hexToBytes(encrypted.iv)
-
             val md5 = java.security.MessageDigest.getInstance("MD5")
-
-            md5.update(password)
-            md5.update(salt)
-            val d1 = md5.digest()
-
-            md5.update(d1)
-            md5.update(password)
-            md5.update(salt)
-            val d2 = md5.digest()
-
+            md5.update(password); md5.update(salt); val d1 = md5.digest()
+            md5.update(d1); md5.update(password); md5.update(salt); val d2 = md5.digest()
             val key = d1 + d2
-
             val cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
-            cipher.init(
-                javax.crypto.Cipher.DECRYPT_MODE,
-                javax.crypto.spec.SecretKeySpec(key, "AES"),
-                javax.crypto.spec.IvParameterSpec(iv)
-            )
-            val decrypted = cipher.doFinal(ciphertext)
-            String(decrypted, Charsets.UTF_8)
-        } catch (e: Exception) {
-            null
-        }
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, javax.crypto.spec.SecretKeySpec(key, "AES"), javax.crypto.spec.IvParameterSpec(iv))
+            String(cipher.doFinal(ciphertext), Charsets.UTF_8)
+        } catch (_: Exception) { null }
     }
 
     private fun hexToBytes(hex: String): ByteArray {
@@ -240,9 +265,15 @@ open class PlayStreamplay : ExtractorApi() {
     }
 
     data class StreamplayEncryptedResponse(
-        val ct: String,
-        val iv: String,
-        @param:JsonProperty("s")
-        val s: String
+        val ct: String, val iv: String, @param:JsonProperty("s") val s: String
+    )
+    data class PlayStreamApiResponse(
+        val query: PlayStreamApiQuery?, val status: String?, val message: String?
+    )
+    data class PlayStreamApiQuery(
+        val source: String?, val id: String?, val download: String?
+    )
+    data class PlayStreamVideoData(
+        val sources: List<Source>?, val tracks: List<Track>?
     )
 }

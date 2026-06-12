@@ -180,14 +180,7 @@ open class Donghuastream : MainAPI() {
     ) {
         when {
             "dailymotion.com" in iframeUrl -> {
-                // Normalize geo.dailymotion.com/player/xXX.html?video=ID → standard embed URL
-                val videoId = Regex("""video=([a-zA-Z0-9]+)""").find(iframeUrl)?.groupValues?.get(1)
-                if (videoId != null) {
-                    val embedUrl = "https://www.dailymotion.com/embed/video/$videoId"
-                    loadExtractor(embedUrl, referer = embedUrl, subtitleCallback, callback)
-                } else {
-                    loadExtractor(iframeUrl, referer = iframeUrl, subtitleCallback, callback)
-                }
+                loadExtractor(iframeUrl, referer = iframeUrl, subtitleCallback, callback)
             }
             "vidmoly" in iframeUrl -> {
                 val cleanedUrl = "http:" + iframeUrl.substringAfter("=\"").substringBefore("\"")
