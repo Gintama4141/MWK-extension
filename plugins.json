@@ -46,10 +46,10 @@
     },
     {
         "iconUrl": "https://raw.githubusercontent.com/Kohi-den/extensions-source/927f9c68fd64ce52f6212ae633d0f0585eca3545/src/en/donghuastream/res/mipmap-xxxhdpi/ic_launcher.png",
-        "fileHash": "sha256-3e1524916d4609e48a83366ea01eb6d8e883c70a3af74d9a5fa086555ec77165",
+        "fileHash": "sha256-ac457e47704e1d9a48b0a6a97aa8fcfc30d0e00175be4f72f574fec6d09f46f8",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 44025,
+        "fileSize": 44328,
         "status": 1,
         "language": "id",
         "authors": [
@@ -59,7 +59,7 @@
         "tvTypes": [
             "Anime"
         ],
-        "version": 10,
+        "version": 12,
         "internalName": "DonghuastreamProvider",
         "description": "Donghuastream \u2014 Streaming Donghua Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/DonghuastreamProvider.cs3",
