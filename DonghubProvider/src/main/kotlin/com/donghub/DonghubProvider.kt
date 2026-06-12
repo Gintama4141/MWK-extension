@@ -6,10 +6,10 @@ import com.lagradost.cloudstream3.utils.*
 import org.jsoup.Jsoup
 
 class DonghubProvider : MainAPI() {
-    override val mainUrl = "https://donghub.vip"
+    override var mainUrl = "https://donghub.vip"
     override var name = "Donghub"
     override val hasMainPage = true
-    override val lang = "id"
+    override var lang = "id"
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.Movie, TvType.Anime)
 
