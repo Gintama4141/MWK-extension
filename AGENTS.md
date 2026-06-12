@@ -15,6 +15,7 @@ Maintain and optimize the MWK-extension CloudStream3 plugin repo; fix `NoSuchMet
 Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Kuronime, Moviebox, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream, plus Anichin extractors.
 
 ## Status: ✅ All providers clean
+- Donghuastream v18: Added browser-like HTTP headers (UA, Referer, Accept, Accept-Language, Cache-Control) to bypass Cloudflare challenge; detected Cloudflare challenge page early with descriptive IOException; broadened iframe selector from `#pembed iframe` to multiple attribute patterns; broadened mirror selector from `option[data-index]` to `select.mirror option[data-index], select option[data-index]`.
 - All 16 providers fixed from `NoSuchMethodError: No virtual method parseJson(...)`.
 - Replaced `.parsedSafe<>()` / `parseJson<>` / `ObjectMapper` / `jacksonObjectMapper` / `Gson().fromJson` with `tryParseJson` + `.text`.
 - Fixed TorraStream: 6× `100L` timeouts → `30_000L`; magnet tracker cache; `toString()` → `.text` in 3× ani.zip calls + Animetosho; `Gson()` → `tryParseJson`; reversed `getQuality` 360p/480p bug.
@@ -23,6 +24,7 @@ Anichin, Cinemax21, Donghub, Donghuastream, Dutamovie, Kawanfilm, Kisskh, Kuroni
 - Build/deploy via GitHub Actions → `builds` branch.
 
 ## Recent Pushes
+- Donghuastream v18: Cloudflare bypass (headers + challenge detect), broader iframe/mirror selectors
 - `f266985` Stage 3: remove debug println from Kisskh v7, Nomat v5
 - `b60b6d6` Stage 2: 10 bug fixes across 6 providers (Cinemax21 v10, Moviebox v6, OneTouchTV v5, Anichin v6, Kuronime v12, TorraStream v88)
 - `eda6242` Dutamovie v16: optimize loadLinks — remove double fetch, dupes, wrong selectors

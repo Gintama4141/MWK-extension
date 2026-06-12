@@ -21,6 +21,7 @@ import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import java.io.IOException
 import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.getQualityFromName
@@ -145,18 +146,34 @@ open class Donghuastream : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val html = app.get(data).document
+        val headers = mapOf(
+            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer" to mainUrl,
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language" to "en-US,en;q=0.9,id;q=0.8",
+            "Cache-Control" to "no-cache",
+            "Pragma" to "no-cache"
+        )
+        val html = app.get(data, headers = headers).document
 
-        // Server 1: Direct iframe (handles lazy-loaded data-litespeed-src)
-        html.select("#pembed iframe").forEach { iframe ->
-            val iframeUrl = iframe.attr("data-litespeed-src").ifEmpty { iframe.attr("src") }.let(::httpsify)
-            if (!iframeUrl.isNullOrEmpty() && iframeUrl != "about:blank") {
-                processIframeUrl(iframeUrl, "Default", subtitleCallback, callback)
-            }
+        if (html.title().contains("Cloudflare", ignoreCase = true)
+            || html.select("form[id=challenge-form]").isNotEmpty()
+            || html.select("#challenge-running").isNotEmpty()
+        ) {
+            throw IOException("Cloudflare challenge detected for $data")
         }
 
+        // Server 1: Direct iframe (handles lazy-loaded data-litespeed-src)
+        html.select("iframe[data-litespeed-src], iframe[src*=\"dailymotion\"], iframe[src*=\"rumble\"], iframe[src*=\"streamplay\"], iframe[src*=\"ok.ru\"]")
+            .forEach { iframe ->
+                val iframeUrl = iframe.attr("data-litespeed-src").ifEmpty { iframe.attr("src") }.let(::httpsify)
+                if (!iframeUrl.isNullOrEmpty() && iframeUrl != "about:blank") {
+                    processIframeUrl(iframeUrl, "Default", subtitleCallback, callback)
+                }
+            }
+
         // Server 2..N: Base64-encoded options from <select class="mirror">
-        html.select("option[data-index]").amap { option ->
+        html.select("select.mirror option[data-index], select option[data-index]").amap { option ->
             val base64 = option.attr("value")
             if (base64.isBlank()) return@amap
             val label = option.text().trim()
