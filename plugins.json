@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://anichin.ro/wp-content/uploads/2026/02/cropped-favicon-anichin-192x192.webp",
-        "fileHash": "sha256-db6515048b607f9ca5b63d8552846984bfe6d76c6e6972d3e69099396071dad8",
+        "fileHash": "sha256-aaee7b8ef852a0c6f69bb92eee9b94703a3a7b0c789c10f92cf638a3b0cd1073",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 36151,
+        "fileSize": 38602,
         "status": 1,
         "language": "id",
         "authors": [
@@ -15,7 +15,7 @@
             "AnimeMovie",
             "Cartoon"
         ],
-        "version": 6,
+        "version": 7,
         "internalName": "AnichinProvider",
         "description": "Anichin - Streaming Donghua Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/AnichinProvider.cs3",
