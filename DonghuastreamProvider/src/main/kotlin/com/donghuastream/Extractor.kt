@@ -7,6 +7,7 @@ import com.lagradost.cloudstream3.base64Decode
 import com.lagradost.cloudstream3.extractors.Filesim
 import com.lagradost.cloudstream3.extractors.StreamSB
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
+import com.lagradost.cloudstream3.extractors.helper.AesHelper
 import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -19,6 +20,9 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
+import kotlin.tuple Triple
+import com.donghuastream.Source
+import com.donghuastream.Track
 
 open class Vtbe : ExtractorApi() {
     override var name = "Vtbe"
@@ -134,7 +138,7 @@ class Rumble : ExtractorApi() {
         val playerScript = document.selectFirst("script:containsData(jwplayer)")?.data() ?: return
         val sourceRegex = """"file"\s*:\s*"(https:[^"]+\.(?:mp4|m3u8)[^"]*)"""".toRegex()
         for ((index, source) in sourceRegex.findAll(playerScript).withIndex()) {
-            val fileUrl = source.groupValues[1].replace("\\/", "/")
+            val fileUrl = source.groupValues[1].replace("\/", "/")
             if (fileUrl.contains(".mp4")) {
                 callback.invoke(
                     newExtractorLink(name, "$name Video Server $index", url = fileUrl, INFER_TYPE) {
@@ -148,7 +152,7 @@ class Rumble : ExtractorApi() {
         }
         val trackRegex = """"file"\s*:\s*"(https:[^"]+\.vtt[^"]*)"\s*,\s*"label"\s*:\s*"([^"]+)"""".toRegex()
         for (track in trackRegex.findAll(playerScript)) {
-            val fileUrl = track.groupValues[1].replace("\\/", "/")
+            val fileUrl = track.groupValues[1].replace("\/", "/")
             val label = track.groupValues[2]
             subtitleCallback.invoke(newSubtitleFile(label, fileUrl))
         }
@@ -166,7 +170,7 @@ open class PlayStreamplay : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val doc = app.get(url, timeout = 10000).document
+        val doc = app.get(url, timeout = 30_000).document
         val unavailableMsg = doc.selectFirst("#message")?.text()
         if (unavailableMsg?.contains("unavailable", ignoreCase = true) == true) return
 
@@ -174,42 +178,17 @@ open class PlayStreamplay : ExtractorApi() {
         val packedCode = Regex("""eval\(.*?\)\)""", RegexOption.DOT_MATCHES_ALL).find(packedScript)?.value ?: return
         val unpackedJs = JsUnpacker(packedCode).unpack() ?: return
         val token = Regex("""kaken="(.*?)"""").find(unpackedJs)?.groupValues?.getOrNull(1) ?: return
-        val response = app.get("$mainUrl/api/?$token", timeout = 10000).text.let { tryParseJson<PlayStreamResponse>(it) } ?: return
-        val m3u8Url = response.sources.find { it.file.isNotBlank() }?.file
+        val responseText = app.get("$mainUrl/api/?$token", timeout = 30_000).text
+        val responseJson = tryParseJson<PlayStreamResponse>(responseText) ?: return
+        
+        val decryptedResponse = decryptResponse(responseJson)
+        val m3u8Url = decryptedResponse.sources.find { it.file.isNotBlank() }?.file
         if (!m3u8Url.isNullOrEmpty()) {
-            val headers = mapOf(
-                "pragma" to "no-cache",
-                "priority" to "u=0, i",
-                "sec-ch-ua" to "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Google Chrome\";v=\"138\"",
-                "sec-ch-ua-mobile" to "?0",
-                "sec-ch-ua-platform" to "\"Windows\"",
-                "sec-fetch-dest" to "document",
-                "sec-fetch-mode" to "navigate",
-                "sec-fetch-site" to "none",
-                "sec-fetch-user" to "?1",
-                "upgrade-insecure-requests" to "1",
-                "user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
-            )
-            M3u8Helper.generateM3u8(name, m3u8Url, mainUrl, headers = headers).forEach(callback)
+            M3u8Helper.generateM3u8(name, m3u8Url, mainUrl).forEach(callback)
         }
-        response.tracks.forEach { subtitle ->
-            subtitleCallback(newSubtitleFile(lang = subtitle.label, url = subtitle.file))
+        decryptedResponse.tracks.forEach { subtitle ->
+            subtitleCallback.invoke(newSubtitleFile(lang = subtitle.label, url = subtitle.file))
         }
     }
 
-    data class PlayStreamResponse(
-        val query: PlayStreamQuery?,
-        val status: String,
-        val message: String,
-        @param:JsonProperty("embed_url")
-        val embedUrl: String,
-        @param:JsonProperty("download_url")
-        val downloadUrl: String,
-        val title: String,
-        val poster: String,
-        val filmstrip: String,
-        val sources: List<Source>,
-        val tracks: List<Track>,
-    )
-    data class PlayStreamQuery(val source: String, val id: String, val download: String)
-}
+    priva
