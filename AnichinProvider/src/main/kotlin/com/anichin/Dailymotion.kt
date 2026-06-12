@@ -3,6 +3,7 @@ package com.anichin
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
@@ -31,25 +32,43 @@ open class Dailymotion : ExtractorApi() {
         val id = getVideoId(embedUrl) ?: return
         val metaDataUrl = "$baseUrl/player/metadata/video/$id"
         val response = app.get(metaDataUrl, referer = embedUrl).text
-        val qualityUrlRegex = Regex(""""url"\s*:\s*"([^"]+)"""")
-        val subtitlesRegex = Regex(""""subtitles"\s*:\s*\{[^}]*"data"\s*:\s*(\[[^\]]*\])""")
 
+        val qualityUrlRegex = Regex(""""url"\s*:\s*"([^"]+)"""")
         val urls = qualityUrlRegex.findAll(response)
             .map { it.groupValues[1] }
             .toList().filter { it.contains(".m3u8") }
-
         urls.forEach { videoUrl ->
             getStream(videoUrl, this.name, callback)
         }
 
-        val subtitlesMatches = subtitlesRegex.findAll(response).map { it.groupValues[1] }.toList()
-        subtitlesMatches.forEach { subtitleJson ->
-            val subRegex = Regex("""\{\s*"label"\s*:\s*"([^"]+)",\s*"urls"\s*:\s*\["([^"]+)"""")
-            subRegex.findAll(subtitleJson).forEach { match ->
-                val label = match.groupValues[1]
-                val subUrl = match.groupValues[2]
-                
-                subtitleCallback(newSubtitleFile(label, subUrl))
+        extractSubtitles(response, subtitleCallback)
+    }
+
+    private suspend fun extractSubtitles(
+        response: String,
+        subtitleCallback: (SubtitleFile) -> Unit
+    ) {
+        val subtitlesObjRegex = Regex(""""subtitles"\s*:\s*(\{(?:[^{}]|"[^"]*")*?\})""")
+        subtitlesObjRegex.find(response)?.let { match ->
+            val subtitlesJson = match.groupValues[1]
+                .replace(Regex(""""urls"\s*:\s*\["[^"]*"\]""")) { urlsMatch ->
+                    val url = Regex("""\["([^"]+)"\]""").find(urlsMatch.value)?.groupValues?.get(1) ?: return@replace urlsMatch.value
+                    """"urls":[{"url":"$url"}]"""
+                }
+                .replace(Regex(""""urls"\s*:\s*\[([^\]]+)\]""")) { arrMatch ->
+                    val items = arrMatch.groupValues[1].split(",").map { it.trim().trim('"') }
+                    val objects = items.joinToString(",") { """{"url":"$it"}""" }
+                    """"urls":[$objects]"""
+                }
+            val subsData = tryParseJson<Map<String, List<DmSubtitleEntry>>>(subtitlesJson)
+            subsData?.forEach { (_, entries) ->
+                entries.forEach { entry ->
+                    entry.urls?.firstOrNull()?.url?.let { url ->
+                        entry.label?.let { label ->
+                            subtitleCallback(newSubtitleFile(label, url))
+                        }
+                    }
+                }
             }
         }
     }
@@ -76,4 +95,13 @@ open class Dailymotion : ExtractorApi() {
     ) {
         return generateM3u8(name, streamLink, "").forEach(callback)
     }
+
+    data class DmSubtitleEntry(
+        val label: String? = null,
+        val urls: List<DmSubUrl>? = null,
+    )
+
+    data class DmSubUrl(
+        val url: String? = null,
+    )
 }

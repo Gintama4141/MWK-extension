@@ -1,18 +1,12 @@
 package com.anichin
 
-import com.lagradost.api.Log
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
-import com.lagradost.cloudstream3.utils.AppUtils
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import org.mozilla.javascript.Context
-import org.mozilla.javascript.NativeJSON
-import org.mozilla.javascript.NativeObject
-import org.mozilla.javascript.Scriptable
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
+import java.util.Base64
 
 class Vidguardto1 : Vidguardto() {
     override val mainUrl = "https://bembed.net"
@@ -38,24 +32,40 @@ open class Vidguardto : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val res = app.get(getEmbedUrl(url))
-        val resc = res.document.select("script:containsData(eval)").firstOrNull()?.data()
-        resc?.let {
-            val jsonStr2 = AppUtils.tryParseJson<SvgObject>(runJS2(it)) ?: return@let
-            val watchlink = sigDecode(jsonStr2.stream)
 
-            callback.invoke(
-                newExtractorLink(
-                    this.name,
-                    name,
-                    watchlink,
-                ) {
-                    this.referer = mainUrl
-                }
-            )
-        }
+        val evalScript = res.document.select("script:containsData(eval)").firstOrNull()?.data()
+            ?: return
+
+        val svgObject = extractSvgObject(evalScript) ?: return
+        val watchlink = sigDecode(svgObject.stream)
+
+        callback.invoke(
+            newExtractorLink(this.name, name, watchlink) {
+                this.referer = mainUrl
+            }
+        )
     }
 
-    @OptIn(ExperimentalEncodingApi::class)
+    private fun extractSvgObject(scriptData: String): SvgObject? {
+        val patterns = listOf(
+            """svg\s*[=:]\s*(\{(?:[^{}]|"[^"]*")*?\})""".toRegex(RegexOption.IGNORE_CASE),
+            """svg\s*[=:]\s*(\{[^}]*?(?:stream|hash)[^}]*?\})""".toRegex(RegexOption.IGNORE_CASE),
+            """\{[^}]*?"stream"[^}]*?"hash"[^}]*?\}""".toRegex(),
+        )
+
+        for (pattern in patterns) {
+            for (match in pattern.findAll(scriptData)) {
+                val raw = match.groupValues[1].ifBlank { match.value }
+                val json = raw
+                    .replace(Regex("""(\w+)\s*:""")) { "\"${it.groupValues[1]}\":" }
+                    .replace("'", "\"")
+                tryParseJson<SvgObject>(json)?.let { return it }
+            }
+        }
+
+        return null
+    }
+
     private fun sigDecode(url: String): String {
         val sigPart = url.substringAfter("sig=", "")
         if (sigPart.isBlank()) return url
@@ -68,7 +78,7 @@ open class Vidguardto : ExtractorApi() {
                     3 -> "="
                     else -> ""
                 }
-                String(Base64.decode((it + padding).toByteArray(Charsets.UTF_8)))
+                String(Base64.getDecoder().decode((it + padding).toByteArray(Charsets.UTF_8)))
             }
             .dropLast(5)
             .reversed()
@@ -83,48 +93,6 @@ open class Vidguardto : ExtractorApi() {
             .concatToString()
             .dropLast(5)
         return url.replace(sig, t)
-    }
-
-    private fun runJS2(hideMyHtmlContent: String): String {
-        var result = ""
-        val r = Runnable {
-            val rhino = Context.enter()
-            val scope: Scriptable = rhino.initSafeStandardObjects()
-            scope.put("window", scope, scope)
-            try {
-                rhino.evaluateString(
-                    scope,
-                    hideMyHtmlContent,
-                    "JavaScript",
-                    1,
-                    null
-                )
-                val svgObject = scope.get("svg", scope)
-                result = if (svgObject is NativeObject) {
-                    NativeJSON.stringify(
-                        Context.getCurrentContext(),
-                        scope,
-                        svgObject,
-                        null,
-                        null
-                    ).toString()
-                } else {
-                    Context.toString(svgObject)
-                }
-            } catch (e: Exception) {
-                Log.e("runJS", "Error executing JavaScript: ${e.message}")
-            } finally {
-                Context.exit()
-            }
-        }
-        val t = Thread(null, r, "thread_rhino", 8 * 1024 * 1024)
-        t.start()
-        try {
-            t.join()
-        } catch (e: InterruptedException) {
-            Log.e("runJS", "Thread interrupted: ${e.message}")
-        }
-        return result
     }
 
     private fun getEmbedUrl(url: String): String {

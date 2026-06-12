@@ -51,7 +51,7 @@ class AnichinProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): AnimeSearchResponse? {
-        val anchor = selectFirst(".bsx > a, a") ?: return null
+        val anchor = selectFirst(".bsx > a, h2.entry-title a, .tt a") ?: return null
         val href = anchor.attr("abs:href")
         val title = anchor.attr("title").ifBlank {
             selectFirst("h2[itemprop=headline], .tt h2, .tt")?.text()?.trim().orEmpty()
@@ -69,24 +69,31 @@ class AnichinProvider : MainAPI() {
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url = request.data.replace("%d", page.toString())
-        val document = app.get(url).document
-        val results = document.select(".listupd article").mapNotNull { it.toSearchResult() }
-
-        return newHomePageResponse(
-            HomePageList(request.name, results),
-            hasNext = results.isNotEmpty()
-        )
+        return try {
+            val url = request.data.replace("%d", page.toString())
+            val document = app.get(url).document
+            val results = document.select(".listupd article").mapNotNull { it.toSearchResult() }
+            newHomePageResponse(
+                HomePageList(request.name, results),
+                hasNext = results.isNotEmpty()
+            )
+        } catch (e: Exception) {
+            throw ErrorLoadingException("Failed to load main page: ${e.message}")
+        }
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("$mainUrl/?s=${URLEncoder.encode(query, "UTF-8")}").document
-        return document.select(".listupd article").mapNotNull { it.toSearchResult() }
+        return try {
+            val document = app.get("$mainUrl/?s=${URLEncoder.encode(query, "UTF-8")}").document
+            document.select(".listupd article").mapNotNull { it.toSearchResult() }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun load(url: String): LoadResponse {
         val document = app.get(url).document
-        val title = document.selectFirst(".entry-title")?.text()?.trim() ?: throw ErrorLoadingException("Title not found")
+        val title = document.selectFirst(".entry-title, h1.entry-title, .post-title h1, [itemprop*=name] h1")?.text()?.trim() ?: throw ErrorLoadingException("Title not found")
         val poster = document.selectFirst(".thumb img, .bigcontent .thumb img")?.getImageAttr()
         val description = document.selectFirst(".entry-content[itemprop=description]")?.text()?.trim()
             ?: document.selectFirst(".desc")?.text()?.trim()
@@ -96,7 +103,7 @@ class AnichinProvider : MainAPI() {
             document.select(".spe span").firstOrNull { it.text().contains("Released:", true) }?.text().orEmpty()
         )?.groupValues?.getOrNull(1)?.toIntOrNull()
 
-        val episodes = document.select(".eplister ul li a").mapNotNull { element ->
+        val episodes = document.select(".eplister ul li a, .episode-list a, [id*=episode] li a").mapNotNull { element ->
             val href = element.attr("abs:href").ifBlank { return@mapNotNull null }
             val number = element.selectFirst(".epl-num")?.text()?.replace(Regex("\\D"), "")?.toIntOrNull()
             val name = element.selectFirst(".epl-title")?.text()?.trim()
@@ -126,20 +133,24 @@ class AnichinProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data).document
-        val links = mutableSetOf<String>()
+        return try {
+            val document = app.get(data).document
+            val links = mutableSetOf<String>()
 
-        document.select("#embed_holder iframe[src]").mapTo(links) { it.attr("abs:src") }
-        document.select("select.mirror option[value]").amap { option ->
-            val decoded = decodeServerHash(option.attr("value")) ?: return@amap
-            Jsoup.parse(decoded).select("iframe[src]").mapTo(links) { it.attr("src") }
+            document.select("#embed_holder iframe[src], .player-embed iframe[src], [id*=player] iframe[src]").mapTo(links) { it.attr("abs:src") }
+            document.select("select.mirror option[value]").amap { option ->
+                val decoded = decodeServerHash(option.attr("value")) ?: return@amap
+                Jsoup.parse(decoded).select("iframe[src]").mapTo(links) { it.attr("src") }
+            }
+
+            links.filter { it.isNotBlank() }.amap { link ->
+                loadExtractor(fixUrl(link), data, subtitleCallback, callback)
+            }
+
+            links.isNotEmpty()
+        } catch (e: Exception) {
+            false
         }
-
-        links.filter { it.isNotBlank() }.amap { link ->
-            loadExtractor(fixUrl(link), data, subtitleCallback, callback)
-        }
-
-        return links.isNotEmpty()
     }
 
     private fun decodeServerHash(hash: String): String? {
