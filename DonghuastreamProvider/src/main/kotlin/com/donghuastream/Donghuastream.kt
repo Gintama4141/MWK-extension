@@ -25,8 +25,6 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import com.donghuastream.Okru
-import com.donghuastream.Rumble
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -133,7 +131,7 @@ open class Donghuastream : MainAPI() {
     ): Boolean {
         val html = app.get(data).document
 
-        // First, try to extract direct iframe URLs from the page (handles lazy-loaded iframes)
+        // Server 1: Direct iframe (handles lazy-loaded data-litespeed-src)
         html.select("#pembed iframe").forEach { iframe ->
             val iframeUrl = iframe.attr("data-litespeed-src").ifEmpty { iframe.attr("src") }.let(::httpsify)
             if (!iframeUrl.isNullOrEmpty() && iframeUrl != "about:blank") {
@@ -141,9 +139,8 @@ open class Donghuastream : MainAPI() {
             }
         }
 
-        // Then process base64-encoded options
-        val options = html.select("option[data-index]")
-        options.amap { option ->
+        // Server 2..N: Base64-encoded options from <select class="mirror">
+        html.select("option[data-index]").amap { option ->
             val base64 = option.attr("value")
             if (base64.isBlank()) return@amap
             val label = option.text().trim()
@@ -153,20 +150,20 @@ open class Donghuastream : MainAPI() {
                 return@amap
             }
 
-            // Try to find iframe src first
-            var iframeUrl = Jsoup.parse(decodedHtml).selectFirst("iframe")?.attr("src")?.let(::httpsify)
+            val doc = Jsoup.parse(decodedHtml)
 
-            // If no iframe found, try meta itemprop="embedUrl" (Dailymotion pattern)
+            // Try iframe src first
+            var iframeUrl = doc.selectFirst("iframe")?.attr("src")?.let(::httpsify)
+
+            // Fallback: meta itemprop="embedUrl" (Dailymotion pattern)
             if (iframeUrl.isNullOrEmpty()) {
-                iframeUrl = Jsoup.parse(decodedHtml)
-                    .selectFirst("meta[itemprop=embedUrl]")?.attr("content")
-                    ?.let { metaContent ->
-                        // meta content example: "https://geo.dailymotion.com/player/xir9c.html?video=x8ohp79"
-                        val videoId = Regex("""video=([^&]+)""").find(metaContent)?.groupValues?.get(1)
-                        if (!videoId.isNullOrBlank()) {
-                            "https://geo.dailymotion.com/player/xir9c.html?video=$videoId"
-                        } else null
-                    }?.let(::httpsify)
+                val metaContent = doc.selectFirst("meta[itemprop=embedUrl]")?.attr("content")
+                if (!metaContent.isNullOrBlank()) {
+                    val videoId = Regex("""video=([^&]+)""").find(metaContent)?.groupValues?.get(1)
+                    if (!videoId.isNullOrBlank()) {
+                        iframeUrl = "https://geo.dailymotion.com/player/xir9c.html?video=$videoId"
+                    }
+                }
             }
 
             if (iframeUrl.isNullOrEmpty()) return@amap
@@ -182,6 +179,16 @@ open class Donghuastream : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ) {
         when {
+            "dailymotion.com" in iframeUrl -> {
+                // Normalize geo.dailymotion.com/player/xXX.html?video=ID → standard embed URL
+                val videoId = Regex("""video=([a-zA-Z0-9]+)""").find(iframeUrl)?.groupValues?.get(1)
+                if (videoId != null) {
+                    val embedUrl = "https://www.dailymotion.com/embed/video/$videoId"
+                    loadExtractor(embedUrl, referer = embedUrl, subtitleCallback, callback)
+                } else {
+                    loadExtractor(iframeUrl, referer = iframeUrl, subtitleCallback, callback)
+                }
+            }
             "vidmoly" in iframeUrl -> {
                 val cleanedUrl = "http:" + iframeUrl.substringAfter("=\"").substringBefore("\"")
                 loadExtractor(cleanedUrl, referer = iframeUrl, subtitleCallback, callback)

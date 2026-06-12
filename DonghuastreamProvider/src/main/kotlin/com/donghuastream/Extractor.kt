@@ -97,7 +97,6 @@ open class Ultrahd : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val response = app.get(url, referer = mainUrl)
-        val doc = response.document
         val html = response.text
         val ajaxUrl = Regex("""\$\s*\.\s*ajax\(\s*\{\s*url:\s*"(.*?)"""").find(html)?.groupValues?.get(1) ?: return
         val root = app.get(ajaxUrl).text.let { tryParseJson<Root>(it) } ?: return
@@ -168,11 +167,14 @@ open class PlayStreamplay : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val doc = app.get(url, timeout = 10000).document
+        val unavailableMsg = doc.selectFirst("#message")?.text()
+        if (unavailableMsg?.contains("unavailable", ignoreCase = true) == true) return
+
         val packedScript = doc.selectFirst("script:containsData(function(p,a,c,k,e,d))")?.data() ?: return
-        val packedCode = Regex("""eval\(.*?\)\)\)""", RegexOption.DOT_MATCHES_ALL).find(packedScript)?.value ?: return
+        val packedCode = Regex("""eval\(.*?\)\)""", RegexOption.DOT_MATCHES_ALL).find(packedScript)?.value ?: return
         val unpackedJs = JsUnpacker(packedCode).unpack() ?: return
         val token = Regex("""kaken="(.*?)"""").find(unpackedJs)?.groupValues?.getOrNull(1) ?: return
-        val response = app.get("$mainUrl/api/?$token", timeout = 10000).text.let { tryParseJson<Response>(it) } ?: return
+        val response = app.get("$mainUrl/api/?$token", timeout = 10000).text.let { tryParseJson<PlayStreamResponse>(it) } ?: return
         val m3u8Url = response.sources.find { it.file.isNotBlank() }?.file
         if (!m3u8Url.isNullOrEmpty()) {
             val headers = mapOf(
@@ -195,8 +197,8 @@ open class PlayStreamplay : ExtractorApi() {
         }
     }
 
-    data class Response(
-        val query: Query,
+    data class PlayStreamResponse(
+        val query: PlayStreamQuery?,
         val status: String,
         val message: String,
         @param:JsonProperty("embed_url")
@@ -209,7 +211,5 @@ open class PlayStreamplay : ExtractorApi() {
         val sources: List<Source>,
         val tracks: List<Track>,
     )
-    data class Query(val source: String, val id: String, val download: String)
-    data class Source(val file: String, val type: String, val label: String, val default: Boolean)
-    data class Track(val file: String, val label: String, val default: Boolean?)
+    data class PlayStreamQuery(val source: String, val id: String, val download: String)
 }
