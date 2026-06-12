@@ -28,11 +28,13 @@ open class SeaTV : Donghuastream() {
     override suspend fun search(query: String): List<SearchResponse> {
         val searchResponse = mutableListOf<SearchResponse>()
         for (i in 1..3) {
-            val document = app.get("${mainUrl}/page/$i/?s=$query").document
-            val results = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
-            if (!searchResponse.containsAll(results)) searchResponse.addAll(results)
-            else break
-            if (results.isEmpty()) break
+            try {
+                val document = app.get("${mainUrl}/page/$i/?s=$query").document
+                val results = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
+                if (results.isEmpty()) break
+                if (!searchResponse.containsAll(results)) searchResponse.addAll(results)
+                else break
+            } catch (_: Exception) { break }
         }
         return searchResponse
     }

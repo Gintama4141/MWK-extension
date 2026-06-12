@@ -31,6 +31,14 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
 open class Donghuastream : MainAPI() {
+    companion object {
+        private val dmUrlRegex = Regex(""""url"\s*:\s*"([^"]+)"""")
+        private val dmSubOuterRegex = Regex(""""subtitles"\s*:\s*\{[^}]*"data"\s*:\s*(\[[^\]]*\])""")
+        private val dmSubInnerRegex = Regex("""\{\s*"label"\s*:\s*"([^"]+)",\s*"urls"\s*:\s*\["([^"]+)"""")
+        private val dmVideoIdRegex = Regex("^[kx][a-zA-Z0-9]+$")
+        private val vidmolyUrlRegex = Regex("""https?://(?:www\.)?vidmoly\.[a-z]+/[^"'\s]+""")
+    }
+
     override var mainUrl = "https://donghuastream.org"
     override var name = "Donghuastream"
     override val hasMainPage = true
@@ -182,39 +190,13 @@ open class Donghuastream : MainAPI() {
     ) {
         when {
             "dailymotion.com" in iframeUrl -> {
-                val embedUrl = when {
-                    iframeUrl.contains("/embed/") || iframeUrl.contains("/video/") -> iframeUrl
-                    iframeUrl.contains("geo.dailymotion.com") -> {
-                        val videoId = iframeUrl.substringAfter("video=")
-                        "https://www.dailymotion.com/embed/video/$videoId"
-                    }
-                    else -> null
-                }
-                if (embedUrl != null) {
-                    val id = try {
-                        java.net.URI(embedUrl).path.substringAfter("/video/")
-                    } catch (_: Exception) { null }
-                    if (id != null && id.matches(Regex("^[kx][a-zA-Z0-9]+$"))) {
-                        val metaUrl = "https://www.dailymotion.com/player/metadata/video/$id"
-                        val resp = app.get(metaUrl, referer = embedUrl).text
-                        Regex(""""url"\s*:\s*"([^"]+)"""").findAll(resp)
-                            .map { it.groupValues[1] }
-                            .filter { it.contains(".m3u8") }
-                            .forEach { videoUrl ->
-                                generateM3u8("Dailymotion", videoUrl, "").forEach(callback)
-                            }
-                        Regex(""""subtitles"\s*:\s*\{[^}]*"data"\s*:\s*(\[[^\]]*\])""")
-                            .findAll(resp).forEach { m ->
-                                Regex("""\{\s*"label"\s*:\s*"([^"]+)",\s*"urls"\s*:\s*\["([^"]+)"""").findAll(m.groupValues[1]).forEach { sm ->
-                                    subtitleCallback(newSubtitleFile(sm.groupValues[1], sm.groupValues[2]))
-                                }
-                            }
-                    }
-                }
+                extractDailymotion(iframeUrl, subtitleCallback, callback)
             }
             "vidmoly" in iframeUrl -> {
-                val cleanedUrl = "http:" + iframeUrl.substringAfter("=\"").substringBefore("\"")
-                loadExtractor(cleanedUrl, referer = iframeUrl, subtitleCallback, callback)
+                val cleanedUrl = vidmolyUrlRegex.find(iframeUrl)?.value
+                if (cleanedUrl != null) {
+                    loadExtractor(cleanedUrl, referer = iframeUrl, subtitleCallback, callback)
+                }
             }
             "rumble.com" in iframeUrl -> {
                 Rumble().getUrl(iframeUrl, iframeUrl, subtitleCallback, callback)
@@ -237,6 +219,38 @@ open class Donghuastream : MainAPI() {
             }
             else -> {
                 loadExtractor(iframeUrl, referer = iframeUrl, subtitleCallback, callback)
+            }
+        }
+    }
+
+    private suspend fun extractDailymotion(
+        iframeUrl: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val embedUrl = when {
+            iframeUrl.contains("/embed/") || iframeUrl.contains("/video/") -> iframeUrl
+            iframeUrl.contains("geo.dailymotion.com") -> {
+                val videoId = iframeUrl.substringAfter("video=")
+                "https://www.dailymotion.com/embed/video/$videoId"
+            }
+            else -> null
+        }
+        if (embedUrl == null) return
+        val id = try {
+            java.net.URI(embedUrl).path.substringAfter("/video/")
+        } catch (_: Exception) { return }
+        if (!id.matches(dmVideoIdRegex)) return
+        val resp = app.get("https://www.dailymotion.com/player/metadata/video/$id", referer = embedUrl).text
+        dmUrlRegex.findAll(resp)
+            .map { it.groupValues[1] }
+            .filter { it.contains(".m3u8") }
+            .forEach { videoUrl ->
+                generateM3u8("Dailymotion", videoUrl, "").forEach(callback)
+            }
+        dmSubOuterRegex.findAll(resp).forEach { m ->
+            dmSubInnerRegex.findAll(m.groupValues[1]).forEach { sm ->
+                subtitleCallback(newSubtitleFile(sm.groupValues[1], sm.groupValues[2]))
             }
         }
     }

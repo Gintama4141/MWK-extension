@@ -247,21 +247,32 @@ open class PlayStreamplay : ExtractorApi() {
     private fun decryptEVP(encrypted: StreamplayEncryptedResponse): String? {
         return try {
             val password = AES_PASSWORD.toByteArray(Charsets.UTF_8)
-            val salt = hexToBytes(encrypted.s)
+            val salt = hexToBytes(encrypted.s) ?: return null
             val ciphertext = android.util.Base64.decode(encrypted.ct, android.util.Base64.DEFAULT)
-            val iv = hexToBytes(encrypted.iv)
+            val iv = hexToBytes(encrypted.iv) ?: return null
             val md5 = java.security.MessageDigest.getInstance("MD5")
-            md5.update(password); md5.update(salt); val d1 = md5.digest()
-            md5.update(d1); md5.update(password); md5.update(salt); val d2 = md5.digest()
+            md5.update(password)
+            md5.update(salt)
+            val d1 = md5.digest()
+            md5.update(d1)
+            md5.update(password)
+            md5.update(salt)
+            val d2 = md5.digest()
             val key = d1 + d2
             val cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
-            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, javax.crypto.spec.SecretKeySpec(key, "AES"), javax.crypto.spec.IvParameterSpec(iv))
+            cipher.init(
+                javax.crypto.Cipher.DECRYPT_MODE,
+                javax.crypto.spec.SecretKeySpec(key, "AES"),
+                javax.crypto.spec.IvParameterSpec(iv)
+            )
             String(cipher.doFinal(ciphertext), Charsets.UTF_8)
         } catch (_: Exception) { null }
     }
 
-    private fun hexToBytes(hex: String): ByteArray {
-        return hex.chunked(2).map { it.toIntOrNull(16)?.toByte() ?: 0.toByte() }.toByteArray()
+    private fun hexToBytes(hex: String): ByteArray? {
+        return try {
+            hex.chunked(2).map { it.toIntOrNull(16)?.toByte() ?: return null }.toByteArray()
+        } catch (_: Exception) { null }
     }
 
     data class StreamplayEncryptedResponse(
