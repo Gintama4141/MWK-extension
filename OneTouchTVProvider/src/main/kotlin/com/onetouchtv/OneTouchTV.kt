@@ -58,7 +58,7 @@ class OneTouchTV : MainAPI() {
         } else {
             tryParseJson<Search>(decryptedJson)?.result
         } ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
-        if (results.isEmpty()) return emptyList().toNewSearchResponseList()
+        if (results.isEmpty()) return emptyList<SearchResult>().toNewSearchResponseList()
         return results.map { result ->
             newTvSeriesSearchResponse(
                 result.title ?: "UnKnown",
