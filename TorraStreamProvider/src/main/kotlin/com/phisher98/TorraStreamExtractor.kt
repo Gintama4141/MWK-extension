@@ -660,10 +660,10 @@ suspend fun invokeKnaben(
                 .selectFirst("td.d-sm-none.d-xl-table-cell a")
                 ?.text()
                 ?.trim()
-                .ifBlank {
-                    row.select("td").lastOrNull()?.selectFirst("a")?.text()?.trim()
-                }
                 .orEmpty()
+                .ifBlank {
+                    row.select("td").lastOrNull()?.selectFirst("a")?.text()?.trim().orEmpty()
+                }
 
             val tds = row.select("td")
             val sizeText = tds.getOrNull(2)?.text().orEmpty()
