@@ -158,10 +158,10 @@
     },
     {
         "iconUrl": "https://play-lh.googleusercontent.com/EFMkS1T-8txjLFIl9QxjcTRLa7a7Muv08C04b7ongYgodoY_b2T3GpxzGAQEx-eitfQ=w256",
-        "fileHash": "sha256-b8589dd4e79a2057eb0afc29d4d74613b4c5b54f20f0f38390d6f05b901b7a76",
+        "fileHash": "sha256-2d39d9013fe248b9b86850803707d65d23aad6c404cc212d293eaccca3c0e14b",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 42550,
+        "fileSize": 42917,
         "status": 1,
         "language": "id",
         "authors": [
@@ -173,7 +173,7 @@
             "Anime",
             "OVA"
         ],
-        "version": 12,
+        "version": 13,
         "internalName": "KuronimeProvider",
         "description": "Kuronime \u2014 Streaming Anime Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/KuronimeProvider.cs3",
