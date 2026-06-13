@@ -84,20 +84,6 @@ data class MappleSources(
     )
 }
 
-data class PrimeboxSources(
-    @JsonProperty("streams") val streams: HashMap<String, String>? = null,
-    @JsonProperty("subtitles") val subtitles: ArrayList<Subtitles>? = null,
-) {
-    data class Subtitles(
-        @JsonProperty("file") val file: String? = null,
-        @JsonProperty("label") val label: String? = null,
-    )
-}
-
-data class RageSources(
-    @JsonProperty("url") val url: String? = null,
-)
-
 data class VidsrcccServer(
     @JsonProperty("name") val name: String? = null,
     @JsonProperty("hash") val hash: String? = null,
