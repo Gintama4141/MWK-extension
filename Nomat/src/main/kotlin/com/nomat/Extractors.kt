@@ -1,12 +1,9 @@
 package com.nomat
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
-import java.net.URI
-import com.lagradost.api.Log
-import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.extractors.VidHidePro
 
 open class Dingtezuni : ExtractorApi() {
@@ -28,22 +25,30 @@ open class Dingtezuni : ExtractorApi() {
             "User-Agent" to USER_AGENT,
         )
 
-        val response = app.get(getEmbedUrl(url), referer = referer)
-        val script = if (!getPacked(response.text).isNullOrEmpty()) {
-            var result = getAndUnpack(response.text)
-            if (result.contains("var links")) result = result.substringAfter("var links")
-            result
-        } else {
-            response.document.selectFirst("script:containsData(sources:)")?.data()
-        } ?: return
+        try {
+            val response = app.get(getEmbedUrl(url), referer = referer, timeout = 15_000L)
+            val script = if (!getPacked(response.text).isNullOrEmpty()) {
+                var result = getAndUnpack(response.text)
+                if (result.isNullOrBlank()) {
+                    logError(Exception("$name: unpack returned empty for $url"))
+                    return
+                }
+                if (result.contains("var links")) result = result.substringAfter("var links")
+                result
+            } else {
+                response.document.selectFirst("script:containsData(sources:)")?.data()
+            } ?: return
 
-        Regex(":\\s*\"(.*?m3u8.*?)\"").findAll(script).forEach { match ->
-            generateM3u8(
-                name,
-                fixUrl(match.groupValues[1]),
-                referer = "$mainUrl/",
-                headers = headers
-            ).forEach(callback)
+            Regex("\"(https?://[^\"]+\\.m3u8[^\"]*)\"").findAll(script).forEach { match ->
+                generateM3u8(
+                    name,
+                    fixUrl(match.groupValues[1]),
+                    referer = "$mainUrl/",
+                    headers = headers
+                ).forEach(callback)
+            }
+        } catch (e: Exception) {
+            logError(e)
         }
     }
 
@@ -75,7 +80,7 @@ class Bingezove : Dingtezuni() {
     override var mainUrl = "https://bingezove.com"
 }
 
-class Hydrax: VidHidePro() {
+class Hydrax : VidHidePro() {
     override var name = "Hydrax"
     override var mainUrl = "https://playhydrax.com"
 }
