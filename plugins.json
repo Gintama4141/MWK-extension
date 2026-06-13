@@ -313,10 +313,10 @@
     },
     {
         "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://ww03.pencurimovie.bond&size=%size%",
-        "fileHash": "sha256-75d5753b7846dc0b67ec19bd7d2ab6023f07a7ff313e35cfe9d1786aae59cb69",
+        "fileHash": "sha256-2cbba03160b2e98778bb7292d4cd8b745750ea4559dba28ff5e16c2af6bf2cf3",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 15479,
+        "fileSize": 17674,
         "status": 1,
         "language": "id",
         "authors": [
@@ -326,7 +326,7 @@
             "Movie",
             "TvSeries"
         ],
-        "version": 3,
+        "version": 4,
         "internalName": "PencuriMovieProvider",
         "description": "PencuriMovie \u2014 Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/PencuriMovieProvider.cs3",
