@@ -75,7 +75,7 @@ class PencurimovieProvider : MainAPI() {
         val description = document.selectFirst("div.desc p.f-desc")?.text()?.trim()
         val tvtag = if (document.select("div.tvseason").isNotEmpty()) TvType.TvSeries else TvType.Movie
         val trailer = document.select("meta[itemprop=embedUrl]").attr("content") ?: ""
-        val genre = document.select("div.mvic-info p").filter { it.text().startsWith("Genre") }.select("a").map { it.text() }
+        val genre = document.select("div.mvic-info p").filter { it.text().startsWith("Genre") }.flatMap { it.select("a") }.map { it.text() }
         val rating = document.selectFirst("span.imdb-r[itemprop=ratingValue]")
             ?.text()
             ?.toDoubleOrNull()
@@ -85,9 +85,9 @@ class PencurimovieProvider : MainAPI() {
             ?.toIntOrNull()
 
         val actors =
-            document.select("div.mvic-info p").filter { it.text().startsWith("Actors") }.select("a").map { it.text() }
+            document.select("div.mvic-info p").filter { it.text().startsWith("Actors") }.flatMap { it.select("a") }.map { it.text() }
         val year =
-            document.select("div.mvic-info p").filter { it.text().startsWith("Release") }.select("a").text().toIntOrNull()
+            document.select("div.mvic-info p").filter { it.text().startsWith("Release") }.flatMap { it.select("a") }.text().toIntOrNull()
         val recommendation=document.select("div.ml-item").mapNotNull {
             it.toSearchResult()
         }
@@ -157,14 +157,13 @@ class PencurimovieProvider : MainAPI() {
             document.select("track[kind=subtitles]").forEach { track ->
                 val src = track.attr("src")
                 val label = track.attr("label").ifBlank { "Subtitle" }
-                val lang = track.attr("srclang").ifBlank { "id" }
                 if (src.isNotBlank()) {
-                    subtitleCallback(SubtitleFile(src, label, lang))
+                    subtitleCallback(SubtitleFile(src, label))
                 }
             }
             found
         } catch (e: Exception) {
-            Log.e("PencuriMovie", "loadLinks failed for $data", e)
+            Log.e("PencuriMovie", "loadLinks failed for $data: ${e.message}")
             false
         }
     }
