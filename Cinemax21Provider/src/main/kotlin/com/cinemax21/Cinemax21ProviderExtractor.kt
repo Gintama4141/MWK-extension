@@ -277,9 +277,12 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         fun String.decrypt(key: String): List<GpressSources>? { return tryParseJson<List<GpressSources>>(base64Decode(this).xorDecrypt(key)) }
         val slug = getEpisodeSlug(season, episode)
         val query = if (season == null) title else "$title Season $season"
-        var cookies = mapOf("_identitygomovies7" to """5a436499900c81529e3740fd01c275b29d7e2fdbded7d760806877edb1f473e0a%3A2%3A%7Bi%3A0%3Bs%3A18%3A%22_identitygomovies7%22%3Bi%3A1%3Bs%3A52%3A%22%5B2800906%2C%22L2aGGTL9aqxksKR0pLvL66TunKNe1xXb%22%2C2592000%5D%22%3B%7D""")
+        var cookies = gomoviesCookies ?: run {
+            val initRes = app.get(api)
+            initRes.cookies.filter { it.key.contains("gomovies", ignoreCase = true) }.also { gomoviesCookies = it }
+        }
         var res = app.get("$api/search/$query", cookies = cookies)
-        cookies = gomoviesCookies ?: res.cookies.filter { it.key == "advanced-frontendgomovies7" }.also { gomoviesCookies = it }
+        cookies = gomoviesCookies ?: res.cookies.filter { it.key.contains("gomovies", ignoreCase = true) }.also { gomoviesCookies = it }
         val doc = res.document
         val media = doc.select("div.$mediaSelector").map { Triple(it.attr("data-filmName"), it.attr("data-year"), it.select("a").attr("href")) }
             .let { el -> if (el.size == 1) el.firstOrNull() else el.find { if (season == null) (it.first.equals(title, true) || it.first.equals("$title ($year)", true)) && it.second.equals("$year") else it.first.equals("$title - Season $season", true) } ?: el.find { it.first.contains("$title", true) && it.second.equals("$year") } } ?: return
@@ -466,10 +469,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val (server, id) = app.post("$api/response.php", data = mapOf("token" to token), headers = mapOf("X-Requested-With" to "XMLHttpRequest")).document.select("ul.sources-list li:contains(vipstream-S)").let { it.attr("data-server") to it.attr("data-id") }
         val playUrl = "$api/playvideo.php?video_id=$id&server_id=$server&token=$token&init=1"
         val playRes = app.get(playUrl).document
-        val iframe = playRes.selectFirst("iframe.source-frame")?.attr("src") ?: run {
-            val captchaId = playRes.select("input[name=captcha_id]").attr("value")
-            app.post(playUrl, requestBody = "captcha_id=TEduRVR6NmZ3Sk5Jc3JpZEJCSlhTM25GREs2RCswK0VQN2ZsclI5KzNKL2cyV3dIaFEwZzNRRHVwMzdqVmoxV0t2QlBrNjNTY04wY2NSaHlWYS9Jc09nb25wZTV2YmxDSXNRZVNuQUpuRW5nbkF2dURsQUdJWVpwOWxUZzU5Tnh0NXllQjdYUG83Y0ZVaG1XRGtPOTBudnZvN0RFK0wxdGZvYXpFKzVNM2U1a2lBMG40REJmQ042SA%3D%3D&captcha_answer%5B%5D=8yhbjraxqf3o&captcha_answer%5B%5D=10zxn5vi746w&captcha_answer%5B%5D=gxfpe17tdwub".toRequestBody(RequestBodyTypes.TEXT.toMediaTypeOrNull())).document.selectFirst("iframe.source-frame")?.attr("src")
-        }
+        val iframe = playRes.selectFirst("iframe.source-frame")?.attr("src")
         val json = app.get(iframe ?: return).text.substringAfter("Playerjs(").substringBefore(");")
         val video = """file:"([^"]+)""".toRegex().find(json)?.groupValues?.get(1)
         callback.invoke(newExtractorLink("Superembed", "Superembed", video ?: return, INFER_TYPE) { this.headers = mapOf("Accept" to "*/*") })

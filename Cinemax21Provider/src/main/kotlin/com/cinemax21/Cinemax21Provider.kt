@@ -34,6 +34,8 @@ import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 open class Cinemax21Provider : TmdbProvider() {
     override var name = "CineMax21"
     override val hasMainPage = true
@@ -190,7 +192,7 @@ open class Cinemax21Provider : TmdbProvider() {
                     ?: return@mapNotNull null, getImageUrl(cast.profilePath)
                 ), roleString = cast.character
             )
-        } ?: return null
+        } ?: emptyList()
         val recommendations =
             res.recommendations?.results?.mapNotNull { media -> media.toSearchResponse() }
         val trailer = res.videos?.results
@@ -200,45 +202,48 @@ open class Cinemax21Provider : TmdbProvider() {
             ?.take(1)
         return if (type == TvType.TvSeries) {
             val lastSeason = res.lastEpisodeToAir?.seasonNumber
-            val episodes = res.seasons?.mapNotNull { season ->
-                app.get("$tmdbAPI/${data.type}/${data.id}/season/${season.seasonNumber}?api_key=$apiKey").text
-                    .let { tryParseJson<MediaDetailEpisodes>(it) }?.episodes?.map { eps ->
-                        newEpisode(
-                            data = LinkData(
-                                data.id,
-                                res.externalIds?.imdbId,
-                                res.externalIds?.tvdbId,
-                                data.type,
-                                eps.seasonNumber,
-                                eps.episodeNumber,
-                                title = title,
-                                year = season.airDate?.split("-")?.first()?.toIntOrNull(),
-                                orgTitle = orgTitle,
-                                isAnime = isAnime,
-                                airedYear = year,
-                                lastSeason = lastSeason,
-                                epsTitle = eps.name,
-                                jpTitle = res.alternativeTitles?.results?.find { it.iso31661 == "JP" }?.title,
-                                date = season.airDate,
-                                airedDate = res.releaseDate
-                                    ?: res.firstAirDate,
-                                isAsian = isAsian,
-                                isBollywood = isBollywood,
-                                isCartoon = isCartoon
-                            ).toJson()
-                        ) {
-                            this.name =
-                                eps.name + if (isUpcoming(eps.airDate)) " • [UPCOMING]" else ""
-                            this.season = eps.seasonNumber
-                            this.episode = eps.episodeNumber
-                            this.posterUrl = getImageUrl(eps.stillPath)
-                            this.score = Score.from10(eps.voteAverage) 
-                            this.description = eps.overview
-                        }.apply {
-                            this.addDate(eps.airDate)
-                        }
-                    }
-            }?.flatten() ?: listOf()
+            val jpTitle = res.alternativeTitles?.results?.find { it.iso31661 == "JP" }?.title
+            val episodes = res.seasons?.map { season ->
+                async {
+                    app.get("$tmdbAPI/${data.type}/${data.id}/season/${season.seasonNumber}?api_key=$apiKey").text
+                        .let { tryParseJson<MediaDetailEpisodes>(it) }?.episodes?.map { eps ->
+                            newEpisode(
+                                data = LinkData(
+                                    data.id,
+                                    res.externalIds?.imdbId,
+                                    res.externalIds?.tvdbId,
+                                    data.type,
+                                    eps.seasonNumber,
+                                    eps.episodeNumber,
+                                    title = title,
+                                    year = season.airDate?.split("-")?.first()?.toIntOrNull(),
+                                    orgTitle = orgTitle,
+                                    isAnime = isAnime,
+                                    airedYear = year,
+                                    lastSeason = lastSeason,
+                                    epsTitle = eps.name,
+                                    jpTitle = jpTitle,
+                                    date = season.airDate,
+                                    airedDate = res.releaseDate
+                                        ?: res.firstAirDate,
+                                    isAsian = isAsian,
+                                    isBollywood = isBollywood,
+                                    isCartoon = isCartoon
+                                ).toJson()
+                            ) {
+                                this.name =
+                                    eps.name + if (isUpcoming(eps.airDate)) " • [UPCOMING]" else ""
+                                this.season = eps.seasonNumber
+                                this.episode = eps.episodeNumber
+                                this.posterUrl = getImageUrl(eps.stillPath)
+                                this.score = Score.from10(eps.voteAverage)
+                                this.description = eps.overview
+                            }.apply {
+                                this.addDate(eps.airDate)
+                            }
+                        } ?: emptyList()
+                }
+            }?.awaitAll()?.flatten() ?: listOf()
             newTvSeriesLoadResponse(
                 title,
                 url,
@@ -306,6 +311,39 @@ open class Cinemax21Provider : TmdbProvider() {
         val res = tryParseJson<LinkData>(data) ?: return false
         runAllAsync(
             {
+                invokeVidsrc(
+                    res.imdbId,
+                    res.season,
+                    res.episode,
+                    subtitleCallback,
+                    callback
+                )
+            },
+            {
+                invokeVidsrccc(
+                    res.id,
+                    res.imdbId,
+                    res.season,
+                    res.episode,
+                    subtitleCallback,
+                    callback
+                )
+            },
+            {
+                invokeVixsrc(res.id, res.season, res.episode, callback)
+            },
+            {
+                invokeVidlink(res.id, res.season, res.episode, callback)
+            },
+            {
+                invokeMapple(res.id, res.season, res.episode, subtitleCallback, callback)
+            },
+            {
+                invokeVidsrccx(res.id, res.season, res.episode, subtitleCallback, callback)
+            }
+        )
+        runAllAsync(
+            {
                 invokeIdlix(
                     res.title,
                     res.year,
@@ -356,22 +394,6 @@ open class Cinemax21Provider : TmdbProvider() {
                 )
             },
             {
-                invokeVidlink(res.id, res.season, res.episode, callback)
-            },
-            {
-                invokeVidsrccc(
-                    res.id,
-                    res.imdbId,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
-                    callback
-                )
-            },
-            {
-                invokeVixsrc(res.id, res.season, res.episode, callback)
-            },
-            {
                 invokeCinemaOS(
                     res.imdbId,
                     res.id,
@@ -381,27 +403,6 @@ open class Cinemax21Provider : TmdbProvider() {
                     res.year,
                     callback,
                     subtitleCallback
-                )
-            },
-            {
-                if (!res.isAnime) invokePlayer4U(
-                    res.title,
-                    res.season,
-                    res.episode,
-                    res.year,
-                    callback
-                )
-            },
-            {
-                if (!res.isAnime) invokeRiveStream(res.id, res.season, res.episode, callback)
-            },
-            {
-                invokeVidsrc(
-                    res.imdbId,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
-                    callback
                 )
             },
             {
@@ -416,19 +417,7 @@ open class Cinemax21Provider : TmdbProvider() {
                 invokeVidfast(res.id, res.season, res.episode, subtitleCallback, callback)
             },
             {
-                invokeMapple(res.id, res.season, res.episode, subtitleCallback, callback)
-            },
-            {
                 invokeWyzie(res.id, res.season, res.episode, subtitleCallback)
-            },
-            {
-                invokeSuperembed(
-                    res.id,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
-                    callback
-                )
             },
             {
                 invokeGomovies(res.title, res.year, res.season, res.episode, callback)
@@ -440,9 +429,6 @@ open class Cinemax21Provider : TmdbProvider() {
                 invokeVidrock(res.id, res.season, res.episode, subtitleCallback, callback)
             },
             {
-                invokeVidsrccx(res.id, res.season, res.episode, subtitleCallback, callback)
-            },
-            {
                 invoke2embed(res.id, res.season, res.episode, subtitleCallback, callback)
             },
             {
@@ -450,6 +436,29 @@ open class Cinemax21Provider : TmdbProvider() {
             },
             {
                 invokeAutoEmbed(res.id, res.season, res.episode, subtitleCallback, callback)
+            }
+        )
+        runAllAsync(
+            {
+                if (!res.isAnime) invokePlayer4U(
+                    res.title,
+                    res.season,
+                    res.episode,
+                    res.year,
+                    callback
+                )
+            },
+            {
+                if (!res.isAnime) invokeRiveStream(res.id, res.season, res.episode, callback)
+            },
+            {
+                invokeSuperembed(
+                    res.id,
+                    res.season,
+                    res.episode,
+                    subtitleCallback,
+                    callback
+                )
             }
         )
         return true
