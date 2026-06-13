@@ -7,6 +7,10 @@ android {
         buildConfig = true
         viewBinding = true
     }
+    defaultConfig {
+        buildConfigField "String", "TMDB_API_KEY", "\"1865f43a0549ca50d341dd9ab8b29f49\""
+        buildConfigField "String", "CINEMETA_URL", "\"https://aiometadata.elfhosted.com/stremio/b7cb164b-074b-41d5-b458-b3a834e197bb\""
+    }
 }
 
 cloudstream {

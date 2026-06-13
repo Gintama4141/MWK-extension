@@ -13,6 +13,7 @@ import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
+import com.lagradost.cloudstream3.mvvm.logError
 import java.util.Locale
 
 suspend fun invokeTorrentio(
@@ -83,7 +84,7 @@ suspend fun invokeTorrentioDebian(
     } else {
         "$mainUrl/stream/series/$id:$season:$episode.json"
     }
-    val res = app.get(url).text.let { tryParseJson<DebianRoot>(it) }
+    val res = app.get(url, timeout = 30_000L).text.let { tryParseJson<DebianRoot>(it) }
     res?.streams?.forEach { stream ->
         val fileUrl = stream.url
 
@@ -137,7 +138,7 @@ suspend fun invokeTorrentioAnimeDebian(
     } else {
         "$mainUrl/stream/series/kitsu:$id:$episode.json"
     }
-    val res = app.get(url).text.let { tryParseJson<DebianRoot>(it) }
+    val res = app.get(url, timeout = 30_000L).text.let { tryParseJson<DebianRoot>(it) }
     res?.streams?.forEach { stream ->
         val fileUrl = stream.url
 
@@ -259,7 +260,9 @@ suspend fun invokeThepiratebay(
                 }
             )
         }
-    } catch (_: Exception) { }
+    } catch (e: Exception) {
+        logError(e)
+    }
 }
 
 suspend fun invokeSubtitleAPI(
@@ -294,7 +297,7 @@ suspend fun invokeAnimetosho(
     callback: (ExtractorLink) -> Unit
 ) {
     val url = "$AnimetoshoAPI/json?eid=$id"
-    val parsedList = app.get(url).text.let { tryParseJson<Array<AnimetoshoItem>>(it) }?.toList() ?: emptyList()
+    val parsedList = app.get(url, timeout = 15_000L).text.let { tryParseJson<Array<AnimetoshoItem>>(it) }?.toList() ?: emptyList()
     parsedList.sortedByDescending { it.seeders }.forEach { item ->
         item.magnetUri.let { magnet ->
             val formattedTitleName = item.torrentName
@@ -525,7 +528,11 @@ suspend fun invokeUindex(
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     )
 
-    val rows = app.get(url, headers = headers).document.select("tr")
+    val rows = try {
+        app.get(url, headers = headers, timeout = 15_000L).document.select("tr")
+    } catch (e: Exception) {
+        return
+    }
 
     val episodePatterns: List<Regex> = if (isTv && episode != null) {
         val rawPatterns = listOf(
@@ -544,7 +551,9 @@ suspend fun invokeUindex(
 
     rows.amap { row ->
         val rowTitle = row.select("td:nth-child(2) > a:nth-child(2)").text()
+            .ifBlank { row.select("td:nth-child(2) a").lastOrNull()?.text().orEmpty() }
         val magnet = row.select("td:nth-child(2) > a:nth-child(1)").attr("href")
+            .ifBlank { row.select("td:nth-child(2) a[href^=magnet:]").attr("href") }
 
         if (rowTitle.isBlank() || magnet.isBlank()) return@amap
 
@@ -632,20 +641,28 @@ suspend fun invokeKnaben(
     for (page in 1..2) {
         val url = "$host/search/$baseQuery/$category/$page/seeders"
 
-        val doc = app.get(url).document
+        val doc = try {
+            app.get(url, timeout = 15_000L).document
+        } catch (e: Exception) {
+            continue
+        }
 
-        doc.select("tr.text-nowrap.border-start").forEach { row ->
-            val infoTd = row.selectFirst("td:nth-child(2)") ?: return@forEach
+        doc.select("tr.text-nowrap.border-start, tr[class*=border-start]").forEach { row ->
+            val infoTd = row.selectFirst("td:nth-child(2)") ?: row.selectFirst("td:nth-of-type(2)") ?: return@forEach
 
-            val titleElement = infoTd.selectFirst("a[title]") ?: return@forEach
+            val titleElement = infoTd.selectFirst("a[title]") ?: infoTd.selectFirst("a") ?: return@forEach
             val rawTitle = titleElement.attr("title").ifBlank { titleElement.text() }
 
-            val magnet = infoTd.selectFirst("a[href^=magnet:?]")?.attr("href") ?: return@forEach
+            val magnet = infoTd.selectFirst("a[href^=magnet:?]")?.attr("href")
+                ?: infoTd.selectFirst("a[href*=magnet]")?.attr("href") ?: return@forEach
 
             val source = row
                 .selectFirst("td.d-sm-none.d-xl-table-cell a")
                 ?.text()
                 ?.trim()
+                .ifBlank {
+                    row.select("td").lastOrNull()?.selectFirst("a")?.text()?.trim()
+                }
                 .orEmpty()
 
             val tds = row.select("td")
@@ -861,7 +878,7 @@ suspend fun invokeMeteorDebian(
         "$mainUrl/stream/series/$id:$season:$episode.json"
     }
 
-    val res = app.get(url).text.let { tryParseJson<MeteorRoot>(it) }
+    val res = app.get(url, timeout = 30_000L).text.let { tryParseJson<MeteorRoot>(it) }
 
     res?.streams?.forEach { stream ->
 
@@ -925,7 +942,7 @@ suspend fun invokeMeteorAnimeDebian(
         "$mainUrl/stream/series/kitsu:$id:$episode.json"
     }
 
-    val res = app.get(url).text.let { tryParseJson<MeteorRoot>(it) }
+    val res = app.get(url, timeout = 30_000L).text.let { tryParseJson<MeteorRoot>(it) }
 
     res?.streams?.forEach { stream ->
 

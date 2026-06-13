@@ -69,13 +69,14 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         return this.toJson()
     }
 
-    private suspend fun anilistAPICall(query: String): AnilistAPIResponse {
+    private suspend fun anilistAPICall(query: String): AnilistAPIResponse? {
         val data = mapOf("query" to query)
-        val test = app.post(apiUrl, headers = headerJSON, data = data)
-        val res =
+        val test = runCatching {
+            app.post(apiUrl, headers = headerJSON, data = data, timeout = 15_000L)
+        }.getOrNull() ?: return null
+        return runCatching {
             test.text.let { tryParseJson<AnilistAPIResponse>(it) }
-                ?: throw Exception("Unable to fetch or parse Anilist api response")
-        return res
+        }.getOrNull()
     }
 
     private fun Media.toSearchResponse(): SearchResponse {
@@ -93,9 +94,8 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         page: Int
     ): Pair<List<SearchResponse>, Boolean> {
         val res = anilistAPICall(this.data.replace("###", "$page"))
-        val data =
-            res.data.page?.media?.map { it.toSearchResponse() }
-                ?: throw Exception("Unable to read media data")
+        val data = res?.data?.page?.media?.map { it.toSearchResponse() }
+            ?: return emptyList<SearchResponse>() to false
         val hasNextPage = res.data.page.pageInfo.hasNextPage ?: false
         return data to hasNextPage
     }
@@ -115,11 +115,10 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         )
 
     override suspend fun search(query: String): List<SearchResponse>? {
-        val res =
-            anilistAPICall(
-                "query (\$search: String = \"$query\") { Page(page: 1, perPage: $mediaLimit) { pageInfo { total perPage currentPage lastPage hasNextPage } media(search: \$search, isAdult: $isAdult, type: ANIME) { id idMal season seasonYear format episodes chapters title { english romaji } coverImage { extraLarge large medium } synonyms nextAiringEpisode { timeUntilAiring episode } } } }"
-            )
-        return res.data.page?.media?.map { it.toSearchResponse() }
+        val res = anilistAPICall(
+            "query (\$search: String = \"$query\") { Page(page: 1, perPage: $mediaLimit) { pageInfo { total perPage currentPage lastPage hasNextPage } media(search: \$search, isAdult: $isAdult, type: ANIME) { id idMal season seasonYear format episodes chapters title { english romaji } coverImage { extraLarge large medium } synonyms nextAiringEpisode { timeUntilAiring episode } } } }"
+        )
+        return res?.data?.page?.media?.map { it.toSearchResponse() }
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -144,11 +143,13 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         }
     }
 
-    override suspend fun load(url: String): LoadResponse {
+    override suspend fun load(url: String): LoadResponse? {
         val id = url.removeSuffix("/").substringAfterLast("/")
-        val data = anilistAPICall(
-            "query (\$id: Int = $id) { Media(id: \$id, type: ANIME) { id title { romaji english } startDate { year } genres description averageScore status bannerImage coverImage { extraLarge large medium } bannerImage episodes format nextAiringEpisode { episode } airingSchedule { nodes { episode } } recommendations { edges { node { id mediaRecommendation { id title { romaji english } coverImage { extraLarge large medium } } } } } } }"
-        ).data.media ?: throw Exception("Unable to fetch media details")
+        val data = runCatching {
+            anilistAPICall(
+                "query (\$id: Int = $id) { Media(id: \$id, type: ANIME) { id title { romaji english } startDate { year } genres description averageScore status bannerImage coverImage { extraLarge large medium } bannerImage episodes format nextAiringEpisode { episode } airingSchedule { nodes { episode } } recommendations { edges { node { id mediaRecommendation { id title { romaji english } coverImage { extraLarge large medium } } } } } } }"
+            )?.data?.media
+        }.getOrNull() ?: return null
 
         val anititle = data.getTitle()
         val aniyear = data.startDate.year
@@ -158,7 +159,9 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         val backgroundUrl = data.bannerImage
 
         val jpTitle = data.title.romaji
-        val syncMetaData = app.get("https://api.ani.zip/mappings?anilist_id=${ids.id}").text
+        val syncMetaData = runCatching {
+            app.get("https://api.ani.zip/mappings?anilist_id=${ids.id}", timeout = 15_000L).text
+        }.getOrNull().orEmpty()
         val animeMetaData = parseAnimeData(syncMetaData)
         val logoposter = animeMetaData?.images?.find { it.coverType == "Clearlogo" }?.url
 
@@ -272,7 +275,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         var anidbEid: Int? = null
 
         try {
-            val anijson = app.get("https://api.ani.zip/mappings?anilist_id=$aniid").text
+            val anijson = app.get("https://api.ani.zip/mappings?anilist_id=$aniid", timeout = 15_000L).text
             val aniData = tryParseJson<AniZipData>(anijson)
             val mappings = aniData?.mappings
             if (mappings != null) {
@@ -285,10 +288,11 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
             }
             anidbEid = try { getAnidbEid(anijson, episode) } catch (_: Exception) { null }
 
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logError(e)
         }
 
-        val debianapiUrl = buildApiUrl(sharedPref, torrentioDebian)
+        val debianapiUrl = buildTorrentioApiUrl(sharedPref, torrentioDebian)
         val meteorUrl = buildMeteorUrl(sharedPref, Meteorfortheweebs)
 
         val filtered = filteredCallback(sharedPref, callback)
@@ -454,7 +458,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
             "variables" to variables
         ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
 
-        val res = app.post(anilistAPI, requestBody = data).text
+        val res = app.post(anilistAPI, requestBody = data, timeout = 15_000L).text
             .let { tryParseJson<AniSearch>(it) }
             ?.data
             ?.let { it.Page?.media ?: it.media }
@@ -482,71 +486,6 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
     data class AniSearch(
         @param:JsonProperty("data") var data: AniData? = null
     )
-
-    private fun buildApiUrl(sharedPref: SharedPreferences, mainUrl: String): String {
-        val sort = sharedPref.getString("sort", "qualitysize")
-        val languageOption = sharedPref.getString("language", "")
-        val qualityFilter = sharedPref.getString("qualityfilter", "")
-        val limit = sharedPref.getString("limit", "")
-        val sizeFilter = sharedPref.getString("sizefilter", "")
-        val debridProvider = sharedPref.getString("debrid_provider", "")
-        val debridKey = sharedPref.getString("debrid_key", "")
-
-        val params = mutableListOf<String>()
-        if (!sort.isNullOrEmpty()) params += "sort=$sort"
-        if (!languageOption.isNullOrEmpty()) params += "language=${languageOption.lowercase()}"
-        if (!qualityFilter.isNullOrEmpty()) params += "qualityfilter=$qualityFilter"
-        if (!limit.isNullOrEmpty()) params += "limit=$limit"
-        if (!sizeFilter.isNullOrEmpty()) params += "sizefilter=$sizeFilter"
-
-        if (!debridProvider.isNullOrEmpty() && !debridKey.isNullOrEmpty()) {
-            params += "$debridProvider=$debridKey"
-        }
-
-        val query = params.joinToString("%7C")
-        return "$mainUrl/$query"
-    }
-
-    fun buildMeteorUrl(sharedPref: SharedPreferences, baseUrl: String): String {
-        val debridProvider = sharedPref.getString("debrid_provider", "") ?: ""
-        val debridKey = sharedPref.getString("debrid_key", "") ?: ""
-        val languagesPref = sharedPref.getString("language", "") ?: ""
-        val limit = sharedPref.getString("limit", "0") ?: "0"
-        val sizeFilter = sharedPref.getString("sizefilter", "0") ?: "0"
-
-        val preferredLangs = if (languagesPref.isNotEmpty()) {
-            languagesPref.split(",").joinToString(",") { "\"${it.lowercase()}\"" }
-        } else {
-            "\"en\",\"multi\""
-        }
-
-        val jsonStr = """
-{
-  "debridService":"${debridProvider.lowercase()}",
-  "debridApiKey":"$debridKey",
-  "cachedOnly":true,
-  "removeTrash":false,
-  "removeSamples":false,
-  "removeAdult":false,
-  "exclude3D":false,
-  "enableSeaDex":false,
-  "minSeeders":0,
-  "maxResults":${limit.toIntOrNull() ?: 0},
-  "maxResultsPerRes":0,
-  "maxSize":${sizeFilter.toIntOrNull() ?: 0},
-  "resolutions":[],
-  "languages":{"preferred":[$preferredLangs],"required":[],"exclude":[]},
-  "resultFormat":["title","quality","size","audio"],
-  "sortOrder":["pack","cached","seadex","resolution","size","quality","seeders","language"]
-}
-""".trimIndent().replace("\n", "")
-
-        val encoded = Base64.encodeToString(
-            jsonStr.toByteArray(),
-            Base64.URL_SAFE or Base64.NO_WRAP
-        )
-        return "$baseUrl/$encoded"
-    }
 
     fun getStatus(t: String?): ShowStatus {
         return when {

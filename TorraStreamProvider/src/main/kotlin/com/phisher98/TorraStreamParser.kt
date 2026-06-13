@@ -154,6 +154,7 @@ data class LoadData(
     val imdbId: String? = null,
     val season: Int? = null,
     val episode: Int? = null,
+    val aniZipJson: String? = null,
 )
 
 data class Data(

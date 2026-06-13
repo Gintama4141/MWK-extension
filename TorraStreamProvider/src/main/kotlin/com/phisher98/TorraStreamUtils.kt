@@ -248,7 +248,7 @@ suspend fun fetchTmdbLogoUrl(
         "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
 
     val imageResponse = runCatching {
-        app.get(url).text.let { tryParseJson<TmdbImagesResponse>(it) }
+        app.get(url, timeout = 15_000L).text.let { tryParseJson<TmdbImagesResponse>(it) }
     }.getOrNull() ?: return null
     val logos = imageResponse.logos?.filter { !it.filePath.isNullOrBlank() } ?: return null
 
@@ -333,6 +333,7 @@ fun filteredCallback(
     val maxSize = sharedPref.getString("sizefilter", "")?.toDoubleOrNull()
     val limit = sharedPref.getString("limit", "")?.toIntOrNull() ?: 0
     var resultCount = 0
+    val sizeRegex = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
 
     return fun(link: ExtractorLink) {
 
@@ -348,8 +349,7 @@ fun filteredCallback(
 
         if (detectedQuality in excludedQualities) return
 
-        val sizeMatch = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
-            .find(link.name)
+        val sizeMatch = sizeRegex.find(link.name)
 
         val sizeValue = sizeMatch?.groupValues?.get(1)?.replace(',', '.')?.toDoubleOrNull()
         val sizeUnit = sizeMatch?.groupValues?.get(2)
@@ -363,4 +363,51 @@ fun filteredCallback(
         callback(link)
         resultCount++
     }
+}
+
+fun buildTorrentioApiUrl(sharedPref: SharedPreferences, mainUrl: String): String {
+    val sort = sharedPref.getString("sort", "qualitysize")
+    val languageOption = sharedPref.getString("language", "")
+    val qualityFilter = sharedPref.getString("qualityfilter", "")
+    val limit = sharedPref.getString("limit", "")
+    val sizeFilter = sharedPref.getString("sizefilter", "")
+    val debridProvider = sharedPref.getString("debrid_provider", "")
+    val debridKey = sharedPref.getString("debrid_key", "")
+
+    val params = mutableListOf<String>()
+    if (!sort.isNullOrEmpty()) params += "sort=$sort"
+    if (!languageOption.isNullOrEmpty()) params += "language=${languageOption.lowercase()}"
+    if (!qualityFilter.isNullOrEmpty()) params += "qualityfilter=$qualityFilter"
+    if (!limit.isNullOrEmpty()) params += "limit=$limit"
+    if (!sizeFilter.isNullOrEmpty()) params += "sizefilter=$sizeFilter"
+
+    if (!debridProvider.isNullOrEmpty() && !debridKey.isNullOrEmpty()) {
+        params += "$debridProvider=$debridKey"
+    }
+
+    val query = params.joinToString("%7C")
+    return "$mainUrl/$query"
+}
+
+fun buildMeteorUrl(sharedPref: SharedPreferences, baseUrl: String): String {
+    val debridProvider = sharedPref.getString("debrid_provider", "") ?: ""
+    val debridKey = sharedPref.getString("debrid_key", "") ?: ""
+    val languagesPref = sharedPref.getString("language", "") ?: ""
+    val limit = sharedPref.getString("limit", "0") ?: "0"
+    val sizeFilter = sharedPref.getString("sizefilter", "0") ?: "0"
+
+    val preferredLangs = if (languagesPref.isNotEmpty()) {
+        languagesPref.split(",").joinToString(",") { "\"${it.lowercase()}\"" }
+    } else {
+        "\"en\",\"multi\""
+    }
+
+    val jsonStr = """{"debridService":"${debridProvider.lowercase()}","debridApiKey":"$debridKey","cachedOnly":false,"removeTrash":true,"removeSamples":true,"removeAdult":false,"exclude3D":false,"enableSeaDex":false,"minSeeders":0,"maxResults":${limit.toIntOrNull() ?: 0},"maxResultsPerRes":0,"maxSize":${sizeFilter.toIntOrNull() ?: 0},"resolutions":[],"languages":{"preferred":[$preferredLangs],"required":[],"exclude":[]},"resultFormat":["title","quality","size","audio"],"sortOrder":["cached","resolution","quality","seeders","size","pack","language","seadex"]}"""
+
+    val encoded = android.util.Base64.encodeToString(
+        jsonStr.toByteArray(),
+        android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP
+    )
+
+    return "$baseUrl/$encoded"
 }
