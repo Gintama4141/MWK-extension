@@ -339,45 +339,6 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         }
     }
 
-    suspend fun invokeVidsrc(
-        imdbId: String?, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit,
-    ) {
-        log("Start: Vidsrc [imdb=$imdbId S${season}E${episode}]")
-        val api = "https://cloudnestra.com"
-        val url = if (season == null) "${Cinemax21Provider.vidSrcAPI}/embed/movie?imdb=$imdbId" else "${Cinemax21Provider.vidSrcAPI}/embed/tv?imdb=$imdbId&season=$season&episode=$episode"
-        app.get(url).document.select(".serversList .server").amap { server ->
-            if (server.text().equals("CloudStream", ignoreCase = true)) {
-                val hash = app.get("$api/rcp/${server.attr("data-hash")}").text.substringAfter("/prorcp/").substringBefore("'")
-                val res = app.get("$api/prorcp/$hash").text
-                Regex("https:.*\\.m3u8").find(res)?.value?.let { callback.invoke(newExtractorLink("Vidsrc", "Vidsrc", it, ExtractorLinkType.M3U8)) }
-            }
-        }
-        log("Success: Vidsrc")
-    }
-
-    suspend fun invokeXprime(
-        tmdbId: Int?, title: String? = null, year: Int? = null, season: Int?, episode: Int?,
-        subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit,
-    ) {
-        log("Start: Xprime [tmdb=$tmdbId S${season}E${episode}]")
-        val servers = listOf("rage", "primebox")
-        val referer = "https://xprime.tv/"
-        runAllAsync(
-            {
-                val url = if (season == null) "${Cinemax21Provider.xprimeAPI}/${servers.first()}?id=$tmdbId" else "${Cinemax21Provider.xprimeAPI}/${servers.first()}?id=$tmdbId&season=$season&episode=$episode"
-                val source = app.get(url).text.let { tryParseJson<RageSources>(it) }?.url
-                callback.invoke(newExtractorLink("Rage", "Rage", source ?: return@runAllAsync, ExtractorLinkType.M3U8) { this.referer = referer })
-            },
-            {
-                val url = if (season == null) "${Cinemax21Provider.xprimeAPI}/${servers.last()}?name=$title&fallback_year=$year" else "${Cinemax21Provider.xprimeAPI}/${servers.last()}?name=$title&fallback_year=$year&season=$season&episode=$episode"
-                val sources = app.get(url).text.let { tryParseJson<PrimeboxSources>(it) }
-                sources?.streams?.map { source -> callback.invoke(newExtractorLink("Primebox", "Primebox", source.value, ExtractorLinkType.M3U8) { this.referer = referer; this.quality = getQualityFromName(source.key) }) }
-                sources?.subtitles?.map { subtitle -> subtitleCallback.invoke(newSubtitleFile(subtitle.label ?: "", subtitle.file ?: return@map)) }
-            }
-        )
-        log("Success: Xprime")
-    }
-
     suspend fun invokeWatchsomuch(
         imdbId: String? = null, season: Int? = null, episode: Int? = null, subtitleCallback: (SubtitleFile) -> Unit,
     ) {
