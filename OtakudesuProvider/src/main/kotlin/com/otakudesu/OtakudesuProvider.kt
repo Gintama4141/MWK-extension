@@ -13,10 +13,10 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import kotlinx.coroutines.runBlocking
-
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import java.net.URLEncoder
 
 class OtakudesuProvider : MainAPI() {
     override var mainUrl = "https://otakudesu.blog"
@@ -40,9 +40,11 @@ class OtakudesuProvider : MainAPI() {
         )
 
         fun getType(t: String): TvType {
-            return if (t.contains("OVA", true) || t.contains("Special")) TvType.OVA
-            else if (t.contains("Movie", true)) TvType.AnimeMovie
-            else TvType.Anime
+            return when {
+                t.contains("OVA", true) || t.contains("Special", true) -> TvType.OVA
+                t.contains("Movie", true) -> TvType.AnimeMovie
+                else -> TvType.Anime
+            }
         }
 
         fun getStatus(t: String): ShowStatus {
@@ -83,7 +85,8 @@ class OtakudesuProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        return app.get("$mainUrl/?s=$query&post_type=anime").document.select("ul.chivsrc > li")
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        return app.get("$mainUrl/?s=$encodedQuery&post_type=anime").document.select("ul.chivsrc > li")
             .mapNotNull {
                 val title = it.selectFirst("h2 > a")?.ownText()?.trim() ?: return@mapNotNull null
                 val href = it.selectFirst("h2 > a")?.attr("href") ?: return@mapNotNull null
@@ -97,23 +100,25 @@ class OtakudesuProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse {
         val document = app.get(url).document
+        val infoRows = document.select("div.infozingle > p")
 
-        val title = document.selectFirst("div.infozingle > p:nth-child(1) > span")?.ownText()
-            ?.replace(":", "")?.trim().toString()
+        val title = infoRows.firstOrNull { it.text().contains("Judul", true) }
+            ?.selectFirst("span")?.ownText()?.replace(":", "")?.trim().orEmpty()
         val poster = document.selectFirst("div.fotoanime > img")?.attr("src")
-        val tags = document.select("div.infozingle > p:nth-child(11) > span > a").map { it.text() }
+        val tags = infoRows.firstOrNull { it.text().contains("Genre", true) }
+            ?.select("span > a")?.map { it.text() } ?: emptyList()
         val type = getType(
-            document.selectFirst("div.infozingle > p:nth-child(5) > span")?.ownText()
-                ?.replace(":", "")?.trim() ?: "tv"
+            infoRows.firstOrNull { it.text().contains("Tipe", true) }
+                ?.selectFirst("span")?.ownText()?.replace(":", "")?.trim() ?: "tv"
         )
 
         val year = Regex("\\d, (\\d*)").find(
-            document.select("div.infozingle > p:nth-child(9) > span").text()
+            infoRows.firstOrNull { it.text().contains("Rilis", true) }
+                ?.selectFirst("span")?.text().orEmpty()
         )?.groupValues?.get(1)?.toIntOrNull()
         val status = getStatus(
-            document.selectFirst("div.infozingle > p:nth-child(6) > span")?.ownText()
-                ?.replace(":", "")
-                ?.trim() ?: ""
+            infoRows.firstOrNull { it.text().contains("Status", true) }
+                ?.selectFirst("span")?.ownText()?.replace(":", "")?.trim().orEmpty()
         )
         val description = document.select("div.sinopc > p").text()
 
@@ -121,32 +126,30 @@ class OtakudesuProvider : MainAPI() {
         val malId = tracker?.malId
 
         var animeMetaData: MetaAnimeData? = null
-        var tmdbid: Int? = null
         var kitsuid: String? = null
 
         if (malId != null) {
-            try {
-                val syncMetaData = app.get("https://api.ani.zip/mappings?mal_id=$malId").text
+            val syncMetaData = try {
+                withTimeoutOrNull(10_000L) {
+                    app.get("https://api.ani.zip/mappings?mal_id=$malId").text
+                }
+            } catch (_: Exception) { null }
+            if (syncMetaData != null) {
                 animeMetaData = parseAnimeData(syncMetaData)
-                tmdbid = animeMetaData?.mappings?.themoviedbId
                 kitsuid = animeMetaData?.mappings?.kitsuId
-            } catch (e: Exception) {}
+            }
         }
-
-        val logoUrl = fetchTmdbLogoUrl(
-            tmdbAPI = "https://api.themoviedb.org/3",
-            apiKey = "98ae14df2b8d8f8f8136499daf79f0e0",
-            type = type,
-            tmdbId = tmdbid,
-            appLangCode = "id"
-        )
 
         val backgroundposter = animeMetaData?.images?.find { it.coverType == "Fanart" }?.url ?: tracker?.cover
 
-        val episodes = document.select("div.episodelist")[1].select("ul > li").amap { element ->
+        val episodeLists = document.select("div.episodelist")
+        val episodesContainer = episodeLists.getOrNull(1) ?: episodeLists.firstOrNull()
+        val episodes = episodesContainer?.select("ul > li")?.amap { element ->
             val name = element.selectFirst("a")?.text() ?: return@amap null
-            var episodeNum = Regex("Episode\\s?(\\d+)").find(name)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            val fallbackName = Regex("Episode\\s?(\\d+)").find(name)?.groupValues?.getOrNull(0) ?: name
+            val epRegex = Regex("Episode\\s?(\\d+)")
+            val epMatch = epRegex.find(name)
+            var episodeNum = epMatch?.groupValues?.getOrNull(1)?.toIntOrNull()
+            val fallbackName = epMatch?.groupValues?.getOrNull(0) ?: name
             val link = fixUrl(element.selectFirst("a")?.attr("href") ?: return@amap null)
 
             if (type == TvType.AnimeMovie && episodeNum == null) {
@@ -176,7 +179,7 @@ class OtakudesuProvider : MainAPI() {
                 this.addDate(metaEp?.airDateUtc)
                 this.runTime = metaEp?.runtime
             }
-        }.filterNotNull().reversed()
+        }?.filterNotNull()?.reversed() ?: emptyList()
 
         val recommendations =
             document.select("div.isi-recommend-anime-series > div.isi-konten").mapNotNull {
@@ -202,7 +205,6 @@ class OtakudesuProvider : MainAPI() {
             this.japName = animeMetaData?.titles?.get("ja") ?: animeMetaData?.titles?.get("x-jat")
             this.posterUrl = tracker?.image ?: poster
             this.backgroundPosterUrl = backgroundposter
-            try { this.logoUrl = logoUrl } catch(_:Throwable){}
             this.year = year
             addEpisodes(DubStatus.Subbed, episodes)
             this.showStatus = status
@@ -233,7 +235,7 @@ class OtakudesuProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
 
-        val document = app.get(data).document
+        val document = runCatching { app.get(data).document }.getOrNull() ?: return false
 
         runAllAsync(
             {
@@ -242,10 +244,12 @@ class OtakudesuProvider : MainAPI() {
                     ?: document.select("script:containsData(admin-ajax)").lastOrNull()?.data()
                     ?: ""
 
-                val nonceAction = Regex("""data:\{action:"([^"]+)"""").find(scriptData)?.groupValues?.getOrNull(1)
-                    ?: Regex("""action:\s*"([a-f0-9]{32})"""").find(scriptData)?.groupValues?.getOrNull(1)
-                val embedAction = Regex("""nonce:[^,]+,action:"([^"]+)"""").find(scriptData)?.groupValues?.getOrNull(1)
-                    ?: Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]{32})"""").find(scriptData)?.groupValues?.getOrNull(1)
+                val nonceAction = Regex("""(?:data:\{|action:\s*")[^"]*"([a-f0-9]+)"""").find(scriptData)
+                    ?.groupValues?.getOrNull(1)
+                    ?: Regex("""data:\{action:"([^"]+)"""").find(scriptData)?.groupValues?.getOrNull(1)
+                val embedAction = Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]+)"""").find(scriptData)
+                    ?.groupValues?.getOrNull(1)
+                    ?: Regex("""nonce:[^,]+,action:"([^"]+)"""").find(scriptData)?.groupValues?.getOrNull(1)
 
                 if (nonceAction != null && embedAction != null) {
                     val nonce = app.post("$mainUrl/wp-admin/admin-ajax.php", data = mapOf("action" to nonceAction))
@@ -254,26 +258,23 @@ class OtakudesuProvider : MainAPI() {
                     document.select("div.mirrorstream > ul > li").amap { li ->
                         val dataContent = li.select("a").attr("data-content")
                         if (dataContent.isNotBlank()) {
-                            val decodedData = base64Decode(dataContent)
-                            val res = tryParseJson<ResponseSources>(decodedData)
-                            
-                            if (res != null) {
-                                val embedData = app.post(
-                                    "${mainUrl}/wp-admin/admin-ajax.php", data = mapOf(
-                                        "id" to res.id,
-                                        "i" to res.i,
-                                        "q" to res.q,
-                                        "nonce" to nonce,
-                                        "action" to embedAction
-                                    )
-                                ).text.let { tryParseJson<ResponseData>(it) }?.data ?: return@amap null
+                            val decodedData = runCatching { base64Decode(dataContent) }.getOrNull() ?: return@amap null
+                            val res = tryParseJson<ResponseSources>(decodedData) ?: return@amap null
 
-                                val sources = Jsoup.parse(
-                                    base64Decode(embedData)
-                                ).select("iframe").attr("src")
+                            val embedData = app.post(
+                                "${mainUrl}/wp-admin/admin-ajax.php", data = mapOf(
+                                    "id" to res.id,
+                                    "i" to res.i,
+                                    "q" to res.q,
+                                    "nonce" to nonce,
+                                    "action" to embedAction
+                                )
+                            ).text.let { tryParseJson<ResponseData>(it) }?.data ?: return@amap null
 
-                                loadCustomExtractor(sources, data, subtitleCallback, callback, getQuality(res.q))
-                            }
+                            val decodedEmbed = runCatching { base64Decode(embedData) }.getOrNull() ?: return@amap null
+                            val sources = Jsoup.parse(decodedEmbed).select("iframe").attr("src")
+
+                            loadCustomExtractor(sources, data, subtitleCallback, callback, getQuality(res.q))
                         }
                     }
                 }
@@ -286,7 +287,7 @@ class OtakudesuProvider : MainAPI() {
                     }.filter {
                         !inBlacklist(it.first) && quality != Qualities.P360.value
                     }.amap {
-                        val link = app.get(it.first, referer = "$mainUrl/").url
+                        val link = runCatching { app.get(it.first, referer = "$mainUrl/").url }.getOrNull() ?: return@amap null
                         loadCustomExtractor(
                             fixedIframe(link),
                             data,
@@ -309,10 +310,8 @@ class OtakudesuProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit,
         quality: Int = Qualities.Unknown.value,
     ) {
-        val cb = callback
         loadExtractor(url, referer, subtitleCallback) { link ->
-            runBlocking {
-                cb.invoke(
+            callback.invoke(
                 newExtractorLink(
                     link.name,
                     link.name,
@@ -327,7 +326,6 @@ class OtakudesuProvider : MainAPI() {
             )
         }
     }
-}
 
     private fun fixedIframe(url: String): String {
         return when {
@@ -384,85 +382,6 @@ class OtakudesuProvider : MainAPI() {
 
     private fun parseAnimeData(jsonString: String): MetaAnimeData? =
         tryParseJson(jsonString)
-}
-
-data class TmdbImagesResponse(
-    val logos: List<TmdbLogo>? = null
-)
-data class TmdbLogo(
-    @param:JsonProperty("aspect_ratio") val aspectRatio: Double? = null,
-    val height: Int? = null,
-    @param:JsonProperty("iso_639_1") val iso6391: String? = null,
-    @param:JsonProperty("file_path") val filePath: String? = null,
-    @param:JsonProperty("vote_average") val voteAverage: Double? = null,
-    @param:JsonProperty("vote_count") val voteCount: Int? = null,
-    val width: Int? = null
-)
-
-suspend fun fetchTmdbLogoUrl(
-    tmdbAPI: String,
-    apiKey: String,
-    type: TvType,
-    tmdbId: Int?,
-    appLangCode: String?
-): String? {
-    if (tmdbId == null) return null
-
-    val url = if (type == TvType.AnimeMovie)
-        "$tmdbAPI/movie/$tmdbId/images?api_key=$apiKey"
-    else
-        "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
-
-    val imageResponse = runCatching {
-        app.get(url).text.let { tryParseJson<TmdbImagesResponse>(it) }
-    }.getOrNull() ?: return null
-    val logos = imageResponse.logos?.filter { !it.filePath.isNullOrBlank() } ?: return null
-
-    val lang = appLangCode?.trim()?.lowercase()
-
-    fun path(o: TmdbLogo) = o.filePath ?: ""
-    fun isSvg(o: TmdbLogo) = path(o).endsWith(".svg", true)
-    fun urlOf(o: TmdbLogo) = "https://image.tmdb.org/t/p/w500${path(o)}"
-
-    var svgFallback: TmdbLogo? = null
-
-    for (logo in logos) {
-        val p = path(logo)
-        if (p.isBlank()) continue
-
-        val l = logo.iso6391?.trim()?.lowercase()
-        if (l == lang) {
-            if (!isSvg(logo)) return urlOf(logo)
-            if (svgFallback == null) svgFallback = logo
-        }
-    }
-    svgFallback?.let { return urlOf(it) }
-
-    var best: TmdbLogo? = null
-    var bestSvg: TmdbLogo? = null
-
-    fun voted(o: TmdbLogo) = (o.voteAverage ?: 0.0) > 0 && (o.voteCount ?: 0) > 0
-    fun better(a: TmdbLogo?, b: TmdbLogo): Boolean {
-        if (a == null) return true
-        val aAvg = a.voteAverage ?: 0.0
-        val aCnt = a.voteCount ?: 0
-        val bAvg = b.voteAverage ?: 0.0
-        val bCnt = b.voteCount ?: 0
-        return bAvg > aAvg || (bAvg == aAvg && bCnt > aCnt)
-    }
-
-    for (logo in logos) {
-        if (!voted(logo)) continue
-        if (isSvg(logo)) {
-            if (better(bestSvg, logo)) bestSvg = logo
-        } else {
-            if (better(best, logo)) best = logo
-        }
-    }
-
-    best?.let { return urlOf(it) }
-    bestSvg?.let { return urlOf(it) }
-    return null
 }
 
 class Moedesu : JWPlayer() {

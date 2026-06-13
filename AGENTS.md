@@ -24,6 +24,7 @@ Anichin, Cinemax21, Donghub, Dutamovie, Kawanfilm, Kisskh, Klikxxi, Kuronime, Mo
 - Build/deploy via GitHub Actions → `builds` branch.
 
 ## Recent Pushes
+- Otakudesu v10: comprehensive audit — fix IndexOutOfBounds crash, remove hardcoded TMDB API key (security), try-catch Base64 decode, remove runBlocking anti-pattern, error handling on network requests, URL-encode search, content-based selectors (replaced brittle nth-child), deduplicate regex, withTimeoutOrNull on ani.zip API
 - `d748f6a` Klikxxi v5: comprehensive audit fixes — error handling, URL encoding, pagination, episode dedup, regex, CSS constants
 - `aaa74a9` Donghub v6: added Odnoklassniki (OKRU) extractor for mirror server support
 - Kisskh v8: parallel key fetches, proper error handling, timeouts on all API calls, URL-encoded search, pagination fix, TvType mapping fix, interceptor fix
@@ -60,6 +61,7 @@ Analyzed `seoulschool.org/page/kdrama/...` stream page — WordPress Muvipro the
 - voe.sx and minochinos.com have strong anti-scraping (JW encrypted / reCAPTCHA) — may need user input
 
 ## Key Files
+- `OtakudesuProvider/src/main/kotlin/com/otakudesu/OtakudesuProvider.kt` (v10) — comprehensive audit: IndexOutOfBounds fix, TMDB key removed, Base64 try-catch, runBlocking removed, URL-encoded search, content-based selectors, withTimeoutOrNull on ani.zip.
 - `KuronimeProvider/src/main/kotlin/com/kuronime/KuronimeProvider.kt` — AES key `"3&!Z0M,;dZWVIZ=="`, `decryptCryptoJS()`, `tryParseJson`, `src_sd` support, AES/CBC/PKCS5Padding.
 - `TorraStreamProvider/src/main/kotlin/com/torrastream/` — `TorraStreamProvider.kt` (v88), magnet tracker cache, getQuality fix, 30s timeouts.
 - `MovieboxProvider/src/main/kotlin/com/moviebox/MovieboxProvider.kt` (v6) — `tryParseJson<LoadData>()`, null-safe `maxEp`.
@@ -73,6 +75,6 @@ Analyzed `seoulschool.org/page/kdrama/...` stream page — WordPress Muvipro the
 - `build.gradle.kts` — root dep list (Jackson + Gson still bundled for `@JsonProperty`/`@SerializedName` annotations only).
 
 ## Remaining Notes
-- Otakudesu v5+ confirmed working by user.
+- Otakudesu v10: comprehensive audit complete — crash fixes, security fix (TMDB key removed), error handling, code quality improvements.
 - Kuronime v9 AES streaming fix (manual EVP_BytesToKey decrypt) deployed but untested by user — user should download CI build and test Liar Game E1 streaming.
 - If Kuronime still fails, next steps: add debug logging, test `src_sd`/`mirror` paths, or try `animeku.org/player2.php?id=<id>` as loadable URL.
