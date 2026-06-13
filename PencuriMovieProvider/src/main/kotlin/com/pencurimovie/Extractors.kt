@@ -23,5 +23,5 @@ class Hglink : StreamWishExtractor() {
 }
 
 class Dsvplay : DoodLaExtractor() {
-    override var mainUrl = "https://dsvplay.com"
+    override val mainUrl = "https://dsvplay.com"
 }
