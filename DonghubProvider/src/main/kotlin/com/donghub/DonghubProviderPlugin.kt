@@ -11,5 +11,6 @@ class DonghubProviderPlugin: Plugin() {
         registerExtractorAPI(ArchiveOrgExtractor())
         registerExtractorAPI(Dailymotion())
         registerExtractorAPI(Geodailymotion())
+        registerExtractorAPI(Odnoklassniki())
     }
 }
