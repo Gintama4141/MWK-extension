@@ -226,10 +226,10 @@
     },
     {
         "iconUrl": "https://new31.ngefilm.site/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png",
-        "fileHash": "sha256-9b57f63a11bc6936c1404aaa68e543d1dde02470a6d4469667b9418430582d6f",
+        "fileHash": "sha256-7c3ac5da2b752e903f7f2f4dfff43c88444ba55021a53e4ccb09a9549e3996b5",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 31701,
+        "fileSize": 33153,
         "status": 1,
         "language": "id",
         "authors": [
@@ -240,7 +240,7 @@
             "TvSeries",
             "Movie"
         ],
-        "version": 4,
+        "version": 5,
         "internalName": "NgeFilm21Provider",
         "description": "NgeFilm21 \u2014 Streaming Movie and TV Series",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/NgeFilm21Provider.cs3",
