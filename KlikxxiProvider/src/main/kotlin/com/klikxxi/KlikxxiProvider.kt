@@ -164,7 +164,7 @@ class KlikxxiProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse {
         val document = runCatching { app.get(url).document }.getOrNull()
-            ?: return newMovieLoadResponse("Error", url, TvType.Movie) {
+            ?: return newMovieLoadResponse("Error", url, TvType.Movie, url) {
                 this.plot = "Failed to load page: network error"
             }
 
@@ -252,7 +252,7 @@ class KlikxxiProvider : MainAPI() {
         }
 
         val episodes = allEpisodes
-            .distinctBy { it.url }
+            .distinctBy { it.data }
             .sortedWith(compareBy({ it.season }, { it.episode }))
 
         val tvType = if (episodes.isNotEmpty()) TvType.TvSeries else TvType.Movie
