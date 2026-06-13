@@ -11,8 +11,8 @@ Maintain and optimize the MWK-extension CloudStream3 plugin repo; fix `NoSuchMet
 - `lang` left as-is per provider — not forced to "id".
 - `AesHelper` is allowed — used for AES content decryption, not JSON parsing.
 
-## Active Providers (15)
-Anichin, Cinemax21, Donghub, Dutamovie, Kawanfilm, Kisskh, Kuronime, Moviebox, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream, plus Anichin extractors.
+## Active Providers (16)
+Anichin, Cinemax21, Donghub, Dutamovie, Kawanfilm, Kisskh, Klikxxi, Kuronime, Moviebox, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream, plus Anichin extractors.
 
 ## Status: ✅ All providers clean
 - Donghub v6: Added Odnoklassniki (OKRU) extractor for mirror server support; Donghub now supports Dailymotion + OKRU mirrors.
@@ -24,6 +24,7 @@ Anichin, Cinemax21, Donghub, Dutamovie, Kawanfilm, Kisskh, Kuronime, Moviebox, N
 - Build/deploy via GitHub Actions → `builds` branch.
 
 ## Recent Pushes
+- `d748f6a` Klikxxi v5: comprehensive audit fixes — error handling, URL encoding, pagination, episode dedup, regex, CSS constants
 - `aaa74a9` Donghub v6: added Odnoklassniki (OKRU) extractor for mirror server support
 - Kisskh v8: parallel key fetches, proper error handling, timeouts on all API calls, URL-encoded search, pagination fix, TvType mapping fix, interceptor fix
 - Kisskh v9: key caching + retry mechanism, API version constant, quality inference from URL
