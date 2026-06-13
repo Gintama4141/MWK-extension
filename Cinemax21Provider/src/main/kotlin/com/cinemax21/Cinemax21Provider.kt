@@ -11,12 +11,10 @@ import com.cinemax21.Cinemax21ProviderExtractor.invokeMapple
 import com.cinemax21.Cinemax21ProviderExtractor.invokeSuperembed
 import com.cinemax21.Cinemax21ProviderExtractor.invokeVidfast
 import com.cinemax21.Cinemax21ProviderExtractor.invokeVidlink
-import com.cinemax21.Cinemax21ProviderExtractor.invokeVidsrc
 import com.cinemax21.Cinemax21ProviderExtractor.invokeVidsrccc
 import com.cinemax21.Cinemax21ProviderExtractor.invokeVixsrc
 import com.cinemax21.Cinemax21ProviderExtractor.invokeWatchsomuch
 import com.cinemax21.Cinemax21ProviderExtractor.invokeWyzie
-import com.cinemax21.Cinemax21ProviderExtractor.invokeXprime
 import com.cinemax21.Cinemax21ProviderExtractor.invokeCinemaOS
 import com.cinemax21.Cinemax21ProviderExtractor.invokePlayer4U
 import com.cinemax21.Cinemax21ProviderExtractor.invokeRiveStream
@@ -59,8 +57,6 @@ open class Cinemax21Provider : TmdbProvider() {
         const val gomoviesAPI = "https://gomovies-online.cam"
         const val idlixAPI = "https://tv10.idlixku.com" 
         const val vidsrcccAPI = "https://vidsrc.cc"
-        const val vidSrcAPI = "https://vidsrc.net"
-        const val xprimeAPI = "https://backend.xprime.tv"
         const val watchSomuchAPI = "https://watchsomuch.tv"
         const val mappleAPI = "https://mapple.uk"
         const val vidlinkAPI = "https://vidlink.pro"
@@ -314,15 +310,6 @@ open class Cinemax21Provider : TmdbProvider() {
         val res = tryParseJson<LinkData>(data) ?: return false
         runAllAsync(
             {
-                invokeVidsrc(
-                    res.imdbId,
-                    res.season,
-                    res.episode,
-                    subtitleCallback,
-                    callback
-                )
-            },
-            {
                 invokeVidsrccc(
                     res.id,
                     res.imdbId,
@@ -424,9 +411,6 @@ open class Cinemax21Provider : TmdbProvider() {
             },
             {
                 invokeGomovies(res.title, res.year, res.season, res.episode, callback)
-            },
-            {
-                invokeXprime(res.id, res.title, res.year, res.season, res.episode, subtitleCallback, callback)
             },
             {
                 invokeVidrock(res.id, res.season, res.episode, subtitleCallback, callback)

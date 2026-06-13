@@ -410,9 +410,16 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         log("Start: Vidlink [tmdb=$tmdbId S${season}E${episode}]")
         val type = if (season == null) "movie" else "tv"
         val url = if (season == null) "${Cinemax21Provider.vidlinkAPI}/$type/$tmdbId" else "${Cinemax21Provider.vidlinkAPI}/$type/$tmdbId/$season/$episode"
-        val videoLink = app.get(url, interceptor = WebViewResolver(Regex("""${Cinemax21Provider.vidlinkAPI}/api/b/$type/A{32}"""), timeout = 15_000L)).text.let { tryParseJson<VidlinkSources>(it) }?.stream?.playlist
-        callback.invoke(newExtractorLink("Vidlink", "Vidlink", videoLink ?: return, ExtractorLinkType.M3U8) { this.referer = "${Cinemax21Provider.vidlinkAPI}/" })
-        log("Success: Vidlink")
+        val videoLink = try {
+            app.get(url, interceptor = WebViewResolver(Regex("""${Cinemax21Provider.vidlinkAPI}/api/b/$type/A{32}"""), timeout = 30_000L)).text.let { tryParseJson<VidlinkSources>(it) }?.stream?.playlist
+        } catch (e: Exception) {
+            log("Fail: Vidlink WebView - ${e.message}", error = true)
+            null
+        }
+        videoLink?.let {
+            callback.invoke(newExtractorLink("Vidlink", "Vidlink", it, ExtractorLinkType.M3U8) { this.referer = "${Cinemax21Provider.vidlinkAPI}/" })
+            log("Success: Vidlink")
+        } ?: log("Fail: Vidlink - No video link found", error = true)
     }
 
     suspend fun invokeVidfast(
@@ -422,11 +429,22 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val module = "hezushon/1000076901076321/0b0ce221/cfe60245-021f-5d4d-bacb-0d469f83378f/uva/jeditawev/b0535941d898ebdb81f575b2cfd123f5d18c6464/y/APA91zAOxU2psY2_BvBqEmmjG6QvCoLjgoaI-xuoLxBYghvzgKAu-HtHNeQmwxNbHNpoVnCuX10eEes1lnTcI2l_lQApUiwfx2pza36CZB34X7VY0OCyNXtlq-bGVCkLslfNksi1k3B667BJycQ67wxc1OnfCc5PDPrF0BA8aZRyMXZ3-2yxVGp"
         val type = if (season == null) "movie" else "tv"
         val url = if (season == null) "${Cinemax21Provider.vidfastAPI}/$type/$tmdbId" else "${Cinemax21Provider.vidfastAPI}/$type/$tmdbId/$season/$episode"
-        val res = app.get(url, interceptor = WebViewResolver(Regex("""${Cinemax21Provider.vidfastAPI}/$module/JEwECseLZdY"""), timeout = 15_000L)).text
-        tryParseJson<ArrayList<VidFastServers>>(res)?.filter { it.description?.contains("Original audio") == true }?.amapIndexed { index, server ->
-                val source = app.get("${Cinemax21Provider.vidfastAPI}/$module/Sdoi/${server.data}", referer = "${Cinemax21Provider.vidfastAPI}/").text.let { tryParseJson<VidFastSources>(it) }
-                callback.invoke(newExtractorLink("Vidfast", "Vidfast [${server.name}]", source?.url ?: return@amapIndexed, INFER_TYPE))
-                if (index == 1) source.tracks?.map { subtitle -> subtitleCallback.invoke(newSubtitleFile(subtitle.label ?: return@map, subtitle.file ?: return@map)) }
+        val res = try {
+            app.get(url, interceptor = WebViewResolver(Regex("""${Cinemax21Provider.vidfastAPI}/$module/JEwECseLZdY"""), timeout = 30_000L)).text
+        } catch (e: Exception) {
+            log("Fail: Vidfast WebView - ${e.message}", error = true)
+            return
+        }
+        tryParseJson<ArrayList<VidFastServers>>(res)?.filter { it.description?.contains("Original audio") == true }?.forEachIndexed { index, server ->
+                try {
+                    val source = app.get("${Cinemax21Provider.vidfastAPI}/$module/Sdoi/${server.data}", referer = "${Cinemax21Provider.vidfastAPI}/").text.let { tryParseJson<VidFastSources>(it) }
+                    source?.url?.let { streamUrl ->
+                        callback.invoke(newExtractorLink("Vidfast", "Vidfast [${server.name}]", streamUrl, INFER_TYPE))
+                        if (index == 0) source.tracks?.forEach { subtitle -> subtitleCallback.invoke(newSubtitleFile(subtitle.label ?: return@forEach, subtitle.file ?: return@forEach)) }
+                    }
+                } catch (e: Exception) {
+                    log("Fail: Vidfast source ${server.name} - ${e.message}", error = true)
+                }
             }
         log("Success: Vidfast")
     }
@@ -487,22 +505,98 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
         val type = if (season == null) "movie" else "tv"
         val url = "${Cinemax21Provider.vidrockAPI}/$type/$tmdbId${if (type == "movie") "" else "/$season/$episode"}"
         val encryptData = VidrockHelper.encrypt(tmdbId, type, season, episode)
-        app.get("${Cinemax21Provider.vidrockAPI}/api/$type/$encryptData", referer = url).text.let { tryParseJson<LinkedHashMap<String, HashMap<String, String>>>(it) }?.map { source ->
+        app.get("${Cinemax21Provider.vidrockAPI}/api/$type/$encryptData", referer = url).text.let { tryParseJson<LinkedHashMap<String, HashMap<String, String>>>(it) }?.forEach { source ->
+                val sourceUrl = source.value["url"] ?: return@forEach
                 if (source.key == "source2") {
-                    val json = app.get(source.value["url"] ?: return@map, referer = "${Cinemax21Provider.vidrockAPI}/").text
-                    tryParseJson<ArrayList<VidrockSource>>(json)?.reversed()?.map mirror@{ it ->
-                        callback.invoke(newExtractorLink("Vidrock", "Vidrock [Source2]", it.url ?: return@mirror, INFER_TYPE) { this.quality = it.resolution ?: Qualities.Unknown.value; this.headers = mapOf("Range" to "bytes=0-", "Referer" to "${Cinemax21Provider.vidrockAPI}/") })
+                    val json = app.get(sourceUrl, referer = "${Cinemax21Provider.vidrockAPI}/").text
+                    tryParseJson<ArrayList<VidrockSource>>(json)?.reversed()?.forEach { it ->
+                        val streamUrl = it.url ?: return@forEach
+                        callback.invoke(newExtractorLink("Vidrock", "Vidrock [Source2 ${it.resolution ?: ""}]", streamUrl, INFER_TYPE) { this.quality = it.resolution ?: Qualities.Unknown.value; this.headers = mapOf("Range" to "bytes=0-", "Referer" to "${Cinemax21Provider.vidrockAPI}/") })
                     }
                 } else {
-                    callback.invoke(newExtractorLink("Vidrock", "Vidrock [${source.key.capitalize()}]", source.value["url"] ?: return@map, ExtractorLinkType.M3U8) { this.referer = "${Cinemax21Provider.vidrockAPI}/"; this.headers = mapOf("Origin" to Cinemax21Provider.vidrockAPI) })
+                    parseMasterPlaylistAndExtractVariants(sourceUrl, source.key.capitalize(), callback)
                 }
             }
         val subUrl = "$subAPI/$type/$tmdbId${if (type == "movie") "" else "/$season/$episode"}"
         val res = app.get(subUrl).text
-        tryParseJson<ArrayList<VidrockSubtitle>>(res)?.map { subtitle ->
-            subtitleCallback.invoke(newSubtitleFile(subtitle.label?.replace(Regex("\\d"), "")?.replace(Regex("\\s+Hi"), "")?.trim() ?: return@map, subtitle.file ?: return@map))
+        tryParseJson<ArrayList<VidrockSubtitle>>(res)?.forEach { subtitle ->
+            subtitleCallback.invoke(newSubtitleFile(subtitle.label?.replace(Regex("\\d"), "")?.replace(Regex("\\s+Hi"), "")?.trim() ?: return@forEach, subtitle.file ?: return@forEach))
         }
         log("Success: Vidrock")
+    }
+
+    private suspend fun parseMasterPlaylistAndExtractVariants(
+        masterUrl: String,
+        sourceName: String,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        try {
+            val masterPlaylist = app.get(masterUrl, headers = mapOf(
+                "Origin" to Cinemax21Provider.vidrockAPI,
+                "Referer" to "${Cinemax21Provider.vidrockAPI}/"
+            )).text
+            val variantUrls = mutableListOf<Pair<String, String>>()
+            var currentQuality = ""
+            for (line in masterPlaylist.lines()) {
+                val trimmed = line.trim()
+                if (trimmed.startsWith("#EXT-X-STREAM-INF")) {
+                    val resolutionMatch = Regex("RESOLUTION=(\\d+x\\d+)").find(trimmed)
+                    currentQuality = when {
+                        resolutionMatch != null -> {
+                            val height = resolutionMatch.groupValues[1].substringAfter("x").toIntOrNull() ?: 0
+                            when {
+                                height >= 1080 -> "1080p"
+                                height >= 720 -> "720p"
+                                height >= 480 -> "480p"
+                                else -> "360p"
+                            }
+                        }
+                        trimmed.contains("BANDWIDTH") -> {
+                            val bwMatch = Regex("BANDWIDTH=(\\d+)").find(trimmed)
+                            val bw = bwMatch?.groupValues?.get(1)?.toLongOrNull() ?: 0
+                            when {
+                                bw >= 5000000 -> "1080p"
+                                bw >= 2500000 -> "720p"
+                                bw >= 1000000 -> "480p"
+                                else -> "360p"
+                            }
+                        }
+                        else -> "Unknown"
+                    }
+                } else if (trimmed.isNotEmpty() && !trimmed.startsWith("#")) {
+                    val variantUrl = if (trimmed.startsWith("http")) trimmed else masterUrl.substringBeforeLast("/") + "/" + trimmed
+                    variantUrls.add(currentQuality to variantUrl)
+                    currentQuality = ""
+                }
+            }
+            if (variantUrls.isNotEmpty()) {
+                variantUrls.forEach { (quality, variantUrl) ->
+                    val qualityInt = when (quality) {
+                        "1080p" -> Qualities.P1080.value
+                        "720p" -> Qualities.P720.value
+                        "480p" -> Qualities.P480.value
+                        "360p" -> Qualities.P360.value
+                        else -> Qualities.Unknown.value
+                    }
+                    callback.invoke(newExtractorLink("Vidrock", "Vidrock [$sourceName $quality]", variantUrl, ExtractorLinkType.M3U8) {
+                        this.referer = "${Cinemax21Provider.vidrockAPI}/"
+                        this.headers = mapOf("Origin" to Cinemax21Provider.vidrockAPI)
+                        this.quality = qualityInt
+                    })
+                }
+            } else {
+                callback.invoke(newExtractorLink("Vidrock", "Vidrock [$sourceName]", masterUrl, ExtractorLinkType.M3U8) {
+                    this.referer = "${Cinemax21Provider.vidrockAPI}/"
+                    this.headers = mapOf("Origin" to Cinemax21Provider.vidrockAPI)
+                })
+            }
+        } catch (e: Exception) {
+            log("Fail: Vidrock variant parsing for $sourceName - ${e.message}", error = true)
+            callback.invoke(newExtractorLink("Vidrock", "Vidrock [$sourceName]", masterUrl, ExtractorLinkType.M3U8) {
+                this.referer = "${Cinemax21Provider.vidrockAPI}/"
+                this.headers = mapOf("Origin" to Cinemax21Provider.vidrockAPI)
+            })
+        }
     }
    
     suspend fun invokeCinemaOS(
