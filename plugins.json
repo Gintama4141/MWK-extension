@@ -181,10 +181,10 @@
     },
     {
         "iconUrl": "https://movieboxph.app/wp-content/uploads/2025/11/Movie-Box-icon.webp",
-        "fileHash": "sha256-e7887f8c65da0f87d0c9a3f851b41daeb5e4ef518dfbe6a9e7c32ddaee5d7ca2",
+        "fileHash": "sha256-9c3f7cc531ef18681b06b61d863c6d080a9bef89aae7a1b2271bdb81429ce508",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 34254,
+        "fileSize": 36573,
         "status": 1,
         "language": "id",
         "authors": [
@@ -197,7 +197,7 @@
             "Anime",
             "AsianDrama"
         ],
-        "version": 6,
+        "version": 7,
         "internalName": "MovieboxProvider",
         "description": "MovieBox \u2014 Streaming Movie Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/MovieboxProvider.cs3",
