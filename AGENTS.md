@@ -24,7 +24,7 @@ Anichin, Cinemax21, Donghub, Dutamovie, Kawanfilm, Kisskh, Klikxxi, Kuronime, Mo
 - Build/deploy via GitHub Actions → `builds` branch.
 
 ## Recent Pushes
-- Otakudesu v10: comprehensive audit — fix IndexOutOfBounds crash, remove hardcoded TMDB API key (security), try-catch Base64 decode, remove runBlocking anti-pattern, error handling on network requests, URL-encode search, content-based selectors (replaced brittle nth-child), deduplicate regex, withTimeoutOrNull on ani.zip API
+- Otakudesu v10: comprehensive audit — fix IndexOutOfBounds crash, remove hardcoded TMDB API key (security), try-catch Base64 decode, error handling on network requests, URL-encode search, content-based selectors (replaced brittle nth-child), deduplicate regex, withTimeoutOrNull on ani.zip API
 - `d748f6a` Klikxxi v5: comprehensive audit fixes — error handling, URL encoding, pagination, episode dedup, regex, CSS constants
 - `aaa74a9` Donghub v6: added Odnoklassniki (OKRU) extractor for mirror server support
 - Kisskh v8: parallel key fetches, proper error handling, timeouts on all API calls, URL-encoded search, pagination fix, TvType mapping fix, interceptor fix
