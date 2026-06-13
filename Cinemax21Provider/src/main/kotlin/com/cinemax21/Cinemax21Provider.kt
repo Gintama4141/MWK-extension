@@ -36,6 +36,7 @@ import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 open class Cinemax21Provider : TmdbProvider() {
     override var name = "CineMax21"
     override val hasMainPage = true
@@ -203,47 +204,49 @@ open class Cinemax21Provider : TmdbProvider() {
         return if (type == TvType.TvSeries) {
             val lastSeason = res.lastEpisodeToAir?.seasonNumber
             val jpTitle = res.alternativeTitles?.results?.find { it.iso31661 == "JP" }?.title
-            val episodes = res.seasons?.map { season ->
-                async {
-                    app.get("$tmdbAPI/${data.type}/${data.id}/season/${season.seasonNumber}?api_key=$apiKey").text
-                        .let { tryParseJson<MediaDetailEpisodes>(it) }?.episodes?.map { eps ->
-                            newEpisode(
-                                data = LinkData(
-                                    data.id,
-                                    res.externalIds?.imdbId,
-                                    res.externalIds?.tvdbId,
-                                    data.type,
-                                    eps.seasonNumber,
-                                    eps.episodeNumber,
-                                    title = title,
-                                    year = season.airDate?.split("-")?.first()?.toIntOrNull(),
-                                    orgTitle = orgTitle,
-                                    isAnime = isAnime,
-                                    airedYear = year,
-                                    lastSeason = lastSeason,
-                                    epsTitle = eps.name,
-                                    jpTitle = jpTitle,
-                                    date = season.airDate,
-                                    airedDate = res.releaseDate
-                                        ?: res.firstAirDate,
-                                    isAsian = isAsian,
-                                    isBollywood = isBollywood,
-                                    isCartoon = isCartoon
-                                ).toJson()
-                            ) {
-                                this.name =
-                                    eps.name + if (isUpcoming(eps.airDate)) " • [UPCOMING]" else ""
-                                this.season = eps.seasonNumber
-                                this.episode = eps.episodeNumber
-                                this.posterUrl = getImageUrl(eps.stillPath)
-                                this.score = Score.from10(eps.voteAverage)
-                                this.description = eps.overview
-                            }.apply {
-                                this.addDate(eps.airDate)
-                            }
-                        } ?: emptyList()
-                }
-            }?.awaitAll()?.flatten() ?: listOf()
+            val episodes = coroutineScope {
+                res.seasons?.map { season ->
+                    async {
+                        app.get("$tmdbAPI/${data.type}/${data.id}/season/${season.seasonNumber}?api_key=$apiKey").text
+                            .let { tryParseJson<MediaDetailEpisodes>(it) }?.episodes?.map { eps ->
+                                newEpisode(
+                                    data = LinkData(
+                                        data.id,
+                                        res.externalIds?.imdbId,
+                                        res.externalIds?.tvdbId,
+                                        data.type,
+                                        eps.seasonNumber,
+                                        eps.episodeNumber,
+                                        title = title,
+                                        year = season.airDate?.split("-")?.first()?.toIntOrNull(),
+                                        orgTitle = orgTitle,
+                                        isAnime = isAnime,
+                                        airedYear = year,
+                                        lastSeason = lastSeason,
+                                        epsTitle = eps.name,
+                                        jpTitle = jpTitle,
+                                        date = season.airDate,
+                                        airedDate = res.releaseDate
+                                            ?: res.firstAirDate,
+                                        isAsian = isAsian,
+                                        isBollywood = isBollywood,
+                                        isCartoon = isCartoon
+                                    ).toJson()
+                                ) {
+                                    this.name =
+                                        eps.name + if (isUpcoming(eps.airDate)) " • [UPCOMING]" else ""
+                                    this.season = eps.seasonNumber
+                                    this.episode = eps.episodeNumber
+                                    this.posterUrl = getImageUrl(eps.stillPath)
+                                    this.score = Score.from10(eps.voteAverage)
+                                    this.description = eps.overview
+                                }.apply {
+                                    this.addDate(eps.airDate)
+                                }
+                            } ?: emptyList()
+                    }
+                }?.awaitAll()?.flatten() ?: listOf()
+            }
             newTvSeriesLoadResponse(
                 title,
                 url,

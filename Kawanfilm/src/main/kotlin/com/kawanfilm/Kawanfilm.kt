@@ -12,6 +12,10 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.loadExtractor
 import java.net.URI
+import java.net.URLEncoder
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.jsoup.nodes.Element
 
 class Kawanfilm : MainAPI() {
@@ -22,6 +26,14 @@ class Kawanfilm : MainAPI() {
     override val hasMainPage = true
     override var lang = "id"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.Anime, TvType.AsianDrama)
+
+    companion object {
+        private val DIGIT_REGEX = Regex("\\D")
+        private val QUALITY_REGEX = Regex("(-\\d*x\\d*)")
+        private val EPISODE_REGEX = Regex("(?i)(?:ep|episode)\\s*(\\d+)")
+        private val SEASON_REGEX = Regex("(?i)season\\s*(\\d+)")
+        private const val DEFAULT_TIMEOUT = 30_000L
+    }
 
     override val mainPage = mainPageOf(
         "/page/%d/?s&search=advanced&post_type=movie&index&orderby&genre&movieyear&country&quality=" to "Update Terbaru",
@@ -40,7 +52,7 @@ class Kawanfilm : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val data = request.data.format(page)
-        val document = app.get("$mainUrl/$data").document
+        val document = app.get("$mainUrl/$data", timeout = DEFAULT_TIMEOUT).document
         val home = document.select("article.item").mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request.name, home)
     }
@@ -74,36 +86,9 @@ class Kawanfilm : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("${mainUrl}?s=$query&post_type[]=post&post_type[]=tv", timeout = 50L).document
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val document = app.get("${mainUrl}?s=$encodedQuery&post_type[]=post&post_type[]=tv", timeout = DEFAULT_TIMEOUT).document
         return document.select("article.item").mapNotNull { it.toSearchResult() }
-    }
-
-    private fun Element.toRecommendResult(): SearchResponse? {
-        val title = this.selectFirst("h2.entry-title > a")?.text()?.trim() ?: return null
-        val href = fixUrl(this.selectFirst("a")?.attr("href") ?: return null)
-        val posterUrl = fixUrlNull(this.selectFirst("a > img")?.getImageAttr()).fixImageQuality()
-        val quality = this.select("div.gmr-qual, div.gmr-quality-item > a").text().trim().replace("-", "")
-		val ratingText = this.selectFirst("div.gmr-rating-item")?.ownText()?.trim()
-		val eps = selectFirst(".gmr-numbeps span")?.text()?.trim()?.toIntOrNull()
-		val isSeries = eps != null
-		
-        return if (isSeries) {
-            newAnimeSearchResponse(title, href, TvType.TvSeries) {
-                this.posterUrl = posterUrl
-                if (eps !=null){
-					addSub(eps)
-				} else {
-					this.score = Score.from10(ratingText?.toDoubleOrNull())
-				}
-				addQuality(quality)
-            }
-        } else {
-            newMovieSearchResponse(title, href, TvType.Movie) {
-                this.posterUrl = posterUrl
-                addQuality(quality)
-				this.score = Score.from10(ratingText?.toDoubleOrNull())
-            }
-        }
     }
 
     override suspend fun load(url: String): LoadResponse {
@@ -111,7 +96,8 @@ class Kawanfilm : MainAPI() {
         directUrl = getBaseUrl(fetch.url)
         val document = fetch.document
 
-        val title = document.selectFirst("h1.entry-title")?.text()?.substringBefore("Season")?.substringBefore("Episode")?.trim().toString()
+        val title = document.selectFirst("h1.entry-title")?.text()
+            ?.replace(Regex("\\s+(Season|Episode)\\s+\\d+.*$", RegexOption.IGNORE_CASE), "")?.trim() ?: "Unknown"
         val poster = fixUrlNull(document.selectFirst("figure.pull-left > img")?.getImageAttr())?.fixImageQuality()
         val tags = document.select("div.gmr-moviedata a").map { it.text() }
         val year = document.select("div.gmr-moviedata strong:contains(Year:) > a").text().trim().toIntOrNull()
@@ -119,20 +105,20 @@ class Kawanfilm : MainAPI() {
         val description = document.selectFirst("div[itemprop=description] > p")?.text()?.trim()
         val trailer = document.selectFirst("ul.gmr-player-nav li a.gmr-trailer-popup")?.attr("href")
         val rating = document.selectFirst("div.gmr-meta-rating > span[itemprop=ratingValue]")?.text()?.trim()
-        val actors = document.select("div.gmr-moviedata").last()?.select("span[itemprop=actors]")?.map { it.select("a").text() }
-        val duration = document.selectFirst("div.gmr-moviedata span[property=duration]")?.text()?.replace(Regex("\\D"), "")?.toIntOrNull()
-        val recommendations = document.select("article.item.col-md-20").mapNotNull { it.toRecommendResult() }
+        val actors = document.select("div.gmr-moviedata").lastOrNull()?.select("span[itemprop=actors]")?.map { it.select("a").text() }
+        val duration = document.selectFirst("div.gmr-moviedata span[property=duration]")?.text()?.replace(DIGIT_REGEX, "")?.toIntOrNull()
+        val recommendations = document.select("article.item.col-md-20").mapNotNull { it.toSearchResult() }
 
         return if (tvType == TvType.TvSeries) {
             val episodes = document.select("div.vid-episodes a, div.gmr-listseries a").map { eps ->
                 val href = fixUrl(eps.attr("href"))
                 val name = eps.text()
-                val episode = name.split(" ").lastOrNull()?.filter { it.isDigit() }?.toIntOrNull()
-                val season = name.split(" ").firstOrNull()?.filter { it.isDigit() }?.toIntOrNull()
+                val episode = EPISODE_REGEX.find(name)?.groupValues?.get(1)?.toIntOrNull()
+                val season = SEASON_REGEX.find(name)?.groupValues?.get(1)?.toIntOrNull()
                 newEpisode(href) {
                     this.name = name
                     this.episode = episode
-                    this.season = if (name.contains(" ")) season else null
+                    this.season = season
                 }
             }.filter { it.episode != null }
 			
@@ -168,22 +154,35 @@ class Kawanfilm : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data).document
+        val document = app.get(data, timeout = DEFAULT_TIMEOUT).document
         val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
+        val referer = "$directUrl/"
 
         if (id.isNullOrEmpty()) {
-            document.select("ul.muvipro-player-tabs li a").amap { ele ->
-                val iframe = app.get(fixUrl(ele.attr("href"))).document.selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it) }
-                    ?: return@amap
-                loadExtractor(iframe, "$directUrl/", subtitleCallback, callback)
+            val tabs = document.select("ul.muvipro-player-tabs li a")
+            coroutineScope {
+                tabs.map { ele ->
+                    async {
+                        val iframe = app.get(fixUrl(ele.attr("href")), timeout = DEFAULT_TIMEOUT).document
+                            .selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it) }
+                            ?: return@async
+                        loadExtractor(iframe, referer, subtitleCallback, callback)
+                    }
+                }.awaitAll()
             }
         } else {
-            document.select("div.tab-content-ajax").amap { ele ->
-                val server = app.post(
-                    "$directUrl/wp-admin/admin-ajax.php",
-                    data = mapOf("action" to "muvipro_player_content", "tab" to ele.attr("id"), "post_id" to "$id")
-                ).document.select("iframe").attr("src").let { httpsify(it) }
-                loadExtractor(server, "$directUrl/", subtitleCallback, callback)
+            val ajaxTabs = document.select("div.tab-content-ajax")
+            coroutineScope {
+                ajaxTabs.map { ele ->
+                    async {
+                        val server = app.post(
+                            "$directUrl/wp-admin/admin-ajax.php",
+                            data = mapOf("action" to "muvipro_player_content", "tab" to ele.attr("id"), "post_id" to "$id"),
+                            timeout = DEFAULT_TIMEOUT
+                        ).document.select("iframe").attr("src").let { httpsify(it) }
+                        if (server.isNotBlank()) loadExtractor(server, referer, subtitleCallback, callback)
+                    }
+                }.awaitAll()
             }
         }
 
@@ -206,8 +205,8 @@ class Kawanfilm : MainAPI() {
 
     private fun String?.fixImageQuality(): String? {
         if (this == null) return null
-        val regex = Regex("(-\\d*x\\d*)").find(this)?.groupValues?.get(0) ?: return this
-        return this.replace(regex, "")
+        val match = QUALITY_REGEX.find(this)?.groupValues?.get(0) ?: return this
+        return this.replace(match, "")
     }
 
     private fun getBaseUrl(url: String): String = URI(url).let { "${it.scheme}://${it.host}" }

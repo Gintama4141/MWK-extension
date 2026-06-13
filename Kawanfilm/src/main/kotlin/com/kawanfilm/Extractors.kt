@@ -72,17 +72,26 @@ open class Gofile : ExtractorApi() {
     override val mainUrl = "https://gofile.io"
     override val requiresReferer = false
     private val mainApi = "https://api.gofile.io"
+
+    companion object {
+        private const val TOKEN_TTL = 5 * 60 * 1000L
+        private var tokenCache: String? = null
+        private var websiteTokenCache: String? = null
+        private var tokenTimestamp: Long = 0L
+        private val QUALITY_REGEX = Regex("(\\d{3,4})[pP]")
+        private val ID_REGEX = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)")
+        private val WT_REGEX = Regex("fetchData.wt\\s*=\\s*\"([^\"]+)")
+    }
+
     override suspend fun getUrl(
         url: String,
         referer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1)
-        val token = app.get("$mainApi/createAccount").text.let { tryParseJson<Account>(it) }?.data?.get("token")
-        val websiteToken = app.get("$mainUrl/dist/js/alljs.js").text.let {
-            Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
-        }
+        val id = ID_REGEX.find(url)?.groupValues?.get(1) ?: return
+        val token = getToken() ?: return
+        val websiteToken = getWebsiteToken() ?: return
         app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
             .text.let { tryParseJson<Source>(it) }?.data?.contents?.forEach {
                 callback.invoke(
@@ -97,8 +106,25 @@ open class Gofile : ExtractorApi() {
                 )
             }
     }
+
+    private suspend fun getToken(): String? {
+        val now = System.currentTimeMillis()
+        if (tokenCache != null && now - tokenTimestamp < TOKEN_TTL) return tokenCache
+        tokenCache = app.get("$mainApi/createAccount").text.let { tryParseJson<Account>(it) }?.data?.get("token")
+        tokenTimestamp = now
+        return tokenCache
+    }
+
+    private suspend fun getWebsiteToken(): String? {
+        if (websiteTokenCache != null) return websiteTokenCache
+        websiteTokenCache = app.get("$mainUrl/dist/js/alljs.js").text.let {
+            WT_REGEX.find(it)?.groupValues?.get(1)
+        }
+        return websiteTokenCache
+    }
+
     private fun getQuality(str: String?): Int {
-        return Regex("(\\d{3,4})[pP]").find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
+        return QUALITY_REGEX.find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: Qualities.Unknown.value
     }
     data class Account(
