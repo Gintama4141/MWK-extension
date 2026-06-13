@@ -290,10 +290,10 @@
     },
     {
         "iconUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRr-sfek8gXmLpcAppEpaYbUDVtndQbCm_boh1-E91QrmSvsw-2l3-s2JOP&s=10",
-        "fileHash": "sha256-c0d1108d9adf5204c0f929acddb61d338e4d98935491dbbb7d858516c072803f",
+        "fileHash": "sha256-6384b33360dc907f0eb8c76a0736cb002f254d9f4c7aa7c986fc75135c044190",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 39936,
+        "fileSize": 36227,
         "status": 1,
         "language": "id",
         "authors": [
@@ -305,7 +305,7 @@
             "Anime",
             "OVA"
         ],
-        "version": 9,
+        "version": 10,
         "internalName": "OtakudesuProvider",
         "description": "OtakuDesu \u2014 Streaming Anime Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/OtakudesuProvider.cs3",
