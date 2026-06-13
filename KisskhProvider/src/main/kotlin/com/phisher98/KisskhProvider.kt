@@ -11,12 +11,26 @@ import com.lagradost.cloudstream3.utils.M3u8Helper
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import okhttp3.Interceptor
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
+import java.net.URLEncoder
 import java.util.ArrayList
 
 class KisskhProvider : MainAPI() {
+    companion object {
+        private const val KEY_FETCH_API = "https://script.google.com/macros/s/AKfycbzn8B31PuDxzaMa9_CQ0VGEDasFqfzI5bXvjaIZH4DM8DNq9q6xj1ALvZNz_JT3jF0suA/exec?id="
+        private const val SUB_FETCH_API = "https://script.google.com/macros/s/AKfycbyq6hTj0ZhlinYC6xbggtgo166tp6XaDKBCGtnYk8uOfYBUFwwxBui0sGXiu_zIFmA/exec?id="
+        private const val API_TIMEOUT = 30_000L
+        private const val KEY_TIMEOUT = 10_000L
+        private const val KEY_FETCH_RETRIES = 2
+        private const val API_VERSION = "2.8.10"
+        private val KEY_CACHE = mutableMapOf<String, String>()
+    }
+
     override var mainUrl = "https://kisskh.ovh"
     override var name = "Kisskh"
     override val hasMainPage = true
@@ -41,18 +55,18 @@ class KisskhProvider : MainAPI() {
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
-        val home = app.get("$mainUrl/api/DramaList/List?page=$page${request.data}").text
-            .let { tryParseJson<Responses>(it) }?.data
-            ?.mapNotNull { media ->
-                media.toSearchResponse()
-            } ?: throw ErrorLoadingException("Invalid Json reponse")
+        val res = app.get("$mainUrl/api/DramaList/List?page=$page${request.data}", timeout = API_TIMEOUT).text
+            .let { tryParseJson<Responses>(it) }
+        val data = res?.data
+        val home = data?.mapNotNull { media -> media.toSearchResponse() }
+            ?: throw ErrorLoadingException("Invalid JSON response")
         return newHomePageResponse(
             list = HomePageList(
                 name = request.name,
                 list = home,
                 isHorizontalImages = true
             ),
-            hasNext = true
+            hasNext = data.size >= 20
         )
     }
 
@@ -69,11 +83,12 @@ class KisskhProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val searchResponse =
-            app.get("$mainUrl/api/DramaList/Search?q=$query&type=0", referer = "$mainUrl/").text
+            app.get("$mainUrl/api/DramaList/Search?q=$encodedQuery&type=0", referer = "$mainUrl/", timeout = API_TIMEOUT).text
         return tryParseJson<ArrayList<Media>>(searchResponse)?.mapNotNull { media ->
             media.toSearchResponse()
-        } ?: throw ErrorLoadingException("Invalid Json reponse")
+        } ?: throw ErrorLoadingException("Invalid JSON response")
     }
 
     private fun getTitle(str: String): String {
@@ -81,26 +96,32 @@ class KisskhProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val id = url.split("/")
+        val urlParts = url.split("/")
+        if (urlParts.size < 2) throw ErrorLoadingException("Invalid URL format")
+        val contentId = urlParts.last()
+        val titleSlug = urlParts.dropLast(1).lastOrNull() ?: ""
         val res = app.get(
-            "$mainUrl/api/DramaList/Drama/${id.last()}?isq=false",
-            referer = "$mainUrl/Drama/${
-                getTitle(id.first())
-            }?id=${id.last()}"
+            "$mainUrl/api/DramaList/Drama/$contentId?isq=false",
+            referer = "$mainUrl/Drama/$titleSlug?id=$contentId",
+            timeout = API_TIMEOUT
         ).text.let { tryParseJson<MediaDetail>(it) }
-            ?: throw ErrorLoadingException("Invalid Json reponse")
+            ?: throw ErrorLoadingException("Invalid JSON response")
 
         val episodes = res.episodes?.map { eps ->
-            newEpisode(Data(res.title, eps.number, res.id, eps.id).toJson())
-            {
-                this.episode=eps.number
+            newEpisode(Data(res.title, eps.number, res.id, eps.id).toJson()) {
+                this.episode = eps.number
             }
-        } ?: throw ErrorLoadingException("No Episode")
+        } ?: throw ErrorLoadingException("No episodes found")
 
         return newTvSeriesLoadResponse(
             res.title ?: return null,
             url,
-            if (res.type == "Movie" || episodes.size == 1) TvType.Movie else TvType.TvSeries,
+            when {
+                res.type == "Movie" -> TvType.Movie
+                res.type == "Anime" -> TvType.Anime
+                episodes.size == 1 -> TvType.Movie
+                else -> TvType.TvSeries
+            },
             episodes
         ) {
             this.posterUrl = res.thumbnail
@@ -113,7 +134,6 @@ class KisskhProvider : MainAPI() {
                 else -> null
             }
         }
-
     }
 
     private fun getLanguage(str: String): String {
@@ -123,19 +143,61 @@ class KisskhProvider : MainAPI() {
         }
     }
 
+    private fun inferQuality(url: String): Int {
+        val lowerUrl = url.lowercase()
+        return when {
+            lowerUrl.contains("2160p") || lowerUrl.contains("4k") -> Qualities.P2160.value
+            lowerUrl.contains("1080p") -> Qualities.P1080.value
+            lowerUrl.contains("720p") -> Qualities.P720.value
+            lowerUrl.contains("480p") -> Qualities.P480.value
+            lowerUrl.contains("360p") -> Qualities.P360.value
+            else -> Qualities.P720.value
+        }
+    }
+
+    private suspend fun fetchKey(apiUrl: String): String {
+        val cached = KEY_CACHE[apiUrl]
+        if (cached != null) return cached
+
+        var lastException: Exception? = null
+        repeat(KEY_FETCH_RETRIES) { attempt ->
+            try {
+                val key = app.get(apiUrl, timeout = KEY_TIMEOUT).text
+                    .let { tryParseJson<Key>(it) }?.key
+                if (!key.isNullOrEmpty()) {
+                    KEY_CACHE[apiUrl] = key
+                    return key
+                }
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < KEY_FETCH_RETRIES - 1) {
+                    delay(1000L * (attempt + 1))
+                }
+            }
+        }
+        throw ErrorLoadingException(
+            "Failed to fetch key after $KEY_FETCH_RETRIES attempts: ${lastException?.message ?: "Empty key"}"
+        )
+    }
+
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val KisskhAPI = "https://script.google.com/macros/s/AKfycbzn8B31PuDxzaMa9_CQ0VGEDasFqfzI5bXvjaIZH4DM8DNq9q6xj1ALvZNz_JT3jF0suA/exec?id="
-        val KisskhSub = "https://script.google.com/macros/s/AKfycbyq6hTj0ZhlinYC6xbggtgo166tp6XaDKBCGtnYk8uOfYBUFwwxBui0sGXiu_zIFmA/exec?id="
         val loadData = tryParseJson<Data>(data) ?: return false
-        val kkey = app.get("$KisskhAPI${loadData.epsId}&version=2.8.10", timeout = 10000).text.let { tryParseJson<Key>(it) }?.key ?:""
+
+        val (videoKey, subKey) = coroutineScope {
+            val videoKeyDeferred = async { fetchKey("$KEY_FETCH_API${loadData.epsId}&version=$API_VERSION") }
+            val subKeyDeferred = async { fetchKey("$SUB_FETCH_API${loadData.epsId}&version=$API_VERSION") }
+            videoKeyDeferred.await() to subKeyDeferred.await()
+        }
+
         app.get(
-            "$mainUrl/api/DramaList/Episode/${loadData.epsId}.png?err=false&ts=&time=&kkey=$kkey",
-            referer = "$mainUrl/Drama/${getTitle("${loadData.title}")}/Episode-${loadData.eps}?id=${loadData.id}&ep=${loadData.epsId}&page=0&pageSize=100"
+            "$mainUrl/api/DramaList/Episode/${loadData.epsId}.png?err=false&ts=&time=&kkey=$videoKey",
+            referer = "$mainUrl/Drama/${getTitle(loadData.title ?: "")}/Episode-${loadData.eps}?id=${loadData.id}&ep=${loadData.epsId}&page=0&pageSize=100",
+            timeout = API_TIMEOUT
         ).text.let { tryParseJson<Sources>(it) }?.let { source ->
             listOf(source.video, source.thirdParty).amap { link ->
                 safeApiCall {
@@ -155,10 +217,9 @@ class KisskhProvider : MainAPI() {
                                 INFER_TYPE
                             ) {
                                 this.referer = mainUrl
-                                this.quality = Qualities.P720.value
+                                this.quality = inferQuality(link)
                             }
                         )
-
                     } else {
                         loadExtractor(
                             link?.substringBefore("=http") ?: return@safeApiCall,
@@ -171,30 +232,23 @@ class KisskhProvider : MainAPI() {
             }
         }
 
-        val kkey1=app.get("$KisskhSub${loadData.epsId}&version=2.8.10", timeout = 10000).text.let { tryParseJson<Key>(it) }?.key ?:""
-        app.get("$mainUrl/api/Sub/${loadData.epsId}?kkey=$kkey1").text.let { res ->
-            tryParseJson<List<Subtitle>>(res)?.map { sub ->
-                val src = sub.src ?: return@map
-                if (src.contains(".txt")) {
-                    subtitleCallback.invoke(
-                        newSubtitleFile(
-                            getLanguage(sub.label ?: return@map),
-                            src
-                        )
-                    )
-                }
-                else
+        processSubtitles(subKey, loadData.epsId, subtitleCallback)
+
+        return true
+    }
+
+    private suspend fun processSubtitles(subKey: String, epsId: Int?, subtitleCallback: (SubtitleFile) -> Unit) {
+        app.get("$mainUrl/api/Sub/$epsId?kkey=$subKey", timeout = API_TIMEOUT).text.let { res ->
+            tryParseJson<List<Subtitle>>(res)?.forEach { sub ->
+                val src = sub.src ?: return@forEach
                 subtitleCallback.invoke(
                     newSubtitleFile(
-                        getLanguage(sub.label ?: return@map),
+                        getLanguage(sub.label ?: return@forEach),
                         src
                     )
                 )
             }
         }
-
-        return true
-
     }
 // SubDecryptor Code from Thanks to https://github.com/Kohi-den/extensions-source/blob/515590ecfec6af2b915d23508266536f7f5a3ab8/src/en/kisskh/src/eu/kanade/tachiyomi/animeextension/en/kisskh/SubDecryptor.kt
 
@@ -202,25 +256,22 @@ class KisskhProvider : MainAPI() {
     override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor {
         return object : Interceptor {
             override fun intercept(chain: Interceptor.Chain): Response {
-                val request = chain.request()
-                    .newBuilder()
-                    .build()
+                val request = chain.request().newBuilder().build()
                 val response = chain.proceed(request)
                 if (response.request.url.toString().contains(".txt")) {
+                    val contentType = response.body.contentType()
                     val responseBody = response.body.string()
                     val chunks = responseBody.split(CHUNK_REGEX1)
                         .filter(String::isNotBlank)
                         .map(String::trim)
                     val decrypted = chunks.mapIndexed { index, chunk ->
                         val parts = chunk.split("\n")
-                        val text = parts.slice(1 until parts.size)
+                        val text = parts.drop(1)
                         val d = text.map { decrypt(it) }.joinToString("\n")
                         arrayOf<Any>(index + 1, parts.first(), d).joinToString("\n")
                     }.joinToString("\n\n")
-                    val newBody = decrypted.toResponseBody(response.body.contentType())
-                    return response.newBuilder()
-                        .body(newBody)
-                        .build()
+                    val newBody = decrypted.toResponseBody(contentType)
+                    return response.newBuilder().body(newBody).build()
                 }
                 return response
             }

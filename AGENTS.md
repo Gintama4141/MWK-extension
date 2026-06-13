@@ -25,6 +25,8 @@ Anichin, Cinemax21, Donghub, Dutamovie, Kawanfilm, Kisskh, Kuronime, Moviebox, N
 
 ## Recent Pushes
 - `aaa74a9` Donghub v6: added Odnoklassniki (OKRU) extractor for mirror server support
+- Kisskh v8: parallel key fetches, proper error handling, timeouts on all API calls, URL-encoded search, pagination fix, TvType mapping fix, interceptor fix
+- Kisskh v9: key caching + retry mechanism, API version constant, quality inference from URL
 - `f266985` Stage 3: remove debug println from Kisskh v7, Nomat v5
 - `b60b6d6` Stage 2: 10 bug fixes across 6 providers (Cinemax21 v10, Moviebox v6, OneTouchTV v5, Anichin v6, Kuronime v12, TorraStream v88)
 - `eda6242` Dutamovie v16: optimize loadLinks — remove double fetch, dupes, wrong selectors
