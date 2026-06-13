@@ -29,6 +29,7 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import java.net.URLEncoder
 
 class OneTouchTV : MainAPI() {
     override var mainUrl = base64Decode("aHR0cHM6Ly9hcGkzLmRldmNvcnAubWU=")
@@ -40,7 +41,8 @@ class OneTouchTV : MainAPI() {
     override val mainPage = mainPageOf("vod/home" to "Home")
 
     override suspend fun search(query: String, page: Int): SearchResponseList? {
-        val url = "$mainUrl/vod/search?page=$page&keyword=$query"
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val url = "$mainUrl/vod/search?page=$page&keyword=$encodedQuery"
         val responseText = try {
             app.get(url, referer = "$mainUrl/").text
         } catch (e: Exception) {
@@ -56,7 +58,7 @@ class OneTouchTV : MainAPI() {
         } else {
             tryParseJson<Search>(decryptedJson)?.result
         } ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
-        if (results.isEmpty()) throw ErrorLoadingException("No search results found")
+        if (results.isEmpty()) return emptyList().toNewSearchResponseList()
         return results.map { result ->
             newTvSeriesSearchResponse(
                 result.title ?: "UnKnown",
@@ -100,15 +102,15 @@ class OneTouchTV : MainAPI() {
         return newHomePageResponse(list = homeLists, hasNext = false)
     }
 
-    private fun OneTouchTVParser.Day.toMedia() = OneTouchMedia(title = title ?: "Unknown Title", id = id ?: "0", image = image, type = type, country = country, year = year, status = status, isSub = isSub)
-    private fun OneTouchTVParser.Week.toMedia() = OneTouchMedia(title = title ?: "Unknown Title", id = id ?: "0", image = image, type = type, country = country, year = year, status = status, isSub = isSub)
-    private fun OneTouchTVParser.Month.toMedia() = OneTouchMedia(title = title ?: "Unknown Title", id = id ?: "0", image = image, type = type, country = country, year = year, status = status, isSub = isSub)
+    private fun OneTouchTVParser.TopMedia.toMedia() = OneTouchMedia(title = title ?: "Unknown Title", id = id2 ?: id ?: "0", image = image, type = type, country = country, year = year, status = status, isSub = isSub)
     private fun OneTouchMedia.toSearchResponse(): SearchResponse = newTvSeriesSearchResponse(title, "$mainUrl/vod/${id}/detail", TvType.Movie) { this.posterUrl = image }
 
     data class OneTouchMedia(val title: String = "Unknown Title", val id: String? = "0", val image: String? = null, val type: String? = null, val country: String? = null, val year: String? = null, val status: String? = null, val isSub: Boolean = false)
 
-    private fun RandomSlideShow.toCleanMedia() = CleanMedia(id = id2 ?: id, title = title, image = image, country = country, type = type, year = year, status = status, isSub = isSub ?: false)
-    private fun Recent.toCleanMedia() = CleanMedia(id = id2 ?: id, title = title, image = image, country = country, type = type, year = year, status = status, isSub = isSub ?: false)
+    private fun buildCleanMedia(id: String?, id2: String?, title: String?, image: String?, country: String?, type: String?, year: String?, status: String?, isSub: Boolean?) =
+        CleanMedia(id = id2 ?: id, title = title, image = image, country = country, type = type, year = year, status = status, isSub = isSub ?: false)
+    private fun RandomSlideShow.toCleanMedia() = buildCleanMedia(id, id2, title, image, country, type, year, status, isSub)
+    private fun Recent.toCleanMedia() = buildCleanMedia(id, id2, title, image, country, type, year, status, isSub)
     private fun CleanMedia.toSearchResponse(mainUrl: String): SearchResponse = newTvSeriesSearchResponse(title ?: "Unknown Title", "$mainUrl/vod/${id ?: ""}/detail", TvType.Movie) { this.posterUrl = image }
 
     override suspend fun load(url: String): LoadResponse {
@@ -116,8 +118,8 @@ class OneTouchTV : MainAPI() {
         val decryptedJson = try { decryptString(rawResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
         val parser = tryParseJson<LoadData>(decryptedJson) ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
         val title = parser.title ?: "Unknown Title"
-        val poster = parser.image ?: "null"
-        val backgroundposter = parser.poster?.replace("image-7wk.pages.dev", "image-v1.pages.dev")?.takeIf { it.isNotBlank() && it != "null" } ?: (parser.image ?: "")
+        val poster = parser.image ?: ""
+        val backgroundPoster = parser.poster?.replace("image-7wk.pages.dev", "image-v1.pages.dev")?.takeIf { it.isNotBlank() && it != "null" } ?: (parser.image ?: "")
         val description = parser.description ?: ""
         val year = parser.year?.toIntOrNull()
         val status = getStatus(parser.status ?: "")
@@ -138,7 +140,14 @@ class OneTouchTV : MainAPI() {
             topParser.month?.forEach { add(it.toMedia()) }
         }.map { it.toSearchResponse() }
         return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes.reversed()) {
-            this.backgroundPosterUrl = backgroundposter; this.posterUrl = poster; this.plot = description; this.tags = tags; this.showStatus = status; this.year = year; this.actors = actors; this.recommendations = recommendation
+            this.backgroundPosterUrl = backgroundPoster
+            this.posterUrl = poster
+            this.plot = description
+            this.tags = tags
+            this.showStatus = status
+            this.year = year
+            this.actors = actors
+            this.recommendations = recommendation
         }
     }
 
@@ -147,7 +156,15 @@ class OneTouchTV : MainAPI() {
         val decryptedJson = try { decryptString(rawResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
         val (sources, tracks) = parseSourcesAndTracks(decryptedJson)
         launch { for (track in tracks) subtitleCallback(newSubtitleFile(track.name ?: "Unknown", track.file ?: continue)) }
-        launch { for (src in sources) callback(newExtractorLink(src.name?.capitalize() ?: "Source", src.name?.capitalize() ?: "Source", src.url ?: continue, INFER_TYPE) { this.quality = getQualityFromName(src.quality ?: ""); this.headers = src.headers ?: emptyMap() }) }
+        launch {
+            for (src in sources) {
+                val sourceName = src.name?.replaceFirstChar { it.titlecase() } ?: "Source"
+                callback(newExtractorLink(sourceName, sourceName, src.url ?: continue, INFER_TYPE) {
+                    this.quality = getQualityFromName(src.quality ?: "")
+                    this.headers = src.headers ?: emptyMap()
+                })
+            }
+        }
         true
     }
 

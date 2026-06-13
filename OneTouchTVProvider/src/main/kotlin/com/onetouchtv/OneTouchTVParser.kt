@@ -4,41 +4,13 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 
 data class OneTouchTVParser(
-    val day: List<Day>? = emptyList(),
-    val week: List<Week>? = emptyList(),
-    val month: List<Month>? = emptyList()
+    val day: List<TopMedia>? = emptyList(),
+    val week: List<TopMedia>? = emptyList(),
+    val month: List<TopMedia>? = emptyList()
 ) {
-    data class Day(
-        val _id: String? = null,
-        val id: String? = null,
-        val title: String? = null,
-        val image: String? = null,
-        val country: String? = null,
-        val type: String? = null,
-        val year: String? = null,
-        val popularity: Int = 0,
-        val status: String? = null,
-        val releaseDate: String? = null,
-        val isSub: Boolean = false
-    )
-
-    data class Week(
-        val _id: String? = null,
-        val id: String? = null,
-        val title: String? = null,
-        val image: String? = null,
-        val country: String? = null,
-        val type: String? = null,
-        val year: String? = null,
-        val popularity: Int = 0,
-        val status: String? = null,
-        val releaseDate: String? = null,
-        val isSub: Boolean = false
-    )
-
-    data class Month(
-        val _id: String? = null,
-        val id: String? = null,
+    data class TopMedia(
+        @param:JsonProperty("_id") val id: String? = null,
+        @param:JsonProperty("id") val id2: String? = null,
         val title: String? = null,
         val image: String? = null,
         val country: String? = null,

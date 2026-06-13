@@ -11,9 +11,10 @@ private val keyHex = base64Decode("Njk2ZDM3MzI2MzY4NjE3MjUwNjE3MzczNzc2ZjcyNjQ2Z
 private val ivHex = base64Decode("Njk2ZDM3MzI2MzY4NjE3MjUwNjE3MzczNzc2ZjcyNjQ=")
 private val key = keyHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 private val iv = ivHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+private val WHITESPACE_REGEX = "\\s+".toRegex()
 
 fun normalizeCustomAlphabet(s: String): String =
-    s.replace("-_.", "/").replace("@", "+").replace("\\s+".toRegex(), "")
+    s.replace("-_.", "/").replace("@", "+").replace(WHITESPACE_REGEX, "")
 
 fun base64ToBytes(b64: String): ByteArray {
     var base64Str = b64
