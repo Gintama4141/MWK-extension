@@ -87,7 +87,7 @@ class PencurimovieProvider : MainAPI() {
         val actors =
             document.select("div.mvic-info p").filter { it.text().startsWith("Actors") }.flatMap { it.select("a") }.map { it.text() }
         val year =
-            document.select("div.mvic-info p").filter { it.text().startsWith("Release") }.flatMap { it.select("a") }.text().toIntOrNull()
+            document.select("div.mvic-info p").filter { it.text().startsWith("Release") }.flatMap { it.select("a") }.joinToString("") { it.text() }.toIntOrNull()
         val recommendation=document.select("div.ml-item").mapNotNull {
             it.toSearchResult()
         }
