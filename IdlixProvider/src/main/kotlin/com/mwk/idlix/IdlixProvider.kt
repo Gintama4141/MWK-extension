@@ -27,7 +27,7 @@ class IdlixProvider : MainAPI() {
             "https://idlix.site"
         )
 
-        fun getWorkingDomain(): String {
+        suspend fun getWorkingDomain(): String {
             return cachedDomain ?: run {
                 KNOWN_DOMAINS.firstOrNull { domain ->
                     try {
@@ -108,7 +108,15 @@ class IdlixProvider : MainAPI() {
 
         if (isSeries) {
             val seasons = parseSeasons(epElements, domain)
-            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, seasons.flatMap { it.episodes }) {
+            val episodes = seasons.flatMap { season ->
+                season.episodes.map { ep ->
+                    newEpisode(ep.href) {
+                        this.name = ep.title
+                        this.episode = ep.episodeNum
+                    }
+                }
+            }
+            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = poster
                 this.plot = plot
                 this.year = year
