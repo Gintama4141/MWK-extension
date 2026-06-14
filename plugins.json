@@ -46,10 +46,10 @@
     },
     {
         "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://donghub.vip&size=%size%",
-        "fileHash": "sha256-406e3684c70c7f2b22e69b5f4a7e1fb53fc79cc780a67e24b32b0807459a96f3",
+        "fileHash": "sha256-b2c458b4b14f40d7962d191c988471c9ca9bc1c190f9631e6a58e32d4d692e3d",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-        "fileSize": 34460,
+        "fileSize": 29536,
         "status": 1,
         "language": "id",
         "authors": [
@@ -61,7 +61,7 @@
             "AnimeMovie",
             "Cartoon"
         ],
-        "version": 8,
+        "version": 9,
         "internalName": "DonghubProvider",
         "description": "Donghub \u2014 Streaming Donghua Subtitle Indonesia",
         "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/DonghubProvider.cs3",
