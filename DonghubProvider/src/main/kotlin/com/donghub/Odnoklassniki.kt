@@ -33,14 +33,21 @@ class Odnoklassniki : ExtractorApi() {
             "User-Agent" to USER_AGENT,
         )
         val embedUrl = url.replace("/video/", "/videoembed/")
-        val videoReq = app.get(embedUrl, headers = headers).text
+        val videoReq = try {
+            app.get(embedUrl, headers = headers).text
+        } catch (_: Exception) {
+            throw ErrorLoadingException("Failed to fetch OK.ru embed page")
+        }
+        val decoded = videoReq
             .replace("\\&quot;", "\"")
             .replace("\\\\", "\\")
             .replace(Regex("\\\\u([0-9A-Fa-f]{4})")) { matchResult ->
-                Integer.parseInt(matchResult.groupValues[1], 16).toChar().toString()
+                val code = matchResult.groupValues[1].toInt(16)
+                if (code in 0xD800..0xDFFF) matchResult.value
+                else code.toChar().toString()
             }
 
-        val videosStr = Regex(""""videos":(\[[^]]*])""").find(videoReq)?.groupValues?.get(1)
+        val videosStr = Regex(""""videos"\s*:\s*\[("[^"]*"|\{[^}]*\})*\]""").find(decoded)?.groupValues?.get(1)
             ?: throw ErrorLoadingException("Video not found")
         val videos = AppUtils.tryParseJson<List<OkRuVideo>>(videosStr)
             ?: throw ErrorLoadingException("Video not found")

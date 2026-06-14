@@ -1,5 +1,6 @@
 package com.donghub
 
+import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.newSubtitleFile
@@ -7,7 +8,6 @@ import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
-import java.net.URI
 
 class Geodailymotion : Dailymotion() {
     override val name = "GeoDailymotion"
@@ -20,8 +20,6 @@ open class Dailymotion : ExtractorApi() {
     override val requiresReferer = false
     private val baseUrl = "https://www.dailymotion.com"
 
-    private val videoIdRegex = "^[kx][a-zA-Z0-9]+$".toRegex()
-
     override suspend fun getUrl(
         url: String,
         referer: String?,
@@ -31,7 +29,11 @@ open class Dailymotion : ExtractorApi() {
         val embedUrl = getEmbedUrl(url) ?: return
         val id = getVideoId(embedUrl) ?: return
         val metaDataUrl = "$baseUrl/player/metadata/video/$id"
-        val response = app.get(metaDataUrl, referer = embedUrl).text
+        val response = try {
+            app.get(metaDataUrl, referer = embedUrl).text
+        } catch (_: Exception) {
+            throw ErrorLoadingException("Failed to fetch Dailymotion metadata")
+        }
 
         val qualityUrlRegex = Regex(""""url"\s*:\s*"([^"]+)"""")
         val urls = qualityUrlRegex.findAll(response)
@@ -85,9 +87,8 @@ open class Dailymotion : ExtractorApi() {
     }
 
     private fun getVideoId(url: String): String? {
-        val path = URI(url).path
-        val id = path.substringAfter("/video/")
-        return if (id.matches(videoIdRegex)) id else null
+        val match = Regex("/video/([kx][a-zA-Z0-9]+)").find(url) ?: return null
+        return match.groupValues[1].ifEmpty { null }
     }
 
     private suspend fun getStream(

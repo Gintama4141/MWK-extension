@@ -100,22 +100,38 @@ class DonghubProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data).document
-        document.select(".mobius option").amap { item ->
-            val base64 = item.attr("value")
-            if (base64.isBlank()) return@amap
 
-            val decoded = try {
-                base64Decode(base64)
-            } catch (e: Exception) {
-                return@amap
+        val serverOptions = document.select(".mobius option")
+        if (serverOptions.isNotEmpty()) {
+            for (item in serverOptions) {
+                try {
+                    val base64 = item.attr("value")
+                    if (base64.isBlank()) continue
+
+                    val decoded = base64Decode(base64)
+                    val doc = Jsoup.parse(decoded)
+                    val iframeSrc = doc.select("iframe").attr("src")
+                    if (iframeSrc.isBlank()) continue
+
+                    loadExtractor(fixUrl(iframeSrc), subtitleCallback, callback)
+                } catch (_: Exception) {}
             }
-
-            val doc = Jsoup.parse(decoded)
-            val iframeSrc = doc.select("iframe").attr("src")
-            if (iframeSrc.isBlank()) return@amap
-
-            loadExtractor(fixUrl(iframeSrc), subtitleCallback, callback)
         }
+
+        val directIframes = document.select(
+            "div.player iframe, div.embed-responsive iframe, iframe[src*=dailymotion], " +
+            "iframe[src*=ok.ru], iframe[src*=archive.org], iframe[src*=youtube], " +
+            "div#player iframe, iframe.video-player"
+        )
+        for (iframe in directIframes) {
+            try {
+                val src = iframe.attr("src")
+                if (src.isNotBlank()) {
+                    loadExtractor(fixUrl(src), subtitleCallback, callback)
+                }
+            } catch (_: Exception) {}
+        }
+
         return true
     }
 
