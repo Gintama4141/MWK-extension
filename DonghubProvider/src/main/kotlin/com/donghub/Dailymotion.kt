@@ -7,7 +7,9 @@ import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
+import com.lagradost.cloudstream3.utils.newExtractorLink
 
 class Geodailymotion : Dailymotion() {
     override val name = "GeoDailymotion"
@@ -29,19 +31,54 @@ open class Dailymotion : ExtractorApi() {
         val embedUrl = getEmbedUrl(url) ?: return
         val id = getVideoId(embedUrl) ?: return
         val metaDataUrl = "$baseUrl/player/metadata/video/$id"
+
         val response = try {
             app.get(metaDataUrl, referer = embedUrl).text
         } catch (_: Exception) {
             throw ErrorLoadingException("Failed to fetch Dailymotion metadata")
         }
 
-        val qualityUrlRegex = Regex(""""url"\s*:\s*"([^"]+)"""")
-        val urls = qualityUrlRegex.findAll(response)
-            .map { it.groupValues[1] }
-            .toList().filter { it.contains(".m3u8") }
+        val metadata = tryParseJson<DmMetadata>(response)
+        val qualities = metadata?.qualities
+            ?: throw ErrorLoadingException("No qualities found in Dailymotion metadata")
 
-        urls.forEach { videoUrl ->
-            getStream(videoUrl, this.name, callback)
+        for ((qualityLabel, sources) in qualities) {
+            val source = sources.firstOrNull { it.url != null } ?: continue
+            val manifestUrl = source.url ?: continue
+
+            try {
+                val manifestResponse = app.get(manifestUrl, referer = embedUrl).text
+
+                if (manifestResponse.contains("#EXT-X-STREAM-INF") || manifestResponse.contains("#EXTINF:")) {
+                    generateM3u8(this.name, manifestUrl, qualityLabel).forEach(callback)
+                } else {
+                    val directUrls = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(manifestResponse)
+                        .map { it.value }
+                        .distinct()
+
+                    if (directUrls.count() > 0) {
+                        directUrls.forEach { nestedUrl ->
+                            generateM3u8(this.name, nestedUrl, qualityLabel).forEach(callback)
+                        }
+                    } else {
+                        val mp4Urls = Regex("""https?://[^\s"'<>]+\.mp4[^\s"'<>]*""").findAll(manifestResponse)
+                            .map { it.value }
+                            .distinct()
+
+                        mp4Urls.forEach { mp4Url ->
+                            callback(newExtractorLink(
+                                source = this.name,
+                                name = this.name,
+                                url = mp4Url,
+                                type = INFER_TYPE
+                            ) {
+                                this.referer = embedUrl
+                                this.quality = com.lagradost.cloudstream3.utils.getQualityFromName(qualityLabel)
+                            })
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
         }
 
         extractSubtitles(response, subtitleCallback)
@@ -91,13 +128,16 @@ open class Dailymotion : ExtractorApi() {
         return match.groupValues[1].ifEmpty { null }
     }
 
-    private suspend fun getStream(
-        streamLink: String,
-        name: String,
-        callback: (ExtractorLink) -> Unit
-    ) {
-        return generateM3u8(name, streamLink, "").forEach(callback)
-    }
+    data class DmMetadata(
+        val qualities: Map<String, List<DmQuality>>? = null,
+        val subtitles: Any? = null
+    )
+
+    data class DmQuality(
+        val url: String? = null,
+        val type: String? = null,
+        val size: Int? = null
+    )
 
     data class DmSubtitleEntry(
         val label: String? = null,
