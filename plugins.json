@@ -91,6 +91,28 @@
         "name": "Dutamovie"
     },
     {
+        "iconUrl": "https://tv10.idlixku.com/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png",
+        "fileHash": "sha256-6a81998aa03a58fc9798ea1f7d9ea7ada49cbea6c4438970aa9d952ce2ca4546",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
+        "fileSize": 36888,
+        "status": 1,
+        "language": "id",
+        "authors": [
+            "MWK"
+        ],
+        "tvTypes": [
+            "AsianDrama",
+            "TvSeries",
+            "Movie"
+        ],
+        "version": 1,
+        "internalName": "IdlixProvider",
+        "description": "Idlix \u2014 Streaming Movie and TV Series Indonesia",
+        "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/IdlixProvider.cs3",
+        "name": "IdlixProvider"
+    },
+    {
         "fileHash": "sha256-806407ba1e1d40290e5be957846f72bbd7732c53de8e65e6dd62b66c64106ee7",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
