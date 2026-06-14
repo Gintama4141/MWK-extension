@@ -119,9 +119,9 @@ class DonghubProvider : MainAPI() {
         }
 
         val directIframes = document.select(
-            "div.player iframe, div.embed-responsive iframe, iframe[src*=dailymotion], " +
-            "iframe[src*=ok.ru], iframe[src*=archive.org], iframe[src*=youtube], " +
-            "div#player iframe, iframe.video-player"
+            "div#embed_holder iframe, div.player iframe, div.embed-responsive iframe, " +
+            "iframe[src*=dailymotion], iframe[src*=ok.ru], iframe[src*=archive.org], " +
+            "iframe[src*=youtube], iframe[src*=rpmvid], div#player iframe, iframe.video-player"
         )
         for (iframe in directIframes) {
             try {

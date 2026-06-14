@@ -7,9 +7,7 @@ import com.lagradost.cloudstream3.newSubtitleFile
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.INFER_TYPE
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
-import com.lagradost.cloudstream3.utils.newExtractorLink
 
 class Geodailymotion : Dailymotion() {
     override val name = "GeoDailymotion"
@@ -34,51 +32,45 @@ open class Dailymotion : ExtractorApi() {
 
         val response = try {
             app.get(metaDataUrl, referer = embedUrl).text
-        } catch (_: Exception) {
-            throw ErrorLoadingException("Failed to fetch Dailymotion metadata")
+        } catch (e: Exception) {
+            throw ErrorLoadingException("Failed to fetch Dailymotion metadata: ${e.message}")
         }
 
         val metadata = tryParseJson<DmMetadata>(response)
         val qualities = metadata?.qualities
             ?: throw ErrorLoadingException("No qualities found in Dailymotion metadata")
 
+        var linkFound = false
+
         for ((qualityLabel, sources) in qualities) {
             val source = sources.firstOrNull { it.url != null } ?: continue
             val manifestUrl = source.url ?: continue
 
             try {
-                val manifestResponse = app.get(manifestUrl, referer = embedUrl).text
-
-                if (manifestResponse.contains("#EXT-X-STREAM-INF") || manifestResponse.contains("#EXTINF:")) {
-                    generateM3u8(this.name, manifestUrl, qualityLabel).forEach(callback)
-                } else {
-                    val directUrls = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(manifestResponse)
-                        .map { it.value }
-                        .distinct()
-
-                    if (directUrls.count() > 0) {
-                        directUrls.forEach { nestedUrl ->
-                            generateM3u8(this.name, nestedUrl, qualityLabel).forEach(callback)
-                        }
-                    } else {
-                        val mp4Urls = Regex("""https?://[^\s"'<>]+\.mp4[^\s"'<>]*""").findAll(manifestResponse)
-                            .map { it.value }
-                            .distinct()
-
-                        mp4Urls.forEach { mp4Url ->
-                            callback(newExtractorLink(
-                                source = this.name,
-                                name = this.name,
-                                url = mp4Url,
-                                type = INFER_TYPE
-                            ) {
-                                this.referer = embedUrl
-                                this.quality = com.lagradost.cloudstream3.utils.getQualityFromName(qualityLabel)
-                            })
-                        }
-                    }
+                generateM3u8(this.name, manifestUrl, qualityLabel).forEach {
+                    callback(it)
+                    linkFound = true
                 }
             } catch (_: Exception) {}
+        }
+
+        if (!linkFound) {
+            val m3u8Urls = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(response)
+                .map { it.value.replace("\\u002F", "/") }
+                .distinct()
+
+            for (m3u8Url in m3u8Urls) {
+                try {
+                    generateM3u8(this.name, m3u8Url, "auto").forEach {
+                        callback(it)
+                        linkFound = true
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+
+        if (!linkFound) {
+            throw ErrorLoadingException("No playable streams found")
         }
 
         extractSubtitles(response, subtitleCallback)
@@ -88,28 +80,17 @@ open class Dailymotion : ExtractorApi() {
         response: String,
         subtitleCallback: (SubtitleFile) -> Unit
     ) {
-        val subtitlesObjRegex = Regex(""""subtitles"\s*:\s*(\{(?:[^{}]|"[^"]*")*?\})""")
+        val subtitlesObjRegex = Regex(""""subtitles"\s*:\s*\{[^{}]*"data"\s*:\s*\{([^}]+)\}[^{}]*\}""")
         subtitlesObjRegex.find(response)?.let { match ->
-            val subtitlesJson = match.groupValues[1]
-                .replace(Regex(""""urls"\s*:\s*\["[^"]*"\]""")) { urlsMatch ->
-                    val url = Regex("""\["([^"]+)"\]""").find(urlsMatch.value)?.groupValues?.get(1)
-                        ?: return@replace urlsMatch.value
-                    """"urls":[{"url":"$url"}]"""
-                }
-                .replace(Regex(""""urls"\s*:\s*\[([^\]]+)\]""")) { arrMatch ->
-                    val items = arrMatch.groupValues[1].split(",").map { it.trim().trim('"') }
-                    val objects = items.joinToString(",") { """{"url":"$it"}""" }
-                    """"urls":[$objects]"""
-                }
-            val subsData = tryParseJson<Map<String, List<DmSubtitleEntry>>>(subtitlesJson)
-            subsData?.forEach { (_, entries) ->
-                entries.forEach { entry ->
-                    entry.urls?.firstOrNull()?.url?.let { url ->
-                        entry.label?.let { label ->
-                            subtitleCallback(newSubtitleFile(label, url))
-                        }
-                    }
-                }
+            val dataBlock = match.groupValues[1]
+            val langRegex = Regex(""""([^"]+)"\s*:\s*\{[^}]*"urls"\s*:\s*\[([^\]]+)\]""")
+            langRegex.findAll(dataBlock).forEach { langMatch ->
+                val langCode = langMatch.groupValues[1]
+                val urlsBlock = langMatch.groupValues[2]
+                val urlRegex = Regex(""""([^"]+)"""")
+                val url = urlRegex.find(urlsBlock)?.groupValues?.get(1) ?: return@forEach
+                val label = langCode.replace("-auto", " (auto)")
+                subtitleCallback(newSubtitleFile(label, url))
             }
         }
     }
@@ -117,7 +98,7 @@ open class Dailymotion : ExtractorApi() {
     private fun getEmbedUrl(url: String): String? {
         if (url.contains("/embed/") || url.contains("/video/")) return url
         if (url.contains("geo.dailymotion.com")) {
-            val videoId = url.substringAfter("video=")
+            val videoId = url.substringAfter("video=").substringBefore("&")
             return "$baseUrl/embed/video/$videoId"
         }
         return null
@@ -137,14 +118,5 @@ open class Dailymotion : ExtractorApi() {
         val url: String? = null,
         val type: String? = null,
         val size: Int? = null
-    )
-
-    data class DmSubtitleEntry(
-        val label: String? = null,
-        val urls: List<DmSubUrl>? = null,
-    )
-
-    data class DmSubUrl(
-        val url: String? = null,
     )
 }
