@@ -1,11 +1,12 @@
 package com.onetouchtv
 
-import com.lagradost.cloudstream3.plugins.BasePlugin
+import android.content.Context
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
+import com.lagradost.cloudstream3.plugins.Plugin
 
 @CloudstreamPlugin
-class OneTouchTVPlugin : BasePlugin() {
-    override fun load() {
+class OneTouchTVPlugin : Plugin() {
+    override fun load(context: Context) {
         registerMainAPI(OneTouchTV())
     }
 }
