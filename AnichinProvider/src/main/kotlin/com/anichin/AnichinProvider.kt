@@ -154,7 +154,7 @@ class AnichinProvider : MainAPI() {
 
             links.isNotEmpty()
         } catch (e: Exception) {
-            false
+            throw ErrorLoadingException(e.message ?: "Gagal memuat video")
         }
     }
 

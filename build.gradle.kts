@@ -90,7 +90,6 @@ subprojects {
         implementation("com.fasterxml.jackson.core:jackson-databind:2.13.1")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
         implementation("org.mozilla:rhino:1.8.1")
-        implementation("com.google.code.gson:gson:2.14.0")
 
         if (!isSharedModule) {
             implementation(project(":SharedModule"))

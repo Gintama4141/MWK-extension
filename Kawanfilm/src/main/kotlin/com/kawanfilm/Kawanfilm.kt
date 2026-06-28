@@ -155,44 +155,48 @@ class Kawanfilm : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data, timeout = DEFAULT_TIMEOUT).document
-        val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
-        val referer = "$directUrl/"
+        return try {
+            val document = app.get(data, timeout = DEFAULT_TIMEOUT).document
+            val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
+            val referer = "$directUrl/"
 
-        if (id.isNullOrEmpty()) {
-            val tabs = document.select("ul.muvipro-player-tabs li a")
-            coroutineScope {
-                tabs.map { ele ->
-                    async {
-                        val iframe = app.get(fixUrl(ele.attr("href")), timeout = DEFAULT_TIMEOUT).document
-                            .selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it) }
-                            ?: return@async
-                        loadExtractor(iframe, referer, subtitleCallback, callback)
-                    }
-                }.awaitAll()
+            if (id.isNullOrEmpty()) {
+                val tabs = document.select("ul.muvipro-player-tabs li a")
+                coroutineScope {
+                    tabs.map { ele ->
+                        async {
+                            val iframe = app.get(fixUrl(ele.attr("href")), timeout = DEFAULT_TIMEOUT).document
+                                .selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it) }
+                                ?: return@async
+                            loadExtractor(iframe, referer, subtitleCallback, callback)
+                        }
+                    }.awaitAll()
+                }
+            } else {
+                val ajaxTabs = document.select("div.tab-content-ajax")
+                coroutineScope {
+                    ajaxTabs.map { ele ->
+                        async {
+                            val server = app.post(
+                                "$directUrl/wp-admin/admin-ajax.php",
+                                data = mapOf("action" to "muvipro_player_content", "tab" to ele.attr("id"), "post_id" to "$id"),
+                                timeout = DEFAULT_TIMEOUT
+                            ).document.select("iframe").attr("src").let { httpsify(it) }
+                            if (server.isNotBlank()) loadExtractor(server, referer, subtitleCallback, callback)
+                        }
+                    }.awaitAll()
+                }
             }
-        } else {
-            val ajaxTabs = document.select("div.tab-content-ajax")
-            coroutineScope {
-                ajaxTabs.map { ele ->
-                    async {
-                        val server = app.post(
-                            "$directUrl/wp-admin/admin-ajax.php",
-                            data = mapOf("action" to "muvipro_player_content", "tab" to ele.attr("id"), "post_id" to "$id"),
-                            timeout = DEFAULT_TIMEOUT
-                        ).document.select("iframe").attr("src").let { httpsify(it) }
-                        if (server.isNotBlank()) loadExtractor(server, referer, subtitleCallback, callback)
-                    }
-                }.awaitAll()
+
+            document.select("ul.gmr-download-list li a").forEach { linkEl ->
+                val downloadUrl = linkEl.attr("href")
+                if (downloadUrl.isNotBlank()) loadExtractor(downloadUrl, data, subtitleCallback, callback)
             }
-        }
 
-        document.select("ul.gmr-download-list li a").forEach { linkEl ->
-            val downloadUrl = linkEl.attr("href")
-            if (downloadUrl.isNotBlank()) loadExtractor(downloadUrl, data, subtitleCallback, callback)
+            true
+        } catch (e: Exception) {
+            throw ErrorLoadingException(e.message ?: "Gagal memuat video")
         }
-
-        return true
     }
 
     private fun Element.getImageAttr(): String = when {

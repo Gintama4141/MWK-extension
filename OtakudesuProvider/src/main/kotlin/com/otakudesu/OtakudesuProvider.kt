@@ -246,7 +246,7 @@ class OtakudesuProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
 
-        val document = runCatching { app.get(data, timeout = 15_000L).document }.getOrNull() ?: return false
+        val document = runCatching { app.get(data, timeout = 15_000L).document }.getOrNull() ?: throw ErrorLoadingException("Gagal memuat video")
 
         runAllAsync(
             {

@@ -175,7 +175,7 @@ class DutaMovie : MainAPI() {
         val response = try {
             app.get(data, timeout = 15_000L)
         } catch (e: Exception) {
-            return false
+            throw ErrorLoadingException(e.message ?: "Gagal memuat video")
         }
         val document = response.document
 

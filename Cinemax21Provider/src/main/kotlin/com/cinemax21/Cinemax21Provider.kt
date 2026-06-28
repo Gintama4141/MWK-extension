@@ -307,7 +307,7 @@ open class Cinemax21Provider : TmdbProvider() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val res = tryParseJson<LinkData>(data) ?: return false
+        val res = tryParseJson<LinkData>(data) ?: throw ErrorLoadingException("Gagal memuat data video")
         runAllAsync(
             {
                 invokeVidsrccc(

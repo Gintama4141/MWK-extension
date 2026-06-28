@@ -168,52 +168,56 @@ class Ngefilm21Provider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data, timeout = 15_000L).document
-        val playerLinks = document.select(".muvipro-player-tabs a").mapNotNull { it.attr("href") }.toMutableList()
-        if (playerLinks.isEmpty()) playerLinks.add(data)
+        return try {
+            val document = app.get(data, timeout = 15_000L).document
+            val playerLinks = document.select(".muvipro-player-tabs a").mapNotNull { it.attr("href") }.toMutableList()
+            if (playerLinks.isEmpty()) playerLinks.add(data)
 
-        coroutineScope {
-            playerLinks.distinct().map { playerUrl ->
-                async {
-                    try {
-                        val fixedUrl = if (playerUrl.startsWith("http")) playerUrl else "$mainUrl$playerUrl"
-                        val pageContent = app.get(fixedUrl, headers = mapOf("User-Agent" to UA_BROWSER), timeout = 15_000L).text
+            coroutineScope {
+                playerLinks.distinct().map { playerUrl ->
+                    async {
+                        try {
+                            val fixedUrl = if (playerUrl.startsWith("http")) playerUrl else "$mainUrl$playerUrl"
+                            val pageContent = app.get(fixedUrl, headers = mapOf("User-Agent" to UA_BROWSER), timeout = 15_000L).text
 
-                        REGEX_RPM_ID.find(pageContent)?.let { match ->
-                            val id = match.groupValues[1].ifEmpty { match.groupValues[2] }
-                            if (id.isNotEmpty()) extractRpm(id, callback)
-                        }
-
-                        REGEX_VIBUXER.findAll(pageContent).forEach {
-                            val rawUrl = it.groupValues[1]
-                            val targetUrl = rawUrl
-                                .replace("hglink.to", "masukestin.com")
-                                .replace("hglink.net", "masukestin.com")
-                                .replace("vibuxer.com", "masukestin.com")
-                            extractMasukestin(targetUrl, fixedUrl, callback)
-                        }
-
-                        REGEX_KRAKEN.findAll(pageContent).forEach {
-                            extractKrakenManual(it.groupValues[1], callback)
-                        }
-
-                        REGEX_EMBED_HOSTS.findAll(pageContent).forEach {
-                            val url = it.groupValues[1]
-                            when {
-                                url.contains("xshotcok") || url.contains("hxfile") -> extractXshotcok(url, callback)
-                                url.contains("short.icu") -> {
-                                    val finalUrl = app.get(url, headers = mapOf("Referer" to fixedUrl), timeout = 15_000L).url
-                                    if (finalUrl.contains("abyss")) loadExtractor(finalUrl, subtitleCallback, callback)
-                                }
-                                else -> loadExtractor(url, subtitleCallback, callback)
+                            REGEX_RPM_ID.find(pageContent)?.let { match ->
+                                val id = match.groupValues[1].ifEmpty { match.groupValues[2] }
+                                if (id.isNotEmpty()) extractRpm(id, callback)
                             }
+
+                            REGEX_VIBUXER.findAll(pageContent).forEach {
+                                val rawUrl = it.groupValues[1]
+                                val targetUrl = rawUrl
+                                    .replace("hglink.to", "masukestin.com")
+                                    .replace("hglink.net", "masukestin.com")
+                                    .replace("vibuxer.com", "masukestin.com")
+                                extractMasukestin(targetUrl, fixedUrl, callback)
+                            }
+
+                            REGEX_KRAKEN.findAll(pageContent).forEach {
+                                extractKrakenManual(it.groupValues[1], callback)
+                            }
+
+                            REGEX_EMBED_HOSTS.findAll(pageContent).forEach {
+                                val url = it.groupValues[1]
+                                when {
+                                    url.contains("xshotcok") || url.contains("hxfile") -> extractXshotcok(url, callback)
+                                    url.contains("short.icu") -> {
+                                        val finalUrl = app.get(url, headers = mapOf("Referer" to fixedUrl), timeout = 15_000L).url
+                                        if (finalUrl.contains("abyss")) loadExtractor(finalUrl, subtitleCallback, callback)
+                                    }
+                                    else -> loadExtractor(url, subtitleCallback, callback)
+                                }
+                            }
+                        } catch (_: Exception) {
                         }
-                    } catch (_: Exception) {
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
+            }
+            true
+        } catch (e: Exception) {
+            throw ErrorLoadingException(e.message ?: "Gagal memuat video")
         }
-        return true
     }
 
     private suspend fun extractXshotcok(url: String, callback: (ExtractorLink) -> Unit) {

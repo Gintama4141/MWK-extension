@@ -1,6 +1,5 @@
 package com.pencurimovie
 
-import com.lagradost.api.Log
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
@@ -168,8 +167,7 @@ class PencurimovieProvider : MainAPI() {
             }
             found
         } catch (e: Exception) {
-            Log.e("PencuriMovie", "loadLinks failed for $data: ${e.message}")
-            false
+            throw ErrorLoadingException("Gagal memuat video")
         }
     }
 }

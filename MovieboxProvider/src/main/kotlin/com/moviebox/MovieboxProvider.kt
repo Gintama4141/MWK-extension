@@ -203,7 +203,7 @@ class MovieboxProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean = coroutineScope {
-        val media = AppUtils.tryParseJson<LoadData>(data) ?: return@coroutineScope false
+        val media = AppUtils.tryParseJson<LoadData>(data) ?: throw ErrorLoadingException("Gagal memuat data video")
         val referer = if (media.detailPath != null) {
             "$secondAPIUrl$SPA_VIDEO_PAGE/${media.detailPath}?id=${media.id}&type=/movie/detail&lang=en"
         } else {

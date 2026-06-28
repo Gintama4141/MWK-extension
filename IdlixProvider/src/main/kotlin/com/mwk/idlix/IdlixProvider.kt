@@ -169,6 +169,7 @@ class IdlixProvider : MainAPI() {
         val nonce = match?.groups?.get(1)?.value ?: ""
         val time = match?.groups?.get(2)?.value ?: ""
         val baseUrl = getWorkingDomain()
+        var foundAny = false
 
         coroutineScope {
             doc.select("ul#playeroptionsul > li").map {
@@ -198,10 +199,12 @@ class IdlixProvider : MainAPI() {
 
                         when {
                             decrypted.contains("jeniusplay", true) -> {
+                                foundAny = true
                                 val finalUrl = if (decrypted.startsWith("//")) "https:$decrypted" else decrypted
                                 Jeniusplay().getUrl(finalUrl, "$baseUrl/", subtitleCallback, callback)
                             }
                             !decrypted.contains("youtube", true) -> {
+                                foundAny = true
                                 loadExtractor(decrypted, baseUrl, subtitleCallback, callback)
                             }
                         }
@@ -210,6 +213,7 @@ class IdlixProvider : MainAPI() {
                 }
             }.awaitAll()
         }
+        if (!foundAny) throw ErrorLoadingException("Tidak ada source tersedia")
         return true
     }
 

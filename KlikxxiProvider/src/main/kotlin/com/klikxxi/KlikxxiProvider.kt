@@ -283,7 +283,7 @@ class KlikxxiProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = runCatching { app.get(data, timeout = 15_000L).document }.getOrNull() ?: return false
+        val document = runCatching { app.get(data, timeout = 15_000L).document }.getOrNull() ?: throw ErrorLoadingException("Gagal memuat video")
         val postId = document
             .selectFirst(SEL_PLAYER_ID)
             ?.attr("data-id")

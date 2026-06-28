@@ -4,6 +4,7 @@ import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import org.jsoup.Jsoup
+import java.net.URLEncoder
 
 class DonghubProvider : MainAPI() {
     override var mainUrl = "https://donghub.vip"
@@ -30,10 +31,11 @@ class DonghubProvider : MainAPI() {
         )
     }
 
-    private fun Element.toSearchResult(): SearchResponse {
-        val anchor = selectFirst("div.bsx > a") ?: return newAnimeSearchResponse("", "", TvType.Anime)
+    private fun Element.toSearchResult(): SearchResponse? {
+        val anchor = selectFirst("div.bsx > a") ?: return null
         val title = anchor.attr("title").trim()
         val href = fixUrl(anchor.attr("href"))
+        if (title.isBlank() || href.isBlank()) return null
         val poster = fixUrlNull(anchor.selectFirst("img")?.getsrcAttribute())
         return newAnimeSearchResponse(title, href, TvType.Anime) {
             this.posterUrl = poster
@@ -44,7 +46,7 @@ class DonghubProvider : MainAPI() {
         val list = mutableListOf<SearchResponse>()
         for (i in 1..5) {
             try {
-                val document = app.get("$mainUrl/page/$i/?s=$query", timeout = 15_000L).document
+                val document = app.get("$mainUrl/page/$i/?s=${URLEncoder.encode(query, "UTF-8")}", timeout = 15_000L).document
                 val result = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
                 if (result.isEmpty()) break
                 list.addAll(result)
@@ -100,6 +102,7 @@ class DonghubProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data, timeout = 15_000L).document
+        var foundAny = false
 
         val serverOptions = document.select(".mobius option")
         if (serverOptions.isNotEmpty()) {
@@ -113,6 +116,7 @@ class DonghubProvider : MainAPI() {
                     val iframeSrc = doc.select("iframe").attr("src")
                     if (iframeSrc.isBlank()) continue
 
+                    foundAny = true
                     loadExtractor(fixUrl(iframeSrc), subtitleCallback, callback)
                 } catch (_: Exception) {}
             }
@@ -127,11 +131,13 @@ class DonghubProvider : MainAPI() {
             try {
                 val src = iframe.attr("src")
                 if (src.isNotBlank()) {
+                    foundAny = true
                     loadExtractor(fixUrl(src), subtitleCallback, callback)
                 }
             } catch (_: Exception) {}
         }
 
+        if (!foundAny) throw ErrorLoadingException("Tidak ada source tersedia")
         return true
     }
 

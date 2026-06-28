@@ -154,8 +154,7 @@ class MoviePedia21Provider : MainAPI() {
             ?: try {
                 app.get(data, timeout = 15_000L).document
             } catch (e: Exception) {
-                println("MoviePedia21 loadLinks failed: $data - ${e.message}")
-                return false
+                throw ErrorLoadingException("Gagal memuat video")
             }
 
         val baseUrl = getBaseUrl(data)

@@ -207,8 +207,7 @@ class Nomat : MainAPI() {
             }
             true
         } catch (e: Exception) {
-            logError(e)
-            false
+            throw ErrorLoadingException(e.message ?: "Gagal memuat video")
         }
     }
 }

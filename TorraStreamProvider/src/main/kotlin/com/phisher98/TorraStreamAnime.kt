@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.CommonActivity.activity
 import com.lagradost.cloudstream3.DubStatus
 import com.lagradost.cloudstream3.Episode
+import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
@@ -268,7 +269,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
 
         val provider = sharedPref.getString("debrid_provider", null)
         val key = sharedPref.getString("debrid_key", null)
-        val mediaData = tryParseJson<LinkData>(data) ?: return false
+        val mediaData = tryParseJson<LinkData>(data) ?: throw ErrorLoadingException("Gagal memuat data video")
         var episode = mediaData.episode
         val aniid = mediaData.aniId
         var kitsuId = -1

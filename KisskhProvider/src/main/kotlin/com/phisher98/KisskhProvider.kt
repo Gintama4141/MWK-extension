@@ -187,7 +187,7 @@ class KisskhProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val loadData = tryParseJson<Data>(data) ?: return false
+        val loadData = tryParseJson<Data>(data) ?: throw ErrorLoadingException("Gagal memuat data")
 
         val (videoKey, subKey) = coroutineScope {
             val videoKeyDeferred = async { fetchKey("$KEY_FETCH_API${loadData.epsId}&version=$API_VERSION") }

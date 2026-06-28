@@ -378,7 +378,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
     ): Boolean {
         val provider = sharedPref.getString("debrid_provider", null)
         val key = sharedPref.getString("debrid_key", null)
-        val dataObj = tryParseJson<LoadData>(data) ?: return false
+        val dataObj = tryParseJson<LoadData>(data) ?: throw ErrorLoadingException("Gagal memuat data video")
         val isAnime = dataObj.isAnime
         val title = dataObj.title
         val season = dataObj.season
