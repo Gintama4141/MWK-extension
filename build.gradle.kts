@@ -35,13 +35,23 @@ subprojects {
     apply(plugin = "kotlin-android")
     apply(plugin = "com.lagradost.cloudstream3.gradle")
 
-    cloudstream {
-        setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/Gintama4141/MWK-extension")
-        authors = listOf("MWK")
+    val isSharedModule = project.name == "SharedModule"
+
+    if (!isSharedModule) {
+        cloudstream {
+            setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/Gintama4141/MWK-extension")
+            authors = listOf("MWK")
+        }
+    } else {
+        cloudstream {
+            description = "MWK Shared Library"
+            language = "id"
+            authors = listOf("MWK")
+        }
     }
 
     android {
-        namespace = "com.miku"
+        namespace = if (isSharedModule) "com.mwk.shared" else "com.miku"
 
         defaultConfig {
             minSdk = 21
@@ -82,8 +92,7 @@ subprojects {
         implementation("org.mozilla:rhino:1.8.1")
         implementation("com.google.code.gson:gson:2.14.0")
 
-        // SharedModule dependency for all providers (except SharedModule itself)
-        if (project.name != "SharedModule") {
+        if (!isSharedModule) {
             implementation(project(":SharedModule"))
         }
     }
