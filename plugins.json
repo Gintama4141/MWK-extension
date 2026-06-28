@@ -135,10 +135,10 @@
   },
   {
     "iconUrl": "https://www.google.com/s2/favicons?domain=kisskh.co&sz=%size%",
-    "fileHash": "sha256-438354b99c2644117ab8ca3162b8c528058342d33ecaed310c1468880a64986b",
+    "fileHash": "sha256-6e3e1dac8dda9af56ed876d5fc9ef0e58fa71873ab480d4c22c55ec1a1d86c4f",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 33151,
+    "fileSize": 33215,
     "status": 1,
     "language": "en",
     "authors": [
@@ -291,10 +291,10 @@
   },
   {
     "iconUrl": "https://www.google.com/s2/favicons?domain=onetouchtv.xyz/&sz=%size%",
-    "fileHash": "sha256-e563945b2b469fee306015894b098a916cd39ff880f6329c703bd52be786aae0",
+    "fileHash": "sha256-dbf020932fb92c7ec535ca22b6a138ddb86b179bd63b8a176fe0a55220259216",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 43445,
+    "fileSize": 43508,
     "status": 1,
     "language": "id",
     "authors": [
