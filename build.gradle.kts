@@ -81,6 +81,11 @@ subprojects {
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
         implementation("org.mozilla:rhino:1.8.1")
         implementation("com.google.code.gson:gson:2.14.0")
+
+        // SharedModule dependency for all providers (except SharedModule itself)
+        if (project.name != "SharedModule") {
+            implementation(project(":SharedModule"))
+        }
     }
 }
 
