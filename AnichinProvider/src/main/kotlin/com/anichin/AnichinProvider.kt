@@ -9,6 +9,11 @@ import org.jsoup.nodes.Element
 import java.net.URLEncoder
 
 class AnichinProvider : MainAPI() {
+    companion object {
+        private val NON_DIGIT_REGEX = Regex("\\D")
+        private val YEAR_REGEX = Regex("(\\d{4})")
+    }
+
     override var mainUrl = "https://anichin.cafe"
     override var name = "Anichin"
     override var lang = "id"
@@ -59,7 +64,7 @@ class AnichinProvider : MainAPI() {
         if (title.isBlank() || href.isBlank()) return null
 
         val poster = selectFirst("img")?.getImageAttr()
-        val episode = selectFirst(".epx")?.text()?.replace(Regex("\\D"), "")?.toIntOrNull()
+        val episode = selectFirst(".epx")?.text()?.replace(NON_DIGIT_REGEX, "")?.toIntOrNull()
         val type = getType(selectFirst(".typez")?.text())
 
         return newAnimeSearchResponse(title, href, type) {
@@ -71,7 +76,7 @@ class AnichinProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         return try {
             val url = request.data.replace("%d", page.toString())
-            val document = app.get(url).document
+            val document = app.get(url, timeout = 15_000L).document
             val results = document.select(".listupd article").mapNotNull { it.toSearchResult() }
             newHomePageResponse(
                 HomePageList(request.name, results),
@@ -84,7 +89,7 @@ class AnichinProvider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         return try {
-            val document = app.get("$mainUrl/?s=${URLEncoder.encode(query, "UTF-8")}").document
+            val document = app.get("$mainUrl/?s=${URLEncoder.encode(query, "UTF-8")}", timeout = 15_000L).document
             document.select(".listupd article").mapNotNull { it.toSearchResult() }
         } catch (e: Exception) {
             emptyList()
@@ -92,20 +97,20 @@ class AnichinProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val document = app.get(url).document
+        val document = app.get(url, timeout = 15_000L).document
         val title = document.selectFirst(".entry-title, h1.entry-title, .post-title h1, [itemprop*=name] h1")?.text()?.trim() ?: throw ErrorLoadingException("Title not found")
         val poster = document.selectFirst(".thumb img, .bigcontent .thumb img")?.getImageAttr()
         val description = document.selectFirst(".entry-content[itemprop=description]")?.text()?.trim()
             ?: document.selectFirst(".desc")?.text()?.trim()
         val tags = document.select(".genxed a").map { it.text() }
         val status = getStatus(document.select(".spe span").firstOrNull { it.text().contains("Status:", true) }?.text())
-        val year = Regex("(\\d{4})").find(
+        val year = YEAR_REGEX.find(
             document.select(".spe span").firstOrNull { it.text().contains("Released:", true) }?.text().orEmpty()
         )?.groupValues?.getOrNull(1)?.toIntOrNull()
 
         val episodes = document.select(".eplister ul li a, .episode-list a, [id*=episode] li a").mapNotNull { element ->
             val href = element.attr("abs:href").ifBlank { return@mapNotNull null }
-            val number = element.selectFirst(".epl-num")?.text()?.replace(Regex("\\D"), "")?.toIntOrNull()
+            val number = element.selectFirst(".epl-num")?.text()?.replace(NON_DIGIT_REGEX, "")?.toIntOrNull()
             val name = element.selectFirst(".epl-title")?.text()?.trim()
             newEpisode(href) {
                 this.episode = number
@@ -134,7 +139,7 @@ class AnichinProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            val document = app.get(data).document
+            val document = app.get(data, timeout = 15_000L).document
             val links = mutableSetOf<String>()
 
             document.select("#embed_holder iframe[src], .player-embed iframe[src], [id*=player] iframe[src]").mapTo(links) { it.attr("abs:src") }

@@ -16,6 +16,26 @@ import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.mvvm.logError
 import java.util.Locale
 
+private object RegexPatterns {
+    val QUALITY_2160_1080_720 = "(2160p|1080p|720p)".toRegex(RegexOption.IGNORE_CASE)
+    val QUALITY_FULL = "(2160p|1080p|720p|WEBRip|WEB-DL|x265|x264|10bit|HEVC|H264)".toRegex(RegexOption.IGNORE_CASE)
+    val QUALITY_EXTRA = "(WEBRip|WEB-DL|x265|x264|10bit|HEVC|H264)".toRegex(RegexOption.IGNORE_CASE)
+    val SEEDER = "👤\\s*(\\d+)".toRegex()
+    val PROVIDER = "⚙️\\s*([^\\n]+)".toRegex()
+    val PROVIDER_ESCAPE = "⚙️\\s*([^\\\\]+)".toRegex()
+    val SIZE = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
+    val SEEDERS_NUM = Regex("""(\d+)$""")
+    val CACHE_BRACKET = Regex("""\[(.*?)]""")
+    val CACHE_PAREN = Regex("""\((.*?)\)""")
+    val TAGS_BRACKET = "\\[(.*?)]".toRegex()
+    val SPACE_PLUS = "\\s+".toRegex()
+    val RESOLUTION = Regex("""\d{3,4}p""")
+    val AUDIO_ICON = Regex("""🔊\s*(.*)""")
+    val FILE_SIZE = Regex("Size:\\s*([^|\\n]+)")
+    val SEEDERS = Regex("Seeders:\\s*(\\d+)")
+    val QUALITY_REGEX = Regex("""\b(4K|2160p|1080p|720p|WEB[-\s]?DL|BluRay|HDRip|DVDRip)\b""", RegexOption.IGNORE_CASE)
+}
+
 suspend fun invokeTorrentio(
     mainUrl: String,
     id: String? = null,
@@ -39,17 +59,17 @@ suspend fun invokeTorrentio(
     res?.streams?.forEach { stream ->
         val formattedTitleName = stream.title
             ?.let { title ->
-                val qualityTermsRegex = "(2160p|1080p|720p|WEBRip|WEB-DL|x265|x264|10bit|HEVC|H264)".toRegex(RegexOption.IGNORE_CASE)
+                val qualityTermsRegex = RegexPatterns.QUALITY_FULL
                 val tagsList = qualityTermsRegex.findAll(title).map { it.value.uppercase() }.toList()
                 val tags = tagsList.distinct().joinToString(" | ")
 
-                val seeder = "👤\\s*(\\d+)".toRegex().find(title)?.groupValues?.get(1) ?: "0"
-                val provider = "⚙️\\s*([^\\n]+)".toRegex().find(title)?.groupValues?.get(1)?.trim() ?: "Unknown"
+                val seeder = RegexPatterns.SEEDER.find(title)?.groupValues?.get(1) ?: "0"
+                val provider = RegexPatterns.PROVIDER.find(title)?.groupValues?.get(1)?.trim() ?: "Unknown"
 
                 "Torrentio | $tags | Seeder: $seeder | Provider: $provider".trim()
             }
 
-        val qualityMatch = "(2160p|1080p|720p)".toRegex(RegexOption.IGNORE_CASE)
+        val qualityMatch = RegexPatterns.QUALITY_2160_1080_720
             .find(stream.title ?: "")
             ?.value
             ?.lowercase()
@@ -88,14 +108,14 @@ suspend fun invokeTorrentioDebian(
     res?.streams?.forEach { stream ->
         val fileUrl = stream.url
 
-        val size = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
+        val size = RegexPatterns.SIZE
             .find(stream.title)
             ?.let { m -> "${m.groupValues[1].replace(',', '.')} ${m.groupValues[2].uppercase()}" }
 
-        val seedersNum = Regex("""(\d+)$""").find(stream.title)?.groupValues?.get(1)
+        val seedersNum = RegexPatterns.SEEDERS_NUM.find(stream.title)?.groupValues?.get(1)
 
         val name = stream.behaviorHints.filename ?: stream.title.substringBefore("\n")
-        val cache = Regex("""\[(.*?)]""").find(stream.name)?.groupValues?.get(1)
+        val cache = RegexPatterns.CACHE_BRACKET.find(stream.name)?.groupValues?.get(1)
         val formattedName = name
             .substringBeforeLast('.')
             .replace('.', ' ')
@@ -142,14 +162,14 @@ suspend fun invokeTorrentioAnimeDebian(
     res?.streams?.forEach { stream ->
         val fileUrl = stream.url
 
-        val size = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
+        val size = RegexPatterns.SIZE
             .find(stream.title)
             ?.let { m -> "${m.groupValues[1].replace(',', '.')} ${m.groupValues[2].uppercase()}" }
 
-        val seedersNum = Regex("""(\d+)$""").find(stream.title)?.groupValues?.get(1)
+        val seedersNum = RegexPatterns.SEEDERS_NUM.find(stream.title)?.groupValues?.get(1)
 
         val name = stream.behaviorHints.filename ?: stream.title.substringBefore("\n")
-        val cache = Regex("""\[(.*?)]""").find(stream.name)?.groupValues?.get(1)
+        val cache = RegexPatterns.CACHE_BRACKET.find(stream.name)?.groupValues?.get(1)
         val formattedName = name
             .substringBeforeLast('.')
             .replace('.', ' ')
@@ -199,17 +219,17 @@ suspend fun invokeTorrentioAnimeType(
     res?.streams?.forEach { stream ->
         val formattedTitleName = stream.title
             ?.let { title ->
-                val qualityTermsRegex = "(2160p|1080p|720p|WEBRip|WEB-DL|x265|x264|10bit|HEVC|H264)".toRegex(RegexOption.IGNORE_CASE)
+                val qualityTermsRegex = RegexPatterns.QUALITY_FULL
                 val tagsList = qualityTermsRegex.findAll(title).map { it.value.uppercase() }.toList()
                 val tags = tagsList.distinct().joinToString(" | ")
 
-                val seeder = "👤\\s*(\\d+)".toRegex().find(title)?.groupValues?.get(1) ?: "0"
-                val provider = "⚙️\\s*([^\\n]+)".toRegex().find(title)?.groupValues?.get(1)?.trim() ?: "Unknown"
+                val seeder = RegexPatterns.SEEDER.find(title)?.groupValues?.get(1) ?: "0"
+                val provider = RegexPatterns.PROVIDER.find(title)?.groupValues?.get(1)?.trim() ?: "Unknown"
 
                 "Torrentio | $tags | Seeder: $seeder | Provider: $provider".trim()
             }
 
-        val qualityMatch = "(2160p|1080p|720p)".toRegex(RegexOption.IGNORE_CASE)
+        val qualityMatch = RegexPatterns.QUALITY_2160_1080_720
             .find(stream.title ?: "")
             ?.value
             ?.lowercase()
@@ -302,10 +322,10 @@ suspend fun invokeAnimetosho(
         item.magnetUri.let { magnet ->
             val formattedTitleName = item.torrentName
                 .let { title ->
-                    val tags = "\\[(.*?)]".toRegex().findAll(title)
+                    val tags = RegexPatterns.TAGS_BRACKET.findAll(title)
                         .map { match -> "[${match.groupValues[1]}]" }
                         .joinToString(" | ")
-                    val seeder = "👤\\s*(\\d+)".toRegex().find(title)?.groupValues?.get(1) ?: ""
+                    val seeder = RegexPatterns.SEEDER.find(title)?.groupValues?.get(1) ?: ""
                     "Animetosho | $tags | Seeder: $seeder".trim()
                 }
             callback.invoke(
@@ -347,11 +367,11 @@ suspend fun invokeTorrentioAnime(
         val magnet = generateMagnetLink(TRACKER_LIST_URL, stream.infoHash)
         val formattedTitleName = stream.title
             ?.let { title ->
-                val tags = "\\[(.*?)]".toRegex().findAll(title)
+                val tags = RegexPatterns.TAGS_BRACKET.findAll(title)
                     .map { match -> "[${match.groupValues[1]}]" }
                     .joinToString(" | ")
-                val seeder = "👤\\s*(\\d+)".toRegex().find(title)?.groupValues?.get(1) ?: "0"
-                val provider = "⚙️\\s*([^\\\\]+)".toRegex().find(title)?.groupValues?.get(1)?.trim() ?: "Unknown"
+                val seeder = RegexPatterns.SEEDER.find(title)?.groupValues?.get(1) ?: "0"
+                val provider = RegexPatterns.PROVIDER_ESCAPE.find(title)?.groupValues?.get(1)?.trim() ?: "Unknown"
                 "Torrentio | $tags | Seeder: $seeder | Provider: $provider".trim()
             }
 
@@ -388,16 +408,11 @@ suspend fun invokeAIOStreamsDebian(
 
     val res = app.get(url, timeout = 30_000L).text.let { tryParseJson<AIODebian>(it) } ?: return
 
-    val qualityRegex = Regex(
-        """\b(4K|2160p|1080p|720p|WEB[-\s]?DL|BluRay|HDRip|DVDRip)\b""",
-        RegexOption.IGNORE_CASE
-    )
-
     res.streams.forEach { stream ->
         val streamUrl = stream.url ?: return@forEach
 
         val nameSource = listOfNotNull(stream.name, stream.description).joinToString(" ")
-        val qualityMatch = qualityRegex.find(nameSource)?.value ?: "Unknown"
+        val qualityMatch = RegexPatterns.QUALITY_REGEX.find(nameSource)?.value ?: "Unknown"
         val quality = getIndexQuality(qualityMatch)
 
         val linkName = (stream.name ?: stream.behaviorHints?.filename ?: "[AIO Streams]")
@@ -442,7 +457,7 @@ suspend fun invokeDebianTorbox(
             .trim()
             .ifBlank { "TorBox" }
 
-        val cache = Regex("""\((.*?)\)""")
+        val cache = RegexPatterns.CACHE_PAREN
             .find(stream.name)
             ?.groupValues?.getOrNull(1)
             ?.let {
@@ -464,14 +479,14 @@ suspend fun invokeDebianTorbox(
             if (baseName.isNotBlank())
                 append(baseName)
 
-            val fileSize = Regex("Size:\\s*([^|\\n]+)")
+            val fileSize = RegexPatterns.FILE_SIZE
                 .find(stream.description)
                 ?.groupValues?.get(1)
                 ?.trim()
             if (!fileSize.isNullOrBlank())
                 append(" | 📦 $fileSize")
 
-            val seeders = Regex("Seeders:\\s*(\\d+)")
+            val seeders = RegexPatterns.SEEDERS
                 .find(stream.description)
                 ?.groupValues?.get(1)
                 ?.trim()
@@ -561,8 +576,7 @@ suspend fun invokeUindex(
             if (episodePatterns.none { it.containsMatchIn(rowTitle) }) return@amap
         }
 
-        val qualityMatch = "(2160p|1080p|720p)"
-            .toRegex(RegexOption.IGNORE_CASE)
+        val qualityMatch = RegexPatterns.QUALITY_2160_1080_720
             .find(rowTitle)
             ?.value
 
@@ -575,11 +589,7 @@ suspend fun invokeUindex(
         val fileSize = row.select("td:nth-child(3)").text()
 
         val formattedTitleName = run {
-            val qualityTermsRegex =
-                "(WEBRip|WEB-DL|x265|x264|10bit|HEVC|H264)"
-                    .toRegex(RegexOption.IGNORE_CASE)
-
-            val tags = qualityTermsRegex.findAll(rowTitle)
+            val tags = RegexPatterns.QUALITY_EXTRA.findAll(rowTitle)
                 .map { it.value.uppercase() }
                 .distinct()
                 .joinToString(" | ")
@@ -619,7 +629,7 @@ suspend fun invokeKnaben(
         append(
             queryText
                 .trim()
-                .replace("\\s+".toRegex(), "+")
+                .replace(RegexPatterns.SPACE_PLUS, "+")
         )
 
         if (isTv && episode != null) {
@@ -669,8 +679,7 @@ suspend fun invokeKnaben(
             val sizeText = tds.getOrNull(2)?.text().orEmpty()
             val seedsText = tds.getOrNull(4)?.text().orEmpty()
             val seeds = seedsText.toIntOrNull() ?: 0
-            val qualityMatch = "(2160p|1080p|720p)"
-                .toRegex(RegexOption.IGNORE_CASE)
+            val qualityMatch = RegexPatterns.QUALITY_2160_1080_720
                 .find(rawTitle)
                 ?.value
             val formattedTitleName = buildString {
@@ -727,11 +736,11 @@ suspend fun invokeTorboxAnimeDebian(
     res?.streams?.forEach { stream ->
         val fileUrl = stream.url
 
-        val size = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
+        val size = RegexPatterns.SIZE
             .find(stream.title)
             ?.let { m -> "${m.groupValues[1].replace(',', '.')} ${m.groupValues[2].uppercase()}" }
 
-        val seedersNum = Regex("""(\d+)$""").find(stream.title)?.groupValues?.get(1)
+        val seedersNum = RegexPatterns.SEEDERS_NUM.find(stream.title)?.groupValues?.get(1)
 
         val name = stream.behaviorHints.filename ?: stream.title.substringBefore("\n")
 
@@ -740,7 +749,7 @@ suspend fun invokeTorboxAnimeDebian(
             .replace('.', ' ')
             .trim()
 
-        val cache = Regex("""\((.*?)\)""").find(stream.name)
+        val cache = RegexPatterns.CACHE_PAREN.find(stream.name)
             ?.groupValues?.get(1)
             ?.takeIf { it == "Instant" }
             ?: "TorBox Download"
@@ -791,11 +800,11 @@ suspend fun invokeTorrentsDB(
     response.streams?.amap { stream ->
 
         val title = stream.title.orEmpty()
-        val qualityMatch = "(2160p|1080p|720p)".toRegex(RegexOption.IGNORE_CASE)
+        val qualityMatch = RegexPatterns.QUALITY_2160_1080_720
             .find(title)?.value?.lowercase()
-        val tags = "(2160p|1080p|720p|WEBRip|WEB-DL|x265|x264|10bit|HEVC|H264)".toRegex(RegexOption.IGNORE_CASE).findAll(title).map { it.value.uppercase() }.distinct().joinToString(" | ")
-        val seeder = "👤\\s*(\\d+)".toRegex().find(title)?.groupValues?.getOrNull(1) ?: "0"
-        val provider = "⚙️\\s*([^\\n]+)".toRegex().find(title)?.groupValues?.getOrNull(1)?.trim() ?: "Unknown"
+        val tags = RegexPatterns.QUALITY_FULL.findAll(title).map { it.value.uppercase() }.distinct().joinToString(" | ")
+        val seeder = RegexPatterns.SEEDER.find(title)?.groupValues?.getOrNull(1) ?: "0"
+        val provider = RegexPatterns.PROVIDER.find(title)?.groupValues?.getOrNull(1)?.trim() ?: "Unknown"
         val formattedTitle = "TorrentsDB | $tags | Seeder: $seeder | Provider: $provider"
         val magnet = generateMagnetLink(stream.sources.orEmpty(), stream.infoHash)
 
@@ -841,11 +850,11 @@ suspend fun invokeTorrentsDBAnime(
     response.streams?.amap { stream ->
 
         val title = stream.title.orEmpty()
-        val qualityMatch = "(2160p|1080p|720p)".toRegex(RegexOption.IGNORE_CASE)
+        val qualityMatch = RegexPatterns.QUALITY_2160_1080_720
             .find(title)?.value?.lowercase()
-        val tags = "(2160p|1080p|720p|WEBRip|WEB-DL|x265|x264|10bit|HEVC|H264)".toRegex(RegexOption.IGNORE_CASE).findAll(title).map { it.value.uppercase() }.distinct().joinToString(" | ")
-        val seeder = "👤\\s*(\\d+)".toRegex().find(title)?.groupValues?.getOrNull(1) ?: "0"
-        val provider = "⚙️\\s*([^\\n]+)".toRegex().find(title)?.groupValues?.getOrNull(1)?.trim() ?: "Unknown"
+        val tags = RegexPatterns.QUALITY_FULL.findAll(title).map { it.value.uppercase() }.distinct().joinToString(" | ")
+        val seeder = RegexPatterns.SEEDER.find(title)?.groupValues?.getOrNull(1) ?: "0"
+        val provider = RegexPatterns.PROVIDER.find(title)?.groupValues?.getOrNull(1)?.trim() ?: "Unknown"
         val formattedTitle = "TorrentsDB | $tags | Seeder: $seeder | Provider: $provider"
         val magnet = generateMagnetLink(stream.sources.orEmpty(), stream.infoHash)
 
@@ -895,8 +904,8 @@ suspend fun invokeMeteorDebian(
             .replace('.', ' ')
             .trim()
 
-        val resolution = Regex("""\d{3,4}p""").find(stream.name)?.value
-        val audio = Regex("""🔊\s*(.*)""").find(stream.description)?.groupValues?.getOrNull(1)
+        val resolution = RegexPatterns.RESOLUTION.find(stream.name)?.value
+        val audio = RegexPatterns.AUDIO_ICON.find(stream.description)?.groupValues?.getOrNull(1)
 
         val parts = listOfNotNull(
             resolution?.let { "🎞 $it" },
@@ -904,7 +913,7 @@ suspend fun invokeMeteorDebian(
             audio?.let { "🔊 $audio" }
         )
 
-        val cache = Regex("""\[(.*?)]""")
+        val cache = RegexPatterns.CACHE_BRACKET
             .find(stream.name)
             ?.groupValues
             ?.getOrNull(1)
@@ -960,9 +969,9 @@ suspend fun invokeMeteorAnimeDebian(
             .replace('.', ' ')
             .trim()
 
-        val resolution = Regex("""\d{3,4}p""").find(stream.name)?.value
-        val audio = Regex("""🔊\s*(.*)""").find(stream.description)?.groupValues?.getOrNull(1)
-        val cache = Regex("""\[(.*?)]""").find(stream.name)?.groupValues?.getOrNull(1)
+        val resolution = RegexPatterns.RESOLUTION.find(stream.name)?.value
+        val audio = RegexPatterns.AUDIO_ICON.find(stream.description)?.groupValues?.getOrNull(1)
+        val cache = RegexPatterns.CACHE_BRACKET.find(stream.name)?.groupValues?.getOrNull(1)
 
         val parts = listOfNotNull(
             resolution?.let { "🎞 $it" },

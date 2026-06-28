@@ -26,6 +26,10 @@ class KlikxxiProvider : MainAPI() {
         private const val SEL_EPISODE_LINK = "div.gmr-season-episodes a"
         private const val SEL_PLAYER_ID = "div#muvipro_player_content_id"
         private const val SEL_TAB_CONTENT = "div.tab-content-ajax"
+        private val QUALITY_CLASS_REGEX = Regex("hd|sd|cam|ts|hdts|hdts2|hdrip|webrip|bluray|brrip|fhd|uhd|4k", RegexOption.IGNORE_CASE)
+        private val DIGIT_REGEX = Regex("(\\d+)")
+        private val EPISODE_NUM_REGEX = Regex("(?:E(?:p(?:isode)?)?|Episode|Ep\\.?)\\s*(\\d+)", RegexOption.IGNORE_CASE)
+        private val IMAGE_SIZE_REGEX = Regex("-\\d+x\\d+(?=\\.(webp|jpg|jpeg|png))", RegexOption.IGNORE_CASE)
     }
 
     override var mainUrl = "https://klikxxi.me"
@@ -67,7 +71,7 @@ class KlikxxiProvider : MainAPI() {
         }.replace("//", "/")
          .replace(":/", "://")
 
-        val document = runCatching { app.get(url).document }.getOrNull()
+        val document = runCatching { app.get(url, timeout = 15_000L).document }.getOrNull()
             ?: return newHomePageResponse(request.name, emptyList(), hasNext = false)
 
         val items = document.select(SEL_ARTICLE)
@@ -105,12 +109,7 @@ class KlikxxiProvider : MainAPI() {
             aText
         } else {
             el.classNames().firstOrNull { cls ->
-                cls.matches(
-                    Regex(
-                        "hd|sd|cam|ts|hdts|hdts2|hdrip|webrip|bluray|brrip|fhd|uhd|4k",
-                        RegexOption.IGNORE_CASE
-                    )
-                )
+                cls.matches(QUALITY_CLASS_REGEX)
             }?.uppercase()
         }
     }
@@ -163,7 +162,7 @@ class KlikxxiProvider : MainAPI() {
 
 
     override suspend fun load(url: String): LoadResponse {
-        val document = runCatching { app.get(url).document }.getOrNull()
+        val document = runCatching { app.get(url, timeout = 15_000L).document }.getOrNull()
             ?: return newMovieLoadResponse("Error", url, TvType.Movie, url) {
                 this.plot = "Failed to load page: network error"
             }
@@ -211,7 +210,7 @@ class KlikxxiProvider : MainAPI() {
 
         seasonBlocks.forEach { block ->
             val seasonTitle = block.selectFirst("h3.season-title")?.text()?.trim()
-            val seasonNumber = Regex("(\\d+)")
+            val seasonNumber = DIGIT_REGEX
                 .find(seasonTitle ?: "")
                 ?.groupValues
                 ?.getOrNull(1)
@@ -231,14 +230,11 @@ class KlikxxiProvider : MainAPI() {
 
                     val name = epLink.text().trim()
 
-                    val episodeNum = Regex(
-                        "(?:E(?:p(?:isode)?)?|Episode|Ep\\.?)\\s*(\\d+)",
-                        RegexOption.IGNORE_CASE
-                    ).find(name)
+                    val episodeNum = EPISODE_NUM_REGEX.find(name)
                         ?.groupValues
                         ?.getOrNull(1)
                         ?.toIntOrNull()
-                        ?: Regex("(\\d+)").find(name)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                        ?: DIGIT_REGEX.find(name)?.groupValues?.getOrNull(1)?.toIntOrNull()
                         ?: (index + 1)
 
                     newEpisode(hrefEp) {
@@ -287,7 +283,7 @@ class KlikxxiProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = runCatching { app.get(data).document }.getOrNull() ?: return false
+        val document = runCatching { app.get(data, timeout = 15_000L).document }.getOrNull() ?: return false
         val postId = document
             .selectFirst(SEL_PLAYER_ID)
             ?.attr("data-id")
@@ -306,7 +302,8 @@ class KlikxxiProvider : MainAPI() {
                         "action" to "muvipro_player_content",
                         "tab" to tabId,
                         "post_id" to postId
-                    )
+                    ),
+                    timeout = 15_000L
                 ).document
             }.getOrNull() ?: return@amap
 
@@ -362,7 +359,6 @@ class KlikxxiProvider : MainAPI() {
 
     private fun String?.fixImageQuality(): String {
         if (this == null) return ""
-        val regex = Regex("-\\d+x\\d+(?=\\.(webp|jpg|jpeg|png))", RegexOption.IGNORE_CASE)
-        return this.replace(regex, "")
+        return this.replace(IMAGE_SIZE_REGEX, "")
     }
 }

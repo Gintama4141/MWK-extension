@@ -34,20 +34,20 @@ class Odnoklassniki : ExtractorApi() {
         )
         val embedUrl = url.replace("/video/", "/videoembed/")
         val videoReq = try {
-            app.get(embedUrl, headers = headers).text
+            app.get(embedUrl, headers = headers, timeout = 15_000L).text
         } catch (_: Exception) {
             throw ErrorLoadingException("Failed to fetch OK.ru embed page")
         }
         val decoded = videoReq
             .replace("\\&quot;", "\"")
             .replace("\\\\", "\\")
-            .replace(Regex("\\\\u([0-9A-Fa-f]{4})")) { matchResult ->
+            .replace(UNICODE_ESC_REGEX) { matchResult ->
                 val code = matchResult.groupValues[1].toInt(16)
                 if (code in 0xD800..0xDFFF) matchResult.value
                 else code.toChar().toString()
             }
 
-        val videosStr = Regex(""""videos"\s*:\s*\[("[^"]*"|\{[^}]*\})*\]""").find(decoded)?.groupValues?.get(1)
+        val videosStr = VIDEOS_JSON_REGEX.find(decoded)?.groupValues?.get(1)
             ?: throw ErrorLoadingException("Video not found")
         val videos = AppUtils.tryParseJson<List<OkRuVideo>>(videosStr)
             ?: throw ErrorLoadingException("Video not found")
@@ -78,6 +78,11 @@ class Odnoklassniki : ExtractorApi() {
                 }
             )
         }
+    }
+
+    companion object {
+        private val UNICODE_ESC_REGEX = Regex("\\\\u([0-9A-Fa-f]{4})")
+        private val VIDEOS_JSON_REGEX = Regex(""""videos"\s*:\s*\[("[^"]*"|\{[^}]*\})*\]""")
     }
 
     data class OkRuVideo(

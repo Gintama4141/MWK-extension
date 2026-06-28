@@ -21,7 +21,7 @@ class DonghubProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("$mainUrl/${request.data}&page=$page").document
+        val document = app.get("$mainUrl/${request.data}&page=$page", timeout = 15_000L).document
         val items = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
         val hasNext = document.selectFirst("a.next.page-numbers, .pagination .next, .next") != null
         return newHomePageResponse(
@@ -44,7 +44,7 @@ class DonghubProvider : MainAPI() {
         val list = mutableListOf<SearchResponse>()
         for (i in 1..5) {
             try {
-                val document = app.get("$mainUrl/page/$i/?s=$query").document
+                val document = app.get("$mainUrl/page/$i/?s=$query", timeout = 15_000L).document
                 val result = document.select("div.listupd > article").mapNotNull { it.toSearchResult() }
                 if (result.isEmpty()) break
                 list.addAll(result)
@@ -56,7 +56,7 @@ class DonghubProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val document = app.get(url).document
+        val document = app.get(url, timeout = 15_000L).document
         val title = document.selectFirst("h1.entry-title")?.text().orEmpty()
         val description = document.selectFirst("div.entry-content")?.text()?.trim()
         val typeText = document.selectFirst(".spe")?.text().orEmpty()
@@ -99,7 +99,7 @@ class DonghubProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data).document
+        val document = app.get(data, timeout = 15_000L).document
 
         val serverOptions = document.select(".mobius option")
         if (serverOptions.isNotEmpty()) {

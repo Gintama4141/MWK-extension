@@ -64,11 +64,17 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
             "https://raw.githubusercontent.com/ngosang/trackerslist/refs/heads/master/trackers_best_ip.txt",
         )
 
+        private const val TRACKER_CACHE_TTL = 6 * 60 * 60 * 1000L
+
         @Volatile
         private var cachedTrackers: Set<String>? = null
+        @Volatile
+        private var trackersLastFetched: Long = 0L
 
         suspend fun getCachedTrackers(): Set<String> {
-            cachedTrackers?.let { return it }
+            if (cachedTrackers != null && System.currentTimeMillis() - trackersLastFetched < TRACKER_CACHE_TTL) {
+                return cachedTrackers!!
+            }
             val fetched = TRACKER_LIST_URL.amap { url ->
                 runCatching {
                     app.get(url, timeout = 15_000L).text
@@ -79,6 +85,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                 }.getOrElse { emptyList() }
             }.flatten().toMutableSet()
             cachedTrackers = fetched
+            trackersLastFetched = System.currentTimeMillis()
             return fetched
         }
         private const val Uindex = "https://uindex.org"

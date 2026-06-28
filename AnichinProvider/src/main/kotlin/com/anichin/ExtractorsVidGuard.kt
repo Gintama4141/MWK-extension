@@ -21,6 +21,13 @@ class Vidguardto3 : Vidguardto() {
 }
 
 open class Vidguardto : ExtractorApi() {
+    companion object {
+        private val SVG_PATTERN1 = """svg\s*[=:]\s*(\{(?:[^{}]|"[^"]*")*?\})""".toRegex(RegexOption.IGNORE_CASE)
+        private val SVG_PATTERN2 = """svg\s*[=:]\s*(\{[^}]*?(?:stream|hash)[^}]*?\})""".toRegex(RegexOption.IGNORE_CASE)
+        private val SVG_PATTERN3 = """\{[^}]*?"stream"[^}]*?"hash"[^}]*?\}""".toRegex()
+        private val JSON_KEY_REGEX = Regex("""(\w+)\s*:""")
+    }
+
     override val name = "Vidguard"
     override val mainUrl = "https://vidguard.to"
     override val requiresReferer = false
@@ -31,7 +38,7 @@ open class Vidguardto : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val res = app.get(getEmbedUrl(url))
+        val res = app.get(getEmbedUrl(url), timeout = 15_000L)
 
         val evalScript = res.document.select("script:containsData(eval)").firstOrNull()?.data()
             ?: return
@@ -48,16 +55,16 @@ open class Vidguardto : ExtractorApi() {
 
     private fun extractSvgObject(scriptData: String): SvgObject? {
         val patterns = listOf(
-            """svg\s*[=:]\s*(\{(?:[^{}]|"[^"]*")*?\})""".toRegex(RegexOption.IGNORE_CASE),
-            """svg\s*[=:]\s*(\{[^}]*?(?:stream|hash)[^}]*?\})""".toRegex(RegexOption.IGNORE_CASE),
-            """\{[^}]*?"stream"[^}]*?"hash"[^}]*?\}""".toRegex(),
+            SVG_PATTERN1,
+            SVG_PATTERN2,
+            SVG_PATTERN3,
         )
 
         for (pattern in patterns) {
             for (match in pattern.findAll(scriptData)) {
                 val raw = match.groupValues[1].ifBlank { match.value }
                 val json = raw
-                    .replace(Regex("""(\w+)\s*:""")) { "\"${it.groupValues[1]}\":" }
+                    .replace(JSON_KEY_REGEX) { "\"${it.groupValues[1]}\":" }
                     .replace("'", "\"")
                 tryParseJson<SvgObject>(json)?.let { return it }
             }

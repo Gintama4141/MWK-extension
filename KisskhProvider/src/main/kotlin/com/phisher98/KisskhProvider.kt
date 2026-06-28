@@ -29,6 +29,7 @@ class KisskhProvider : MainAPI() {
         private const val KEY_FETCH_RETRIES = 2
         private const val API_VERSION = "2.8.10"
         private val KEY_CACHE = mutableMapOf<String, String>()
+        private val NON_ALPHANUM_REGEX = Regex("[^a-zA-Z0-9]")
     }
 
     override var mainUrl = "https://kisskh.ovh"
@@ -92,7 +93,7 @@ class KisskhProvider : MainAPI() {
     }
 
     private fun getTitle(str: String): String {
-        return str.replace(Regex("[^a-zA-Z0-9]"), "-")
+        return str.replace(NON_ALPHANUM_REGEX, "-")
     }
 
     override suspend fun load(url: String): LoadResponse? {

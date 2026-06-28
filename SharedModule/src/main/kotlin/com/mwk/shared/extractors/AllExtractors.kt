@@ -47,6 +47,10 @@ object SharedExtractorUtils {
 }
 
 open class Dingtezuni : ExtractorApi() {
+    companion object {
+        private val M3U8_FIND_REGEX = Regex(":\\s*\"(.*?m3u8.*?)\"")
+    }
+
     override val name = "Earnvids"
     override val mainUrl = "https://dingtezuni.com"
     override val requiresReferer = true
@@ -59,12 +63,12 @@ open class Dingtezuni : ExtractorApi() {
     ) {
         val headers = SharedExtractorUtils.commonHeaders(mainUrl)
 
-        val response = app.get(SharedExtractorUtils.getEmbedUrl(url), referer = referer)
+        val response = app.get(SharedExtractorUtils.getEmbedUrl(url), referer = referer, timeout = 15_000L)
         val script = SharedExtractorUtils.extractSources(response.text)
             ?: response.document.selectFirst("script:containsData(sources:)")?.data()
             ?: return
 
-        Regex(":\\s*\"(.*?m3u8.*?)\"").findAll(script).forEach { match ->
+        M3U8_FIND_REGEX.findAll(script).forEach { match ->
             generateM3u8(
                 name,
                 fixUrl(match.groupValues[1]),
@@ -120,7 +124,7 @@ open class Gofile : ExtractorApi() {
         val id = ID_REGEX.find(url)?.groupValues?.get(1) ?: return
         val token = getToken() ?: return
         val websiteToken = getWebsiteToken() ?: return
-        app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
+        app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken", timeout = 15_000L)
             .text.let { AppUtils.tryParseJson<com.mwk.shared.data.GofileSource>(it) }?.data?.contents?.forEach {
                 callback.invoke(
                     newExtractorLink(
@@ -138,14 +142,14 @@ open class Gofile : ExtractorApi() {
     private suspend fun getToken(): String? {
         val now = System.currentTimeMillis()
         if (tokenCache != null && now - tokenTimestamp < TOKEN_TTL) return tokenCache
-        tokenCache = app.get("$mainApi/createAccount").text.let { AppUtils.tryParseJson<com.mwk.shared.data.GofileAccount>(it) }?.data?.get("token")
+        tokenCache = app.get("$mainApi/createAccount", timeout = 15_000L).text.let { AppUtils.tryParseJson<com.mwk.shared.data.GofileAccount>(it) }?.data?.get("token")
         tokenTimestamp = now
         return tokenCache
     }
 
     private suspend fun getWebsiteToken(): String? {
         if (websiteTokenCache != null) return websiteTokenCache
-        websiteTokenCache = app.get("$mainUrl/dist/js/alljs.js").text.let {
+        websiteTokenCache = app.get("$mainUrl/dist/js/alljs.js", timeout = 15_000L).text.let {
             WT_REGEX.find(it)?.groupValues?.get(1)
         }
         return websiteTokenCache
@@ -158,6 +162,11 @@ open class Gofile : ExtractorApi() {
 }
 
 open class Odnoklassniki : ExtractorApi() {
+    companion object {
+        private val UNICODE_ESC_REGEX = Regex("\\\\u([0-9A-Fa-f]{4})")
+        private val VIDEOS_JSON_REGEX = Regex(""""videos":(\[[^]]*])""")
+    }
+
     override val name = "Odnoklassniki"
     override val mainUrl = "https://odnoklassniki.ru"
     override val requiresReferer = false
@@ -173,12 +182,12 @@ open class Odnoklassniki : ExtractorApi() {
             "User-Agent" to USER_AGENT,
         )
         val embedUrl = url.replace("/video/","/videoembed/")
-        val videoReq  = app.get(embedUrl, headers=headers).text.replace("\\&quot;", "\"").replace("\\\\", "\\")
-            .replace(Regex("\\\\u([0-9A-Fa-f]{4})")) { matchResult ->
+        val videoReq  = app.get(embedUrl, headers=headers, timeout = 15_000L).text.replace("\\&quot;", "\"").replace("\\\\", "\\")
+            .replace(UNICODE_ESC_REGEX) { matchResult ->
                 Integer.parseInt(matchResult.groupValues[1], 16).toChar().toString()
             }
 
-        val videosStr = Regex(""""videos":(\[[^]]*])""").find(videoReq)?.groupValues?.get(1) ?: throw ErrorLoadingException("Video not found")
+        val videosStr = VIDEOS_JSON_REGEX.find(videoReq)?.groupValues?.get(1) ?: throw ErrorLoadingException("Video not found")
         val videos    = AppUtils.tryParseJson<List<com.mwk.shared.data.OkRuVideo>>(videosStr) ?: throw ErrorLoadingException("Video not found")
 
         for (video in videos) {
@@ -235,7 +244,7 @@ open class Lulustream : ExtractorApi() {
         val embedUrl = SharedExtractorUtils.getEmbedUrl(url)
         if (embedUrl.isEmpty()) return
 
-        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl, timeout = 15_000L)
 
         val script = SharedExtractorUtils.extractSources(response.text)
             ?: response.document.selectFirst("script:containsData(sources:)")?.data()
@@ -297,7 +306,7 @@ open class P2PPlay : ExtractorApi() {
         if (id.isEmpty()) return
 
         val embedUrl = "$mainUrl/#$id"
-        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl, timeout = 15_000L)
 
         val script = SharedExtractorUtils.extractSources(response.text)
             ?: response.document.selectFirst("script:containsData(sources:)")?.data()
@@ -341,7 +350,7 @@ open class StreamHG : ExtractorApi() {
         val embedUrl = SharedExtractorUtils.getEmbedUrl(url)
         if (embedUrl.isEmpty()) return
 
-        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl, timeout = 15_000L)
 
         val script = SharedExtractorUtils.extractSources(response.text)
             ?: response.document.selectFirst("script:containsData(sources:)")?.data()

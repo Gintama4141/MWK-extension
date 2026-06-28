@@ -16,8 +16,15 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+private object TorraUtilsRegex {
+    val QUALITY_PIXEL = Regex("(\\d{3,4})[pP]")
+    val QUALITY_FULL = Regex("""\b(4K|2160p|1080p|720p|WEB[-\s]?DL|BluRay|HDRip|DVDRip)\b""", RegexOption.IGNORE_CASE)
+    val QUALITY_COMMON = Regex("""\b(2160p|1440p|1080p|720p|480p|360p)\b""", RegexOption.IGNORE_CASE)
+    val SIZE = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
+}
+
 fun getIndexQuality(str: String?): Int {
-    return Regex("(\\d{3,4})[pP]").find(str ?: "") ?. groupValues ?. getOrNull(1) ?. toIntOrNull()
+    return TorraUtilsRegex.QUALITY_PIXEL.find(str ?: "") ?. groupValues ?. getOrNull(1) ?. toIntOrNull()
         ?: Qualities.Unknown.value
 }
 
@@ -174,8 +181,7 @@ fun parseStreamsToMagnetLinks(jsonString: String): List<MagnetStream> {
         val bingeGroup = item.behaviorHints?.bingeGroup.orEmpty()
         bingeGroup.split("|").filter { it.isNotBlank() && it != "Unknown" }
 
-        val qualityRegex = Regex("""\b(4K|2160p|1080p|720p|WEB[-\s]?DL|BluRay|HDRip|DVDRip)\b""", RegexOption.IGNORE_CASE)
-        val qualityMatch = qualityRegex.find(originalName)?.value ?: "Unknown"
+        val qualityMatch = TorraUtilsRegex.QUALITY_FULL.find(originalName)?.value ?: "Unknown"
 
         val encodedName = URLEncoder.encode(originalName, "UTF-8")
         val trackers = sources.joinToString("&") { tracker ->
@@ -194,8 +200,7 @@ fun parseStreamsToMagnetLinks(jsonString: String): List<MagnetStream> {
 
 fun extractResolutionFromDescription(description: String?): String? {
     if (description.isNullOrBlank()) return null
-    val regex = Regex("""\b(2160p|1440p|1080p|720p|480p|360p)\b""", RegexOption.IGNORE_CASE)
-    return regex.find(description)?.value
+    return TorraUtilsRegex.QUALITY_COMMON.find(description)?.value
 }
 
 fun getDate(): TmdbDate {
@@ -333,7 +338,7 @@ fun filteredCallback(
     val maxSize = sharedPref.getString("sizefilter", "")?.toDoubleOrNull()
     val limit = sharedPref.getString("limit", "")?.toIntOrNull() ?: 0
     var resultCount = 0
-    val sizeRegex = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
+    val sizeRegex = TorraUtilsRegex.SIZE
 
     return fun(link: ExtractorLink) {
 

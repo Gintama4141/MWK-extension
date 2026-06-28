@@ -40,6 +40,12 @@ class KuronimeProvider : MainAPI() {
         private const val SOURCES_API_PATH = "/api/v9/sources"
         private val VIDEO_ID_REGEX = Regex("""\bid\b\s*[:=]\s*["']([a-zA-Z0-9_-]+)["']""")
         private val EPISODE_NUM_REGEX = Regex("(\\d+)")
+        private val NON_DIGIT_REGEX = Regex("\\D")
+        private val NON_WORD_REGEX = Regex("\\W")
+        private val HTML_TAG_REGEX = Regex("<.*?>")
+        private val YEAR_REGEX = Regex("\\d, (\\d*)")
+        private val SLUG_EPISODE_REGEX = Regex("nonton-(.+)-episode")
+        private val SLUG_MOVIE_REGEX = Regex("nonton-(.+)-movie")
 
         fun getType(t: String): TvType {
             return if (t.contains("OVA", true) || t.contains("Special", true)) TvType.OVA
@@ -69,7 +75,7 @@ class KuronimeProvider : MainAPI() {
         request: MainPageRequest
     ): HomePageResponse {
         val url = request.data.replace("%d", page.toString())
-        val document = app.get(url).document
+        val document = app.get(url, timeout = 15_000L).document
         val home = document.select(".listupd article").map {
             it.toSearchResult(mainUrl)
         }
@@ -89,9 +95,9 @@ class KuronimeProvider : MainAPI() {
         val slug = uri.trimEnd('/').substringAfterLast("/")
         val title = when {
             slug.contains("-episode") && !slug.contains("-movie") ->
-                Regex("nonton-(.+)-episode").find(slug)?.groupValues?.get(1) ?: slug
+                SLUG_EPISODE_REGEX.find(slug)?.groupValues?.get(1) ?: slug
             slug.contains("-movie") ->
-                Regex("nonton-(.+)-movie").find(slug)?.groupValues?.get(1) ?: slug
+                SLUG_MOVIE_REGEX.find(slug)?.groupValues?.get(1) ?: slug
             else -> slug
         }
 
@@ -114,7 +120,7 @@ class KuronimeProvider : MainAPI() {
         val img = this.selectFirst("img[itemprop=image]") ?: this.select("img").lastOrNull()
         val posterUrl = fixUrlNull(img?.getImageAttr())
 
-        val epNum = this.select(".ep").text().replace(Regex("\\D"), "").trim().toIntOrNull()
+        val epNum = this.select(".ep").text().replace(NON_DIGIT_REGEX, "").trim().toIntOrNull()
         val tvType = getType(this.selectFirst(".bt > span, .bt > .type")?.text() ?: "")
 
         return newAnimeSearchResponse(title, href, tvType) {
@@ -131,7 +137,7 @@ class KuronimeProvider : MainAPI() {
                 "action" to "ajaxy_sf",
                 "sf_value" to query,
                 "search" to "false"
-            ), headers = mapOf("X-Requested-With" to "XMLHttpRequest")
+            ), headers = mapOf("X-Requested-With" to "XMLHttpRequest"), timeout = 15_000L
         ).text.let { tryParseJson<Search>(it) }?.anime?.firstOrNull()?.all?.mapNotNull {
             newAnimeSearchResponse(
                 it.postTitle ?: "",
@@ -145,7 +151,7 @@ class KuronimeProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val document = app.get(url).document
+        val document = app.get(url, timeout = 15_000L).document
         val currentBaseUrl = getBaseUrl(url)
 
         val title = document.selectFirst(".entry-title")?.text()?.trim() ?: "Unknown"
@@ -155,12 +161,12 @@ class KuronimeProvider : MainAPI() {
         val type = getType(typeString.lowercase())
 
         val trailer = document.selectFirst("div.tply iframe")?.attr("data-src")
-        val year = Regex("\\d, (\\d*)").find(
+        val year = YEAR_REGEX.find(
             document.select(".infodetail > ul > li:nth-child(5)").text()
         )?.groupValues?.get(1)?.toIntOrNull()
 
         val statusElement = document.selectFirst(".infodetail > ul > li:nth-child(3)")
-        val statusText = statusElement?.ownText()?.replace(Regex("\\W"), "") ?: ""
+        val statusText = statusElement?.ownText()?.replace(NON_WORD_REGEX, "") ?: ""
         val status = getStatus(statusText)
 
         val description = document.select("span.const > p").text()
@@ -174,7 +180,7 @@ class KuronimeProvider : MainAPI() {
 
         if (malId != null) {
             runCatching {
-                val syncMetaData = app.get("$ANIZIP_API?mal_id=$malId").text
+                val syncMetaData = app.get("$ANIZIP_API?mal_id=$malId", timeout = 15_000L).text
                 animeMetaData = parseAnimeData(syncMetaData)
                 tmdbid = animeMetaData?.mappings?.themoviedbId
                 kitsuid = animeMetaData?.mappings?.kitsuId
@@ -227,7 +233,7 @@ class KuronimeProvider : MainAPI() {
             }
         }.filterNotNull().reversed()
 
-        val apiDescription = animeMetaData?.description?.replace(Regex("<.*?>"), "")
+        val apiDescription = animeMetaData?.description?.replace(HTML_TAG_REGEX, "")
         val rawPlot = apiDescription ?: animeMetaData?.episodes?.get("1")?.overview
 
         val finalPlot = if (!rawPlot.isNullOrBlank()) {
@@ -260,7 +266,7 @@ class KuronimeProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val req = app.get(data)
+        val req = app.get(data, timeout = 15_000L)
         val document = req.document
         val currentBaseUrl = getBaseUrl(req.url)
 
@@ -276,7 +282,8 @@ class KuronimeProvider : MainAPI() {
                 requestBody = """{"id":"$id"}""".toRequestBody(
                     RequestBodyTypes.JSON.toMediaTypeOrNull()
                 ),
-                referer = "$currentBaseUrl/"
+                referer = "$currentBaseUrl/",
+                timeout = 15_000L
             ).text.let { tryParseJson<Servers>(it) }
         } catch (e: Exception) {
             null
@@ -468,7 +475,7 @@ suspend fun fetchTmdbLogoUrl(
         "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
 
     val imageResponse = runCatching {
-        app.get(url).text.let { tryParseJson<TmdbImagesResponse>(it) }
+        app.get(url, timeout = 15_000L).text.let { tryParseJson<TmdbImagesResponse>(it) }
     }.getOrNull() ?: return null
     val logos = imageResponse.logos?.filter { !it.filePath.isNullOrBlank() } ?: return null
 

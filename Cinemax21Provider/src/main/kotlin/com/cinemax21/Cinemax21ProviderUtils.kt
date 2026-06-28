@@ -1,5 +1,25 @@
 package com.cinemax21
 import android.util.Base64
+
+private object Cinemax21UtilsRegex {
+    val QUALITY_2160_1080_720 = Regex("(?i)(2160p|1080p|720p)")
+    val QUALITY_2160_1080 = Regex("(?i)(2160p|1080p)")
+    val VIDEO_EXT = Regex("\\.mkv|\\.mp4|\\.avi")
+    val SPACE_PLUS = "\\s+".toRegex()
+    val NON_ALPHA_NUM = Regex("[^a-zA-Z\\d]")
+    val FILE_SIZE_FULL = Regex("(?i)(\\d+\\.?\\d+\\sGB|MB)")
+    val DECIMAL_NUM = Regex("(\\d+\\.?\\d+)")
+    val UHD_TAG = Regex("\\d{3,4}[Pp]\\.?(.*?)\\[")
+    val FULL_TAG = Regex("(?i)(.*)\\.(?:mkv|mp4|avi)")
+    val QUALITY_TAG = Regex("(?i)\\d{3,4}[pP]\\.?(.*?)\\.(mkv|mp4|avi)")
+    val QUALITY_PIXEL = Regex("(\\d{3,4})[pP]")
+    val FILE_SIZE_SIMPLE = Regex("(?i)([\\d.]+\\s*(?:gb|mb))")
+    val IFRAME_SRC = Regex("""<iframe src="(.*?)"""")
+    val HLS2 = Regex("\"hls2\":\\s*\"(.*?m3u8.*?)\"")
+    val YEAR_PAREN = Regex("\\(\\d{4}\\)")
+    val NON_ALPHA_NUM_SPACE = Regex("[^a-zA-Z0-9\\s]")
+    val NON_ALPHA_LOWER = Regex("[^a-z0-9]")
+}
 import com.cinemax21.Cinemax21Provider.Companion.anilistAPI
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.APIHolder.unixTimeMS
@@ -93,7 +113,7 @@ suspend fun tmdbToAnimeId(title: String?, year: Int?, season: String?, type: TvT
         "query" to query,
         "variables" to variables
     ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
-    val res = app.post(anilistAPI, requestBody = data).text
+    val res = app.post(anilistAPI, requestBody = data, timeout = 15_000L).text
         .let { tryParseJson<AniSearch>(it) }?.data?.Page?.media?.firstOrNull()
     return AniIds(res?.id, res?.idMal)
 }
@@ -185,8 +205,8 @@ fun matchingIndex(
     } else {
         mediaName?.contains(Regex("(?i)(?:$wSlug|$dwSlug).*S${seasonSlug}.?E${episodeSlug}")) == true
     }) && mediaName?.contains(
-        if (include720) Regex("(?i)(2160p|1080p|720p)") else Regex("(?i)(2160p|1080p)")
-    ) == true && ((mediaMimeType in mimeType) || mediaName.contains(Regex("\\.mkv|\\.mp4|\\.avi")))
+        if (include720) Cinemax21UtilsRegex.QUALITY_2160_1080_720 else Cinemax21UtilsRegex.QUALITY_2160_1080
+    ) == true && ((mediaMimeType in mimeType) || mediaName.contains(Cinemax21UtilsRegex.VIDEO_EXT))
 }
 fun decodeIndexJson(json: String): String {
     val slug = json.reversed().substring(24)
@@ -218,19 +238,20 @@ fun vidsrctoDecrypt(text: String): String {
 fun String?.createSlug(): String? {
     return this?.filter { it.isWhitespace() || it.isLetterOrDigit() }
         ?.trim()
-        ?.replace("\\s+".toRegex(), "-")
+        ?.replace(Cinemax21UtilsRegex.SPACE_PLUS, "-")
         ?.lowercase()
 }
+
 fun getLanguage(str: String): String {
     return if (str.contains("(in_ID)")) "Indonesian" else str
 }
 fun bytesToGigaBytes(number: Double): Double = number / 1024000000
 fun getKisskhTitle(str: String?): String? {
-    return str?.replace(Regex("[^a-zA-Z\\d]"), "-")
+    return str?.replace(Cinemax21UtilsRegex.NON_ALPHA_NUM, "-")
 }
 fun String.getFileSize(): Float? {
-    val size = Regex("(?i)(\\d+\\.?\\d+\\sGB|MB)").find(this)?.groupValues?.get(0)?.trim()
-    val num = Regex("(\\d+\\.?\\d+)").find(size ?: return null)?.groupValues?.get(0)?.toFloat()
+    val size = Cinemax21UtilsRegex.FILE_SIZE_FULL.find(this)?.groupValues?.get(0)?.trim()
+    val num = Cinemax21UtilsRegex.DECIMAL_NUM.find(size ?: return null)?.groupValues?.get(0)?.toFloat()
         ?: return null
     return when {
         size.contains("GB") -> num * 1000000
@@ -238,23 +259,23 @@ fun String.getFileSize(): Float? {
     }
 }
 fun getUhdTags(str: String?): String {
-    return Regex("\\d{3,4}[Pp]\\.?(.*?)\\[").find(str ?: "")?.groupValues?.getOrNull(1)
+    return Cinemax21UtilsRegex.UHD_TAG.find(str ?: "")?.groupValues?.getOrNull(1)
         ?.replace(".", " ")?.trim()
         ?: str ?: ""
 }
 fun getIndexQualityTags(str: String?, fullTag: Boolean = false): String {
-    return if (fullTag) Regex("(?i)(.*)\\.(?:mkv|mp4|avi)").find(str ?: "")?.groupValues?.get(1)
-        ?.trim() ?: str ?: "" else Regex("(?i)\\d{3,4}[pP]\\.?(.*?)\\.(mkv|mp4|avi)").find(
+    return if (fullTag) Cinemax21UtilsRegex.FULL_TAG.find(str ?: "")?.groupValues?.get(1)
+        ?.trim() ?: str ?: "" else Cinemax21UtilsRegex.QUALITY_TAG.find(
         str ?: ""
     )?.groupValues?.getOrNull(1)
         ?.replace(".", " ")?.trim() ?: str ?: ""
 }
 fun getIndexQuality(str: String?): Int {
-    return Regex("(\\d{3,4})[pP]").find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return Cinemax21UtilsRegex.QUALITY_PIXEL.find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
         ?: Qualities.Unknown.value
 }
 fun getIndexSize(str: String?): String? {
-    return Regex("(?i)([\\d.]+\\s*(?:gb|mb))").find(str ?: "")?.groupValues?.getOrNull(1)?.trim()
+    return Cinemax21UtilsRegex.FILE_SIZE_SIMPLE.find(str ?: "")?.groupValues?.getOrNull(1)?.trim()
 }
 fun getQuality(str: String): Int {
     return when (str) {
@@ -540,21 +561,22 @@ suspend fun getPlayer4uUrl(
     referer: String?,
     callback: (ExtractorLink) -> Unit
 ) {
-    val response = app.get(url, referer = referer)
+    val response = app.get(url, referer = referer, timeout = 15_000L)
     var script = getAndUnpack(response.text).takeIf { it.isNotEmpty() }
         ?: response.document.selectFirst("script:containsData(sources:)")?.data()
     if (script == null) {
         val iframeUrl =
-            Regex("""<iframe src="(.*?)"""").find(response.text)?.groupValues?.getOrNull(1)
+            Cinemax21UtilsRegex.IFRAME_SRC.find(response.text)?.groupValues?.getOrNull(1)
                 ?: return
         val iframeResponse = app.get(
             iframeUrl,
             referer = null,
-            headers = mapOf("Accept-Language" to "en-US,en;q=0.5")
+            headers = mapOf("Accept-Language" to "en-US,en;q=0.5"),
+            timeout = 15_000L
         )
         script = getAndUnpack(iframeResponse.text).takeIf { it.isNotEmpty() } ?: return
     }
-    val m3u8 = Regex("\"hls2\":\\s*\"(.*?m3u8.*?)\"").find(script)?.groupValues?.getOrNull(1).orEmpty()
+    val m3u8 = Cinemax21UtilsRegex.HLS2.find(script)?.groupValues?.getOrNull(1).orEmpty()
     callback(newExtractorLink(name, name, m3u8, ExtractorLinkType.M3U8) {
         this.quality = selectedQuality
     })
@@ -588,14 +610,14 @@ object DramaHelper {
     )
     fun normalizeQuery(title: String): String {
         return title
-            .replace(Regex("\\(\\d{4}\\)"), "")
-            .replace(Regex("[^a-zA-Z0-9\\s]"), " ")
+            .replace(Cinemax21UtilsRegex.YEAR_PAREN, "")
+            .replace(Cinemax21UtilsRegex.NON_ALPHA_NUM_SPACE, " ")
             .trim()
-            .replace("\\s+".toRegex(), " ")
+            .replace(Cinemax21UtilsRegex.SPACE_PLUS, " ")
     }
     fun isFuzzyMatch(original: String, result: String): Boolean {
-        val cleanOrg = original.lowercase().replace(Regex("[^a-z0-9]"), "")
-        val cleanRes = result.lowercase().replace(Regex("[^a-z0-9]"), "")
+        val cleanOrg = original.lowercase().replace(Cinemax21UtilsRegex.NON_ALPHA_LOWER, "")
+        val cleanRes = result.lowercase().replace(Cinemax21UtilsRegex.NON_ALPHA_LOWER, "")
         if (cleanOrg.length < 5 || cleanRes.length < 5) {
             return cleanOrg == cleanRes
         }

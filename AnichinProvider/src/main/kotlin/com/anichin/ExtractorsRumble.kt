@@ -12,18 +12,22 @@ class Rumble : ExtractorApi() {
     override var mainUrl = "https://rumble.com"
     override val requiresReferer = false
 
+    companion object {
+        private val RUMBLE_URL_REGEX = """"url":"(.*?)"|h":(.*?)\}""".toRegex()
+    }
+
     override suspend fun getUrl(
         url: String,
         referer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val response = app.get(url, referer = referer ?: "$mainUrl/")
+        val response = app.get(url, referer = referer ?: "$mainUrl/", timeout = 15_000L)
         val scriptData = response.document.selectFirst("script:containsData(mp4)")?.data()
             ?.substringAfter("{\"mp4")?.substringBefore("\"evt\":{")
         if (scriptData == null) return
 
-        val regex = """"url":"(.*?)"|h":(.*?)\}""".toRegex()
+        val regex = RUMBLE_URL_REGEX
         val matches = regex.findAll(scriptData)
 
         val processedUrls = mutableSetOf<String>()

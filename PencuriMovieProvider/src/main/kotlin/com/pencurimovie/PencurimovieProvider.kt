@@ -18,6 +18,11 @@ class PencurimovieProvider : MainAPI() {
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.Movie, TvType.Anime, TvType.Cartoon)
 
+    companion object {
+        private val NON_DIGIT_REGEX = Regex("\\D")
+        private val SEASON_REGEX = Regex("Season\\s*(\\d+)")
+        private val EPISODE_REGEX = Regex("Episode\\s*(\\d+)")
+    }
 
     override val mainPage = mainPageOf(
         "movies" to "Latest Movies",
@@ -81,7 +86,7 @@ class PencurimovieProvider : MainAPI() {
             ?.toDoubleOrNull()
         val duration = document.selectFirst("span[itemprop=duration]")
             ?.text()
-            ?.replace(Regex("\\D"), "")
+            ?.replace(NON_DIGIT_REGEX, "")
             ?.toIntOrNull()
 
         val actors =
@@ -95,12 +100,12 @@ class PencurimovieProvider : MainAPI() {
             val episodes = mutableListOf<Episode>()
             document.select("div.tvseason").amap { info ->
                 val season = info.select("strong").text().let { text ->
-                    Regex("Season\\s*(\\d+)").find(text)?.groupValues?.get(1)?.trim()?.toIntOrNull()
+                    SEASON_REGEX.find(text)?.groupValues?.get(1)?.trim()?.toIntOrNull()
                 }
                 info.select("div.les-content a").forEach { elem ->
                     val epText = elem.text()
                     val href = elem.attr("href") ?: ""
-                    val episode = Regex("Episode\\s*(\\d+)").find(epText)?.groupValues?.get(1)?.trim()?.toIntOrNull()
+                    val episode = EPISODE_REGEX.find(epText)?.groupValues?.get(1)?.trim()?.toIntOrNull()
                     val name = epText.substringAfter("-").trim()
                     episodes.add(
                         newEpisode(href) {

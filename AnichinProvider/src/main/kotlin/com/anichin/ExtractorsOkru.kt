@@ -41,12 +41,12 @@ open class Odnoklassniki : ExtractorApi() {
             "User-Agent" to USER_AGENT,
         )
         val embedUrl = url.replace("/video/","/videoembed/")
-        val videoReq  = app.get(embedUrl, headers=headers).text.replace("\\&quot;", "\"").replace("\\\\", "\\")
-            .replace(Regex("\\\\u([0-9A-Fa-f]{4})")) { matchResult ->
+        val videoReq  = app.get(embedUrl, headers=headers, timeout = 15_000L).text.replace("\\&quot;", "\"").replace("\\\\", "\\")
+            .replace(UNICODE_ESC_REGEX) { matchResult ->
                 Integer.parseInt(matchResult.groupValues[1], 16).toChar().toString()
             }
 
-        val videosStr = Regex(""""videos":(\[[^]]*])""").find(videoReq)?.groupValues?.get(1) ?: throw ErrorLoadingException("Video not found")
+        val videosStr = VIDEOS_JSON_REGEX.find(videoReq)?.groupValues?.get(1) ?: throw ErrorLoadingException("Video not found")
         val videos    = AppUtils.tryParseJson<List<OkRuVideo>>(videosStr) ?: throw ErrorLoadingException("Video not found")
 
         for (video in videos) {
@@ -76,6 +76,11 @@ open class Odnoklassniki : ExtractorApi() {
                 }
             )
         }
+    }
+
+    companion object {
+        private val UNICODE_ESC_REGEX = Regex("\\\\u([0-9A-Fa-f]{4})")
+        private val VIDEOS_JSON_REGEX = Regex(""""videos":(\[[^]]*])""")
     }
 
     data class OkRuVideo(

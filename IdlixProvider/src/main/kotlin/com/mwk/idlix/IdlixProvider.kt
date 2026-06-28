@@ -26,6 +26,10 @@ class IdlixProvider : MainAPI() {
             "https://idlix.biz",
             "https://idlix.site"
         )
+        private val YEAR_REGEX = Regex("""\((\d{4})\)""")
+        private val EPISODE_REGEX = Regex("""episode-(\d+)""")
+        private val SEASON_REGEX = Regex("""season-(\d+)""")
+        private val IDLIX_SCRIPT_REGEX = """window\.idlixNonce=['"]([a-f0-9]+)['"].*?window\.idlixTime=(\d+).*?""".toRegex(RegexOption.DOT_MATCHES_ALL)
 
         suspend fun getWorkingDomain(): String {
             return cachedDomain ?: run {
@@ -73,7 +77,7 @@ class IdlixProvider : MainAPI() {
                         val domain = getWorkingDomain()
                         val url = if (path.contains("{page}")) "$domain${path.replace("{page}", page.toString())}"
                         else "$domain$path"
-                        val doc = app.get(url, headers = mapOf("User-Agent" to UA)).document
+                        val doc = app.get(url, headers = mapOf("User-Agent" to UA), timeout = 15_000L).document
                         val results = doc.select("article").mapNotNull { it.toIdlixSearchResult() }
                         if (results.isNotEmpty()) HomePageList(title, results) else null
                     } catch (_: Exception) {
@@ -88,17 +92,17 @@ class IdlixProvider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val encoded = URLEncoder.encode(query.trim(), "UTF-8")
         val domain = getWorkingDomain()
-        return app.get("$domain/?s=$encoded&post_type[]=post&post_type[]=tv", headers = mapOf("User-Agent" to UA)).document
+        return app.get("$domain/?s=$encoded&post_type[]=post&post_type[]=tv", headers = mapOf("User-Agent" to UA), timeout = 15_000L).document
             .select("article").mapNotNull { it.toIdlixSearchResult() }
     }
 
     override suspend fun load(url: String): LoadResponse? {
         val domain = getWorkingDomain()
-        val doc = app.get(url, headers = mapOf("User-Agent" to UA)).document
+        val doc = app.get(url, headers = mapOf("User-Agent" to UA), timeout = 15_000L).document
         val title = doc.selectFirst("h1")?.text()?.trim() ?: return null
         val poster = doc.selectFirst("img")?.attr("src")
         val plot = doc.selectFirst("div.entry-content p")?.text()?.trim()
-        val year = Regex("""\((\d{4})\)""").find(title)?.groupValues?.get(1)?.toIntOrNull()
+        val year = YEAR_REGEX.find(title)?.groupValues?.get(1)?.toIntOrNull()
         val rating = doc.selectFirst("[itemprop='ratingValue']")?.text()?.trim()
         val tags = doc.select("a[href*='genre']").map { it.text() }.distinct()
         val actors = doc.select("[itemprop='actors'] a").map { it.text() }
@@ -140,8 +144,8 @@ class IdlixProvider : MainAPI() {
         val seasonMap = mutableMapOf<Int, MutableList<IdlixEpisode>>()
         epElements.forEach { el ->
             val href = el.attr("href")
-            val epNum = Regex("""episode-(\d+)""").find(href)?.groupValues?.get(1)?.toIntOrNull()
-            val seasonNum = Regex("""season-(\d+)""").find(href)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+            val epNum = EPISODE_REGEX.find(href)?.groupValues?.get(1)?.toIntOrNull()
+            val seasonNum = SEASON_REGEX.find(href)?.groupValues?.get(1)?.toIntOrNull() ?: 1
             val epTitle = el.text().trim()
             if (epNum != null) {
                 val fullUrl = fixUrl(href, baseUrl)
@@ -159,48 +163,52 @@ class IdlixProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val doc = app.get(data, headers = mapOf("User-Agent" to UA)).document
-        val scriptRegex = """window\.idlixNonce=['"]([a-f0-9]+)['"].*?window\.idlixTime=(\d+).*?""".toRegex(RegexOption.DOT_MATCHES_ALL)
+        val doc = app.get(data, headers = mapOf("User-Agent" to UA), timeout = 15_000L).document
         val script = doc.select("script").map { it.data() }.find { it.contains("window.idlix") }
-        val match = script?.let { scriptRegex.find(it) }
+        val match = script?.let { IDLIX_SCRIPT_REGEX.find(it) }
         val nonce = match?.groups?.get(1)?.value ?: ""
         val time = match?.groups?.get(2)?.value ?: ""
         val baseUrl = getWorkingDomain()
 
-        doc.select("ul#playeroptionsul > li").map {
-            Triple(it.attr("data-post"), it.attr("data-nume"), it.attr("data-type"))
-        }.forEach { (id, nume, type) ->
-            try {
-                val json = app.post(
-                    url = "$baseUrl/wp-admin/admin-ajax.php",
-                    data = mapOf(
-                        "action" to "doo_player_ajax",
-                        "post" to id,
-                        "nume" to nume,
-                        "type" to type,
-                        "_n" to nonce,
-                        "_p" to id,
-                        "_t" to time
-                    ),
-                    referer = data,
-                    headers = mapOf("Accept" to "*/*", "X-Requested-With" to "XMLHttpRequest")
-                ).text.let { AppUtils.tryParseJson<ResponseHash>(it) } ?: return@forEach
+        coroutineScope {
+            doc.select("ul#playeroptionsul > li").map {
+                Triple(it.attr("data-post"), it.attr("data-nume"), it.attr("data-type"))
+            }.map { (id, nume, type) ->
+                async {
+                    try {
+                        val json = app.post(
+                            url = "$baseUrl/wp-admin/admin-ajax.php",
+                            data = mapOf(
+                                "action" to "doo_player_ajax",
+                                "post" to id,
+                                "nume" to nume,
+                                "type" to type,
+                                "_n" to nonce,
+                                "_p" to id,
+                                "_t" to time
+                            ),
+                            referer = data,
+                            headers = mapOf("Accept" to "*/*", "X-Requested-With" to "XMLHttpRequest"),
+                            timeout = 15_000L
+                        ).text.let { AppUtils.tryParseJson<ResponseHash>(it) }
 
-                val metrix = AppUtils.tryParseJson<AesData>(json.embed_url)?.m ?: return@forEach
-                val decrypted = IdlixCrypto.decryptEmbedUrl(json.embed_url, json.key, metrix) ?: return@forEach
+                        if (json == null) return@async
+                        val metrix = AppUtils.tryParseJson<AesData>(json.embed_url)?.m ?: return@async
+                        val decrypted = IdlixCrypto.decryptEmbedUrl(json.embed_url, json.key, metrix) ?: return@async
 
-                when {
-                    decrypted.contains("jeniusplay", true) -> {
-                        val finalUrl = if (decrypted.startsWith("//")) "https:$decrypted" else decrypted
-                        Jeniusplay().getUrl(finalUrl, "$baseUrl/", subtitleCallback, callback)
-                    }
-                    !decrypted.contains("youtube", true) -> {
-                        loadExtractor(decrypted, baseUrl, subtitleCallback, callback)
+                        when {
+                            decrypted.contains("jeniusplay", true) -> {
+                                val finalUrl = if (decrypted.startsWith("//")) "https:$decrypted" else decrypted
+                                Jeniusplay().getUrl(finalUrl, "$baseUrl/", subtitleCallback, callback)
+                            }
+                            !decrypted.contains("youtube", true) -> {
+                                loadExtractor(decrypted, baseUrl, subtitleCallback, callback)
+                            }
+                        }
+                    } catch (_: Exception) {
                     }
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            }.awaitAll()
         }
         return true
     }
@@ -212,7 +220,7 @@ class IdlixProvider : MainAPI() {
         if (href.isBlank() || href == "#") return null
         val poster = this.selectFirst("img")?.attr("src")
         val quality = this.selectFirst(".gmr-quality-item, span.quality")?.text()?.trim()
-        val year = Regex("""\((\d{4})\)""").find(title)?.groupValues?.get(1)?.toIntOrNull()
+        val year = YEAR_REGEX.find(title)?.groupValues?.get(1)?.toIntOrNull()
         return newMovieSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = poster
             this.addQuality(quality ?: "HD")

@@ -31,7 +31,7 @@ open class Dailymotion : ExtractorApi() {
         val metaDataUrl = "$baseUrl/player/metadata/video/$id"
 
         val response = try {
-            app.get(metaDataUrl, referer = embedUrl).text
+            app.get(metaDataUrl, referer = embedUrl, timeout = 15_000L).text
         } catch (e: Exception) {
             throw ErrorLoadingException("Failed to fetch Dailymotion metadata: ${e.message}")
         }
@@ -55,7 +55,7 @@ open class Dailymotion : ExtractorApi() {
         }
 
         if (!linkFound) {
-            val m3u8Urls = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""").findAll(response)
+            val m3u8Urls = M3U8_URL_REGEX.findAll(response)
                 .map { it.value.replace("\\u002F", "/") }
                 .distinct()
 
@@ -80,15 +80,12 @@ open class Dailymotion : ExtractorApi() {
         response: String,
         subtitleCallback: (SubtitleFile) -> Unit
     ) {
-        val subtitlesObjRegex = Regex(""""subtitles"\s*:\s*\{[^{}]*"data"\s*:\s*\{([^}]+)\}[^{}]*\}""")
-        subtitlesObjRegex.find(response)?.let { match ->
+        SUBTITLES_DATA_REGEX.find(response)?.let { match ->
             val dataBlock = match.groupValues[1]
-            val langRegex = Regex(""""([^"]+)"\s*:\s*\{[^}]*"urls"\s*:\s*\[([^\]]+)\]""")
-            langRegex.findAll(dataBlock).forEach { langMatch ->
+            LANG_URLS_REGEX.findAll(dataBlock).forEach { langMatch ->
                 val langCode = langMatch.groupValues[1]
                 val urlsBlock = langMatch.groupValues[2]
-                val urlRegex = Regex(""""([^"]+)"""")
-                val url = urlRegex.find(urlsBlock)?.groupValues?.get(1) ?: return@forEach
+                val url = QUOTED_STR_REGEX.find(urlsBlock)?.groupValues?.get(1) ?: return@forEach
                 val label = langCode.replace("-auto", " (auto)")
                 subtitleCallback(newSubtitleFile(label, url))
             }
@@ -105,7 +102,7 @@ open class Dailymotion : ExtractorApi() {
     }
 
     private fun getVideoId(url: String): String? {
-        val match = Regex("/video/([kx][a-zA-Z0-9]+)").find(url) ?: return null
+        val match = VIDEO_ID_REGEX.find(url) ?: return null
         return match.groupValues[1].ifEmpty { null }
     }
 
@@ -119,4 +116,12 @@ open class Dailymotion : ExtractorApi() {
         val type: String? = null,
         val size: Int? = null
     )
+
+    companion object {
+        private val M3U8_URL_REGEX = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
+        private val SUBTITLES_DATA_REGEX = Regex(""""subtitles"\s*:\s*\{[^{}]*"data"\s*:\s*\{([^}]+)\}[^{}]*\}""")
+        private val LANG_URLS_REGEX = Regex(""""([^"]+)"\s*:\s*\{[^}]*"urls"\s*:\s*\[([^\]]+)\]""")
+        private val QUOTED_STR_REGEX = Regex(""""([^"]+)"""")
+        private val VIDEO_ID_REGEX = Regex("/video/([kx][a-zA-Z0-9]+)")
+    }
 }

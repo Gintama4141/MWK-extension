@@ -11,6 +11,15 @@ import java.net.URI
 import java.net.URLEncoder
 
 class DutaMovie : MainAPI() {
+    companion object {
+        private val EPISODE_SEARCH_REGEX = Regex("Episode\\s?([0-9]+)")
+        private val SEASON_EP_CLEAN_REGEX = Regex("\\s*(Season|Episode)\\s*.*", RegexOption.IGNORE_CASE)
+        private val NON_DIGIT_REGEX = Regex("\\D")
+        private val PERMALINK_REGEX = Regex("(?i)Permalink to\\s*")
+        private val EPISODE_NUM_REGEX = Regex("Episode\\s*(\\d+)")
+        private val IMAGE_SIZE_REGEX = Regex("(-\\d*x\\d*)")
+    }
+
     override var mainUrl = "https://seoulschool.org"
     override var name = "Dutamovie"
     override val hasMainPage = true
@@ -45,7 +54,7 @@ class DutaMovie : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("$mainUrl/${request.data.format(page)}").document
+        val document = app.get("$mainUrl/${request.data.format(page)}", timeout = 15_000L).document
         val items = document.select("article.item").mapNotNull { it.toSearchItem() }
         return newHomePageResponse(request.name, items)
     }
@@ -60,7 +69,7 @@ class DutaMovie : MainAPI() {
         val ratingText = selectFirst("div.gmr-rating-item")?.ownText()?.trim()
 
         return if (quality.isEmpty()) {
-            val episode = Regex("Episode\\s?([0-9]+)").find(title)
+            val episode = EPISODE_SEARCH_REGEX.find(title)
                 ?.groupValues?.getOrNull(1)?.toIntOrNull()
                 ?: select("div.gmr-numbeps > span").text().toIntOrNull()
 
@@ -79,16 +88,16 @@ class DutaMovie : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
-        val document = app.get("$mainUrl?s=$encodedQuery&post_type[]=post&post_type[]=tv").document
+        val document = app.get("$mainUrl?s=$encodedQuery&post_type[]=post&post_type[]=tv", timeout = 15_000L).document
         return document.select("article.item-infinite").mapNotNull { it.toSearchItem() }
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val fetch = app.get(url)
+        val fetch = app.get(url, timeout = 15_000L)
         val document = fetch.document
 
         val title = document.selectFirst("h1.entry-title")?.text()
-            ?.replace(Regex("\\s*(Season|Episode)\\s*.*", RegexOption.IGNORE_CASE), "")?.trim()
+            ?.replace(SEASON_EP_CLEAN_REGEX, "")?.trim()
             .orEmpty()
 
         val poster = fixUrlNull(document.selectFirst("figure.pull-left > img")?.getImageAttr())
@@ -103,7 +112,7 @@ class DutaMovie : MainAPI() {
             ?.text()?.trim()
         val actors = document.select("span[itemprop=actors] a").map { it.text() }
         val duration = document.selectFirst("div.gmr-moviedata span[property=duration]")
-            ?.text()?.replace(Regex("\\D"), "")?.toIntOrNull()
+            ?.text()?.replace(NON_DIGIT_REGEX, "")?.toIntOrNull()
         val recommendations = document.select("article.item.col-md-20").mapNotNull { it.toSearchItem() }
         return if (tvType == TvType.TvSeries) {
             val episodes = parseEpisodes(document, poster)
@@ -139,9 +148,9 @@ class DutaMovie : MainAPI() {
             .mapNotNull { eps ->
                 val href = fixUrl(eps.attr("href"))
                 val rawTitle = eps.attr("title").takeIf { it.isNotBlank() } ?: eps.text()
-                val cleanTitle = rawTitle.replaceFirst(Regex("(?i)Permalink to\\s*"), "").trim()
+                val cleanTitle = rawTitle.replaceFirst(PERMALINK_REGEX, "").trim()
 
-                val epNum = Regex("Episode\\s*(\\d+)").find(cleanTitle)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                val epNum = EPISODE_NUM_REGEX.find(cleanTitle)?.groupValues?.getOrNull(1)?.toIntOrNull()
                     ?: cleanTitle.split(" ").lastOrNull()?.filter { it.isDigit() }?.toIntOrNull()
 
                 val formattedName = epNum?.let { "Episode $it" } ?: cleanTitle
@@ -164,7 +173,7 @@ class DutaMovie : MainAPI() {
         val referer = "$baseUrl/"
 
         val response = try {
-            app.get(data)
+            app.get(data, timeout = 15_000L)
         } catch (e: Exception) {
             return false
         }
@@ -186,11 +195,11 @@ class DutaMovie : MainAPI() {
                             "action" to "muvipro_player_content",
                             "tab" to ele.attr("id"),
                             "post_id" to id
-                        )
+                        ),
+                        timeout = 15_000L
                     ).document.select("iframe").attr("src").let { httpsify(it) }
                     loadExtractor(server, referer, subtitleCallback, callback)
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                } catch (_: Exception) {
                 }
             }
         } else {
@@ -200,14 +209,13 @@ class DutaMovie : MainAPI() {
 
             for (tabUrl in tabs) {
                 try {
-                    val tabDoc = app.get(tabUrl).document
+                    val tabDoc = app.get(tabUrl, timeout = 15_000L).document
                     tabDoc.select("div.gmr-embed-responsive iframe").forEach { iframe ->
                         iframe.getIframeAttr()?.let { src ->
                             loadExtractor(httpsify(src), referer, subtitleCallback, callback)
                         }
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                } catch (_: Exception) {
                 }
             }
         }
@@ -227,8 +235,8 @@ class DutaMovie : MainAPI() {
 
     private fun String?.fixImageQuality(): String? {
         if (this == null) return null
-        val regex = Regex("(-\\d*x\\d*)").find(this)?.value ?: return this
-        return replace(regex, "")
+        val findResult = IMAGE_SIZE_REGEX.find(this)?.value ?: return this
+        return replace(findResult, "")
     }
 
     private fun getBaseUrl(url: String): String =

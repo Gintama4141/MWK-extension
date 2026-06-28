@@ -22,14 +22,15 @@ class Jeniusplay : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val document = app.get(url, referer = referer).document
+        val document = app.get(url, referer = referer, timeout = 15_000L).document
         val hash = url.split("/").last().substringAfter("data=")
 
         val m3uLink = app.post(
             url = "$mainUrl/player/index.php?data=$hash&do=getVideo",
             data = mapOf("hash" to hash, "r" to "$referer"),
             referer = referer,
-            headers = mapOf("X-Requested-With" to "XMLHttpRequest")
+            headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
+            timeout = 15_000L
         ).text.let { AppUtils.tryParseJson<ResponseSource>(it) }?.videoSource
 
         if (m3uLink != null) {

@@ -39,6 +39,16 @@ class OtakudesuProvider : MainAPI() {
             "MegaUp",
             "Otakufiles",
         )
+        private val NON_DIGIT_REGEX = Regex("\\D")
+        private val YEAR_REGEX = Regex("\\d, (\\d*)")
+        private val EPISODE_SLUG_REGEX = Regex("Episode\\s?(\\d+)")
+        private val HTML_TAG_REGEX = Regex("<.*?>")
+        private val NONCE_ACTION_REGEX = Regex("""(?:data:\{|action:\s*")[^"]*"([a-f0-9]+)"""")
+        private val DATA_ACTION_REGEX = Regex("""data:\{action:"([^"]+)"""")
+        private val EMBED_ACTION_REGEX = Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]+)"""")
+        private val NONCE_ACTION2_REGEX = Regex("""nonce:[^,]+,action:"([^"]+)"""")
+        private val FILE_ID_REGEX = Regex("""(?:/f/|/file/)(\w+)""")
+        private val QUALITY_PIXEL_REGEX = Regex("(\\d{3,4})[pP]")
 
         fun getType(t: String): TvType {
             return when {
@@ -66,7 +76,7 @@ class OtakudesuProvider : MainAPI() {
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
-        val document = app.get(request.data + page).document
+        val document = app.get(request.data + page, timeout = 15_000L).document
         val home = document.select("div.venz > ul > li").mapNotNull {
             it.toSearchResult()
         }
@@ -77,7 +87,7 @@ class OtakudesuProvider : MainAPI() {
         val title = this.selectFirst("h2.jdlflm")?.text()?.trim() ?: return null
         val href = this.selectFirst("a")?.attr("href") ?: return null
         val posterUrl = this.select("div.thumbz > img").attr("src").toString()
-        val epNum = this.selectFirst("div.epz")?.ownText()?.replace(Regex("\\D"), "")?.trim()
+        val epNum = this.selectFirst("div.epz")?.ownText()?.replace(NON_DIGIT_REGEX, "")?.trim()
             ?.toIntOrNull()
         return newAnimeSearchResponse(title, href, TvType.Anime) {
             this.posterUrl = posterUrl
@@ -87,7 +97,7 @@ class OtakudesuProvider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
-        return app.get("$mainUrl/?s=$encodedQuery&post_type=anime").document.select("ul.chivsrc > li")
+        return app.get("$mainUrl/?s=$encodedQuery&post_type=anime", timeout = 15_000L).document.select("ul.chivsrc > li")
             .mapNotNull {
                 val title = it.selectFirst("h2 > a")?.ownText()?.trim() ?: return@mapNotNull null
                 val href = it.selectFirst("h2 > a")?.attr("href") ?: return@mapNotNull null
@@ -100,7 +110,7 @@ class OtakudesuProvider : MainAPI() {
 
 
     override suspend fun load(url: String): LoadResponse {
-        val document = app.get(url).document
+        val document = app.get(url, timeout = 15_000L).document
         val infoRows = document.select("div.infozingle > p")
 
         val title = infoRows.firstOrNull { it.text().contains("Judul", true) }
@@ -113,7 +123,7 @@ class OtakudesuProvider : MainAPI() {
                 ?.selectFirst("span")?.ownText()?.replace(":", "")?.trim() ?: "tv"
         )
 
-        val year = Regex("\\d, (\\d*)").find(
+        val year = YEAR_REGEX.find(
             infoRows.firstOrNull { it.text().contains("Rilis", true) }
                 ?.selectFirst("span")?.text().orEmpty()
         )?.groupValues?.get(1)?.toIntOrNull()
@@ -132,7 +142,7 @@ class OtakudesuProvider : MainAPI() {
         if (malId != null) {
             val syncMetaData = try {
                 withTimeoutOrNull(10_000L) {
-                    app.get("https://api.ani.zip/mappings?mal_id=$malId").text
+                    app.get("https://api.ani.zip/mappings?mal_id=$malId", timeout = 15_000L).text
                 }
             } catch (_: Exception) { null }
             if (syncMetaData != null) {
@@ -147,7 +157,7 @@ class OtakudesuProvider : MainAPI() {
         val episodesContainer = episodeLists.getOrNull(1) ?: episodeLists.firstOrNull()
         val episodes = episodesContainer?.select("ul > li")?.amap { element ->
             val name = element.selectFirst("a")?.text() ?: return@amap null
-            val epRegex = Regex("Episode\\s?(\\d+)")
+            val epRegex = EPISODE_SLUG_REGEX
             val epMatch = epRegex.find(name)
             var episodeNum = epMatch?.groupValues?.getOrNull(1)?.toIntOrNull()
             val fallbackName = epMatch?.groupValues?.getOrNull(0) ?: name
@@ -192,7 +202,7 @@ class OtakudesuProvider : MainAPI() {
                 }
             }
 
-        val apiDescription = animeMetaData?.description?.replace(Regex("<.*?>"), "")
+        val apiDescription = animeMetaData?.description?.replace(HTML_TAG_REGEX, "")
         val rawPlot = apiDescription ?: animeMetaData?.episodes?.get("1")?.overview
         
         val finalPlot = if (!rawPlot.isNullOrBlank()) {
@@ -236,7 +246,7 @@ class OtakudesuProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
 
-        val document = runCatching { app.get(data).document }.getOrNull() ?: return false
+        val document = runCatching { app.get(data, timeout = 15_000L).document }.getOrNull() ?: return false
 
         runAllAsync(
             {
@@ -245,15 +255,15 @@ class OtakudesuProvider : MainAPI() {
                     ?: document.select("script:containsData(admin-ajax)").lastOrNull()?.data()
                     ?: ""
 
-                val nonceAction = Regex("""(?:data:\{|action:\s*")[^"]*"([a-f0-9]+)"""").find(scriptData)
+                val nonceAction = NONCE_ACTION_REGEX.find(scriptData)
                     ?.groupValues?.getOrNull(1)
-                    ?: Regex("""data:\{action:"([^"]+)"""").find(scriptData)?.groupValues?.getOrNull(1)
-                val embedAction = Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]+)"""").find(scriptData)
+                    ?: DATA_ACTION_REGEX.find(scriptData)?.groupValues?.getOrNull(1)
+                val embedAction = EMBED_ACTION_REGEX.find(scriptData)
                     ?.groupValues?.getOrNull(1)
-                    ?: Regex("""nonce:[^,]+,action:"([^"]+)"""").find(scriptData)?.groupValues?.getOrNull(1)
+                    ?: NONCE_ACTION2_REGEX.find(scriptData)?.groupValues?.getOrNull(1)
 
                 if (nonceAction != null && embedAction != null) {
-                    val nonce = app.post("$mainUrl/wp-admin/admin-ajax.php", data = mapOf("action" to nonceAction))
+                    val nonce = app.post("$mainUrl/wp-admin/admin-ajax.php", data = mapOf("action" to nonceAction), timeout = 15_000L)
                         .text.let { tryParseJson<ResponseData>(it) }?.data ?: return@runAllAsync
 
                     document.select("div.mirrorstream > ul > li").amap { li ->
@@ -269,7 +279,8 @@ class OtakudesuProvider : MainAPI() {
                                     "q" to res.q,
                                     "nonce" to nonce,
                                     "action" to embedAction
-                                )
+                                ),
+                                timeout = 15_000L
                             ).text.let { tryParseJson<ResponseData>(it) }?.data ?: return@amap null
 
                             val decodedEmbed = runCatching { base64Decode(embedData) }.getOrNull() ?: return@amap null
@@ -288,7 +299,7 @@ class OtakudesuProvider : MainAPI() {
                     }.filter {
                         !inBlacklist(it.first) && quality != Qualities.P360.value
                     }.amap {
-                        val link = runCatching { app.get(it.first, referer = "$mainUrl/").url }.getOrNull() ?: return@amap null
+                        val link = runCatching { app.get(it.first, referer = "$mainUrl/", timeout = 15_000L).url }.getOrNull() ?: return@amap null
                         loadCustomExtractor(
                             fixedIframe(link),
                             data,
@@ -333,7 +344,7 @@ class OtakudesuProvider : MainAPI() {
     private fun fixedIframe(url: String): String {
         return when {
             url.startsWith(acefile) -> {
-                val id = Regex("""(?:/f/|/file/)(\w+)""").find(url)?.groupValues?.getOrNull(1)
+                val id = FILE_ID_REGEX.find(url)?.groupValues?.getOrNull(1)
                 "${acefile}/player/$id"
             }
 
@@ -346,7 +357,7 @@ class OtakudesuProvider : MainAPI() {
     }
 
     private fun getQuality(str: String?): Int {
-        return Regex("(\\d{3,4})[pP]").find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
+        return QUALITY_PIXEL_REGEX.find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: Qualities.Unknown.value
     }
 

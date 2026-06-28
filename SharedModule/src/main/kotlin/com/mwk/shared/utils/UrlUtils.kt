@@ -4,6 +4,11 @@ import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
 
+private object UrlRegex {
+    val IMAGE_SIZE_REGEX = Regex("[-.]?\\d{3,4}x\\d{3,4}")
+    val SPACE_PLUS = "\\s+".toRegex()
+}
+
 fun getBaseUrl(url: String): String {
     return URI(url).let {
         "${it.scheme}://${it.host}"
@@ -15,13 +20,13 @@ fun String.fixUrlBloat(): String {
 }
 
 fun String?.fixImageQuality(): String? {
-    return this?.replace(Regex("[-.]?\\d{3,4}x\\d{3,4}"), "")
+    return this?.replace(UrlRegex.IMAGE_SIZE_REGEX, "")
 }
 
 fun String?.createSlug(): String? {
     return this?.filter { it.isWhitespace() || it.isLetterOrDigit() }
         ?.trim()
-        ?.replace("\\s+".toRegex(), "-")
+        ?.replace(UrlRegex.SPACE_PLUS, "-")
         ?.lowercase()
 }
 

@@ -30,6 +30,15 @@ class Nomat : MainAPI() {
                 TvType.AsianDrama
             )
 
+    companion object {
+        private val POSTER_URL_REGEX = Regex("url\\('(.*?)'\\)")
+        private val EPISODE_TEXT_REGEX = Regex("Eps?.?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+        private val EPISODE_PATH_REGEX = Regex("/episode-(\\d+)")
+        private val EPISODE_LABEL_REGEX = Regex("Episode\\s*(\\d+)", RegexOption.IGNORE_CASE)
+        private val DIGITS_ONLY_REGEX = Regex("^\\s*(\\d+)\\s*$")
+        private val SEASON_PATH_REGEX = Regex("/season-(\\d+)/")
+    }
+
     override val mainPage = mainPageOf(
         "slug/film-terbaru/%d/" to "Terbaru",
         "slug/film-box-office/%d/" to "Box Office",
@@ -71,11 +80,11 @@ class Nomat : MainAPI() {
         if (href.isNullOrBlank()) return null
         val title = this.selectFirst(".title")?.text()?.trim() ?: return null
         val posterStyle = this.selectFirst(".poster")?.attr("style").orEmpty()
-        val poster = Regex("url\\('(.*?)'\\)").find(posterStyle)?.groupValues?.get(1)
+        val poster = POSTER_URL_REGEX.find(posterStyle)?.groupValues?.get(1)
         val ratingText = this.selectFirst(".rtg")?.ownText()?.trim()
         val quality = this.selectFirst(".quality")?.text()?.trim()
         val epsText = this.selectFirst(".episode")?.text()?.trim()
-        val episode = Regex("Eps?.?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+        val episode = EPISODE_TEXT_REGEX
             .find(epsText ?: "")
             ?.groupValues?.getOrNull(1)?.toIntOrNull()
 
@@ -123,10 +132,10 @@ class Nomat : MainAPI() {
             if (isSeries) {
                 val episodes = document.select("div.video-episodes a").map { eps ->
                     val href = fixUrl(eps.attr("href"))
-                    val number = Regex("/episode-(\\d+)").find(href)?.groupValues?.get(1)?.toIntOrNull()
-                        ?: Regex("Episode\\s*(\\d+)", RegexOption.IGNORE_CASE).find(eps.text())?.groupValues?.get(1)?.toIntOrNull()
-                        ?: Regex("^\\s*(\\d+)\\s*$").find(eps.text())?.groupValues?.get(1)?.toIntOrNull()
-                    val season = Regex("/season-(\\d+)/").find(href)?.groupValues?.get(1)?.toIntOrNull()
+                    val number = EPISODE_PATH_REGEX.find(href)?.groupValues?.get(1)?.toIntOrNull()
+                        ?: EPISODE_LABEL_REGEX.find(eps.text())?.groupValues?.get(1)?.toIntOrNull()
+                        ?: DIGITS_ONLY_REGEX.find(eps.text())?.groupValues?.get(1)?.toIntOrNull()
+                    val season = SEASON_PATH_REGEX.find(href)?.groupValues?.get(1)?.toIntOrNull()
                     val name = number?.let { "Episode $it" } ?: eps.text().trim()
 
                     newEpisode(href) {

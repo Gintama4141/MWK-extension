@@ -52,6 +52,10 @@ object ExtractorUtils {
 }
 
 open class Dingtezuni : ExtractorApi() {
+    companion object {
+        private val M3U8_FIND_REGEX = Regex(":\\s*\"(.*?m3u8.*?)\"")
+    }
+
     override val name = "Earnvids"
     override val mainUrl = "https://dingtezuni.com"
     override val requiresReferer = true
@@ -64,12 +68,12 @@ open class Dingtezuni : ExtractorApi() {
     ) {
         val headers = ExtractorUtils.commonHeaders(mainUrl)
 
-        val response = app.get(ExtractorUtils.getEmbedUrl(url), referer = referer)
+        val response = app.get(ExtractorUtils.getEmbedUrl(url), referer = referer, timeout = 15_000L)
         val script = ExtractorUtils.extractSources(response.text)
             ?: response.document.selectFirst("script:containsData(sources:)")?.data()
             ?: return
 
-        Regex(":\\s*\"(.*?m3u8.*?)\"").findAll(script).forEach { match ->
+        M3U8_FIND_REGEX.findAll(script).forEach { match ->
             generateM3u8(
                 name,
                 fixUrl(match.groupValues[1]),
@@ -101,6 +105,12 @@ class Bingezove : Dingtezuni() {
 }
 
 open class Gofile : ExtractorApi() {
+    companion object {
+        private val GOFILE_ID_REGEX = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)")
+        private val GOFILE_WT_REGEX = Regex("fetchData.wt\\s*=\\s*\"([^\"]+)")
+        private val GOFILE_QUALITY_REGEX = Regex("(\\d{3,4})[pP]")
+    }
+
     override val name = "Gofile"
     override val mainUrl = "https://gofile.io"
     override val requiresReferer = false
@@ -115,12 +125,12 @@ open class Gofile : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.get(1) ?: return
+        val id = GOFILE_ID_REGEX.find(url)?.groupValues?.get(1) ?: return
 
         val now = System.currentTimeMillis()
         val token = cachedToken?.takeIf { now - it.second < 600_000 }?.first
             ?: run {
-                val newToken = app.get("$mainApi/createAccount").text
+                val newToken = app.get("$mainApi/createAccount", timeout = 15_000L).text
                     .let { tryParseJson<Account>(it) }?.data?.get("token")
                 if (newToken != null) cachedToken = newToken to now
                 newToken
@@ -128,14 +138,14 @@ open class Gofile : ExtractorApi() {
 
         val websiteToken = cachedWebsiteToken
             ?: run {
-                val newWt = app.get("$mainUrl/dist/js/alljs.js").text.let {
-                    Regex("fetchData.wt\\s*=\\s*\"([^\"]+)").find(it)?.groupValues?.get(1)
+                val newWt = app.get("$mainUrl/dist/js/alljs.js", timeout = 15_000L).text.let {
+                    GOFILE_WT_REGEX.find(it)?.groupValues?.get(1)
                 }
                 if (newWt != null) cachedWebsiteToken = newWt
                 newWt
             } ?: return
 
-        val content = app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
+        val content = app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken", timeout = 15_000L)
             .text.let { tryParseJson<Source>(it) }?.data?.contents ?: return
 
         content.forEach {
@@ -150,7 +160,7 @@ open class Gofile : ExtractorApi() {
     }
 
     private fun getQuality(name: String?): Int {
-        return Regex("(\\d{3,4})[pP]").find(name ?: "")
+        return GOFILE_QUALITY_REGEX.find(name ?: "")
             ?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: Qualities.Unknown.value
     }
@@ -201,7 +211,7 @@ open class Lulustream : ExtractorApi() {
         val embedUrl = ExtractorUtils.getEmbedUrl(url)
         if (embedUrl.isEmpty()) return
 
-        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl, timeout = 15_000L)
 
         val script = ExtractorUtils.extractSources(response.text)
             ?: response.document.selectFirst("script:containsData(sources:)")?.data()
@@ -253,7 +263,7 @@ open class P2PPlay : ExtractorApi() {
         if (id.isEmpty()) return
 
         val embedUrl = "$mainUrl/#$id"
-        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl, timeout = 15_000L)
 
         val script = ExtractorUtils.extractSources(response.text)
             ?: response.document.selectFirst("script:containsData(sources:)")?.data()
@@ -294,6 +304,10 @@ class Veev : Lulustream() {
 }
 
 class Video4Me : ExtractorApi() {
+    companion object {
+        private val SOURCE_M3U8_REGEX = Regex("""<source[^>]+src\s*=\s*["']([^"']+\.m3u8[^"']*)["']""", RegexOption.IGNORE_CASE)
+    }
+
     override val name = "Video4Me"
     override val mainUrl = "https://video.4meplayer.com"
     override val requiresReferer = true
@@ -304,10 +318,9 @@ class Video4Me : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val response = app.get(url, referer = referer)
+        val response = app.get(url, referer = referer, timeout = 15_000L)
 
-        val sourceRegex = Regex("""<source[^>]+src\s*=\s*["']([^"']+\.m3u8[^"']*)["']""", RegexOption.IGNORE_CASE)
-        sourceRegex.find(response.text)?.groupValues?.getOrNull(1)?.let { m3u8Url ->
+        SOURCE_M3U8_REGEX.find(response.text)?.groupValues?.getOrNull(1)?.let { m3u8Url ->
             generateM3u8(
                 name,
                 fixUrl(m3u8Url),
@@ -337,7 +350,7 @@ open class StreamHG : ExtractorApi() {
         val embedUrl = ExtractorUtils.getEmbedUrl(url)
         if (embedUrl.isEmpty()) return
 
-        val response = app.get(embedUrl, referer = referer ?: this.mainUrl)
+        val response = app.get(embedUrl, referer = referer ?: this.mainUrl, timeout = 15_000L)
 
         val script = ExtractorUtils.extractSources(response.text)
             ?: response.document.selectFirst("script:containsData(sources:)")?.data()

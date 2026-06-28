@@ -123,7 +123,7 @@ open class Cinemax21Provider : TmdbProvider() {
             if (settingsForProvider.enableAdult) "" else "&without_keywords=190370|13059|226161|195669"
         val type = if (request.data.contains("/movie")) "movie" else "tv"
         
-        val home = app.get("${request.data}$adultQuery&page=$page").text
+        val home = app.get("${request.data}$adultQuery&page=$page", timeout = 15_000L).text
             .let { tryParseJson<Results>(it) }?.results?.mapNotNull { media ->
                 media.toSearchResponse(type)
             } ?: throw ErrorLoadingException("Invalid Json reponse")
@@ -141,7 +141,7 @@ open class Cinemax21Provider : TmdbProvider() {
     }
     override suspend fun quickSearch(query: String): List<SearchResponse>? = search(query)
     override suspend fun search(query: String): List<SearchResponse>? {
-        return app.get("$tmdbAPI/search/multi?api_key=$apiKey&language=en-US&query=$query&page=1&include_adult=${settingsForProvider.enableAdult}").text
+        return app.get("$tmdbAPI/search/multi?api_key=$apiKey&language=en-US&query=$query&page=1&include_adult=${settingsForProvider.enableAdult}", timeout = 15_000L).text
             .let { tryParseJson<Results>(it) }?.results?.mapNotNull { media ->
                 media.toSearchResponse()
             }
@@ -166,7 +166,7 @@ open class Cinemax21Provider : TmdbProvider() {
         } else {
             "$tmdbAPI/tv/${data.id}?api_key=$apiKey&append_to_response=$append&include_video_language=id,en"
         }
-        val res = app.get(resUrl).text.let { tryParseJson<MediaDetail>(it) }
+        val res = app.get(resUrl, timeout = 15_000L).text.let { tryParseJson<MediaDetail>(it) }
             ?: throw ErrorLoadingException("Invalid Json Response")
         val title = res.title ?: res.name ?: return null
         val poster = getOriImageUrl(res.posterPath)
@@ -203,7 +203,7 @@ open class Cinemax21Provider : TmdbProvider() {
             val episodes = coroutineScope {
                 res.seasons?.map { season ->
                     async {
-                        app.get("$tmdbAPI/${data.type}/${data.id}/season/${season.seasonNumber}?api_key=$apiKey").text
+                        app.get("$tmdbAPI/${data.type}/${data.id}/season/${season.seasonNumber}?api_key=$apiKey", timeout = 15_000L).text
                             .let { tryParseJson<MediaDetailEpisodes>(it) }?.episodes?.map { eps ->
                                 newEpisode(
                                     data = LinkData(

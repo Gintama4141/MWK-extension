@@ -63,7 +63,7 @@ class MovieboxProvider : MainAPI() {
         if(!request.data.contains(",")) {
             val url = "$mainAPIUrl$API_RANKING?id=${request.data}&page=$page&perPage=12"
 
-            val index = app.get(url).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.subjectList?.map {
+            val index = app.get(url, timeout = 15_000L).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.subjectList?.map {
                 it.toSearchResponse(this)
             } ?: throw ErrorLoadingException("No Data Found")
 
@@ -78,7 +78,7 @@ class MovieboxProvider : MainAPI() {
                 "sort" to params.last()
             ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
 
-            val index = app.post("$mainAPIUrl$API_FILTER", requestBody = body)
+            val index = app.post("$mainAPIUrl$API_FILTER", requestBody = body, timeout = 15_000L)
                 .text.let { AppUtils.tryParseJson<Media>(it) }?.data?.items?.map {
                     it.toSearchResponse(this)
                 } ?: throw ErrorLoadingException("No Data Found")
@@ -99,7 +99,8 @@ class MovieboxProvider : MainAPI() {
                     "page" to "1",
                     "perPage" to "20",
                     "subjectType" to "0",
-                ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull())
+                ).toJson().toRequestBody(RequestBodyTypes.JSON.toMediaTypeOrNull()),
+                timeout = 15_000L
             ).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.items?.map {
                 it.toSearchResponse(this)
             } ?: emptyList()
@@ -112,13 +113,13 @@ class MovieboxProvider : MainAPI() {
 
         val documentDeferred = async {
             try {
-                app.get("$secondAPIUrl$API_DETAIL?subjectId=$id")
+                app.get("$secondAPIUrl$API_DETAIL?subjectId=$id", timeout = 15_000L)
                     .text.let { AppUtils.tryParseJson<MediaDetail>(it) }?.data
             } catch (_: Exception) { null }
         }
         val recDeferred = async {
             try {
-                app.get("$mainUrl$API_RECOMMENDATIONS?subjectId=$id&page=1&perPage=12")
+                app.get("$mainUrl$API_RECOMMENDATIONS?subjectId=$id&page=1&perPage=12", timeout = 15_000L)
                     .text.let { AppUtils.tryParseJson<Media>(it) }?.data?.items?.map {
                         it.toSearchResponse(this@MovieboxProvider)
                     }
@@ -212,7 +213,8 @@ class MovieboxProvider : MainAPI() {
         val streams = try {
             app.get(
                 "$secondAPIUrl$API_PLAY?subjectId=${media.id}&se=${media.season ?: 0}&ep=${media.episode ?: 0}",
-                referer = referer
+                referer = referer,
+                timeout = 15_000L
             ).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.streams
         } catch (_: Exception) { null }
 
@@ -241,7 +243,8 @@ class MovieboxProvider : MainAPI() {
                 try {
                     app.get(
                         "$secondAPIUrl$API_CAPTION?format=$format&id=$streamId&subjectId=${media.id}",
-                        referer = referer
+                        referer = referer,
+                        timeout = 15_000L
                     ).text.let { AppUtils.tryParseJson<Media>(it) }?.data?.captions?.forEach { subtitle ->
                         val url = subtitle.url ?: return@forEach
                         subtitleCallback.invoke(

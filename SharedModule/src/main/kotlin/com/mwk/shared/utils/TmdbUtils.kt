@@ -8,6 +8,14 @@ import com.mwk.shared.data.TmdbImagesResponse
 import com.mwk.shared.data.TmdbLogo
 import java.text.SimpleDateFormat
 import java.util.Calendar
+
+private object TmdbUtilsRegex {
+    val FULL_TAG = Regex("(?i)(.*)\\.(?:mkv|mp4|avi)")
+    val QUALITY_TAG = Regex("(?i)\\d{3,4}[pP]\\.?(.*?)\\.(mkv|mp4|avi)")
+    val UHD_TAG = Regex("\\d{3,4}[Pp]\\.?(.*?)\\[")
+    val FILE_SIZE = Regex("(?i)([\\d.]+\\s*(?:gb|mb))")
+    val NON_ALPHA_NUM = Regex("[^a-zA-Z\\d]")
+}
 import java.util.Date
 import java.util.Locale
 
@@ -79,21 +87,21 @@ suspend fun fetchTmdbLogoUrl(
 }
 
 fun getIndexQualityTags(str: String?, fullTag: Boolean = false): String {
-    return if (fullTag) Regex("(?i)(.*)\\.(?:mkv|mp4|avi)").find(str ?: "")?.groupValues?.get(1)
-        ?.trim() ?: str ?: "" else Regex("(?i)\\d{3,4}[pP]\\.?(.*?)\\.(mkv|mp4|avi)").find(
+    return if (fullTag) TmdbUtilsRegex.FULL_TAG.find(str ?: "")?.groupValues?.get(1)
+        ?.trim() ?: str ?: "" else TmdbUtilsRegex.QUALITY_TAG.find(
         str ?: ""
     )?.groupValues?.getOrNull(1)
         ?.replace(".", " ")?.trim() ?: str ?: ""
 }
 
 fun getUhdTags(str: String?): String {
-    return Regex("\\d{3,4}[Pp]\\.?(.*?)\\[").find(str ?: "")?.groupValues?.getOrNull(1)
+    return TmdbUtilsRegex.UHD_TAG.find(str ?: "")?.groupValues?.getOrNull(1)
         ?.replace(".", " ")?.trim()
         ?: str ?: ""
 }
 
 fun getIndexSize(str: String?): String? {
-    return Regex("(?i)([\\d.]+\\s*(?:gb|mb))").find(str ?: "")?.groupValues?.getOrNull(1)?.trim()
+    return TmdbUtilsRegex.FILE_SIZE.find(str ?: "")?.groupValues?.getOrNull(1)?.trim()
 }
 
 fun isUpcoming(dateString: String?): Boolean {
@@ -118,5 +126,5 @@ fun getSeason(month: Int?): String? {
 fun bytesToGigaBytes(number: Double): Double = number / 1024000000
 
 fun getKisskhTitle(str: String?): String? {
-    return str?.replace(Regex("[^a-zA-Z\\d]"), "-")
+    return str?.replace(TmdbUtilsRegex.NON_ALPHA_NUM, "-")
 }

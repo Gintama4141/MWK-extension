@@ -31,10 +31,9 @@ open class Dailymotion : ExtractorApi() {
         val embedUrl = getEmbedUrl(url) ?: return
         val id = getVideoId(embedUrl) ?: return
         val metaDataUrl = "$baseUrl/player/metadata/video/$id"
-        val response = app.get(metaDataUrl, referer = embedUrl).text
+        val response = app.get(metaDataUrl, referer = embedUrl, timeout = 15_000L).text
 
-        val qualityUrlRegex = Regex(""""url"\s*:\s*"([^"]+)"""")
-        val urls = qualityUrlRegex.findAll(response)
+        val urls = QUALITY_URL_REGEX.findAll(response)
             .map { it.groupValues[1] }
             .toList().filter { it.contains(".m3u8") }
         urls.forEach { videoUrl ->
@@ -48,14 +47,13 @@ open class Dailymotion : ExtractorApi() {
         response: String,
         subtitleCallback: (SubtitleFile) -> Unit
     ) {
-        val subtitlesObjRegex = Regex(""""subtitles"\s*:\s*(\{(?:[^{}]|"[^"]*")*?\})""")
-        subtitlesObjRegex.find(response)?.let { match ->
+        SUBTITLES_REGEX.find(response)?.let { match ->
             val subtitlesJson = match.groupValues[1]
-                .replace(Regex(""""urls"\s*:\s*\["[^"]*"\]""")) { urlsMatch ->
-                    val url = Regex("""\["([^"]+)"\]""").find(urlsMatch.value)?.groupValues?.get(1) ?: return@replace urlsMatch.value
+                .replace(URLS_SINGLE_REGEX) { urlsMatch ->
+                    val url = URL_BRACKET_REGEX.find(urlsMatch.value)?.groupValues?.get(1) ?: return@replace urlsMatch.value
                     """"urls":[{"url":"$url"}]"""
                 }
-                .replace(Regex(""""urls"\s*:\s*\[([^\]]+)\]""")) { arrMatch ->
+                .replace(URLS_MIXED_REGEX) { arrMatch ->
                     val items = arrMatch.groupValues[1].split(",").map { it.trim().trim('"') }
                     val objects = items.joinToString(",") { """{"url":"$it"}""" }
                     """"urls":[$objects]"""
@@ -104,4 +102,12 @@ open class Dailymotion : ExtractorApi() {
     data class DmSubUrl(
         val url: String? = null,
     )
+
+    companion object {
+        private val QUALITY_URL_REGEX = Regex(""""url"\s*:\s*"([^"]+)"""")
+        private val SUBTITLES_REGEX = Regex(""""subtitles"\s*:\s*(\{(?:[^{}]|"[^"]*")*?\})""")
+        private val URLS_SINGLE_REGEX = Regex(""""urls"\s*:\s*\["[^"]*"\]""")
+        private val URL_BRACKET_REGEX = Regex("""\["([^"]+)"\]""")
+        private val URLS_MIXED_REGEX = Regex(""""urls"\s*:\s*\[([^\]]+)\]""")
+    }
 }

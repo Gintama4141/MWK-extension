@@ -82,7 +82,7 @@ class Ngefilm21Provider : MainAPI() {
                     }
 
                     try {
-                        val document = app.get(finalUrl).document
+                        val document = app.get(finalUrl, timeout = 15_000L).document
                         val items = document.select("article.item-infinite").mapNotNull { it.toSearchResult() }
                         if (items.isNotEmpty()) HomePageList(title, items) else null
                     } catch (e: Exception) { null }
@@ -104,12 +104,12 @@ class Ngefilm21Provider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val encoded = java.net.URLEncoder.encode(query.trim(), "UTF-8")
-        return app.get("$mainUrl/?s=$encoded&post_type[]=post&post_type[]=tv").document
+        return app.get("$mainUrl/?s=$encoded&post_type[]=post&post_type[]=tv", timeout = 15_000L).document
             .select("article.item-infinite").mapNotNull { it.toSearchResult() }
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        val document = app.get(url, timeout = 15_000L).document
         val title = document.selectFirst("h1.entry-title")?.text()?.trim() ?: return null
         val poster = document.selectFirst(".gmr-movie-data figure img")?.getImageAttr()
         val plotText = document.selectFirst("div.entry-content[itemprop='description'] p")?.text()?.trim()
@@ -168,7 +168,7 @@ class Ngefilm21Provider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data).document
+        val document = app.get(data, timeout = 15_000L).document
         val playerLinks = document.select(".muvipro-player-tabs a").mapNotNull { it.attr("href") }.toMutableList()
         if (playerLinks.isEmpty()) playerLinks.add(data)
 
@@ -177,7 +177,7 @@ class Ngefilm21Provider : MainAPI() {
                 async {
                     try {
                         val fixedUrl = if (playerUrl.startsWith("http")) playerUrl else "$mainUrl$playerUrl"
-                        val pageContent = app.get(fixedUrl, headers = mapOf("User-Agent" to UA_BROWSER)).text
+                        val pageContent = app.get(fixedUrl, headers = mapOf("User-Agent" to UA_BROWSER), timeout = 15_000L).text
 
                         REGEX_RPM_ID.find(pageContent)?.let { match ->
                             val id = match.groupValues[1].ifEmpty { match.groupValues[2] }
@@ -202,14 +202,13 @@ class Ngefilm21Provider : MainAPI() {
                             when {
                                 url.contains("xshotcok") || url.contains("hxfile") -> extractXshotcok(url, callback)
                                 url.contains("short.icu") -> {
-                                    val finalUrl = app.get(url, headers = mapOf("Referer" to fixedUrl)).url
+                                    val finalUrl = app.get(url, headers = mapOf("Referer" to fixedUrl), timeout = 15_000L).url
                                     if (finalUrl.contains("abyss")) loadExtractor(finalUrl, subtitleCallback, callback)
                                 }
                                 else -> loadExtractor(url, subtitleCallback, callback)
                             }
                         }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
+                    } catch (_: Exception) {
                     }
                 }
             }.awaitAll()
@@ -222,7 +221,7 @@ class Ngefilm21Provider : MainAPI() {
             val response = app.get(url, headers = mapOf(
                 "User-Agent" to UA_BROWSER,
                 "Referer" to mainUrl
-            )).text
+            ), timeout = 15_000L).text
 
             val packedCode = REGEX_EVAL_PACKED.find(response)?.value ?: return
             val unpackedJs = Unpacker.unpack(packedCode)
@@ -248,8 +247,7 @@ class Ngefilm21Provider : MainAPI() {
                     }
                 )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
         }
     }
 
@@ -262,7 +260,7 @@ class Ngefilm21Provider : MainAPI() {
                 "Referer" to referer,
                 "Origin" to "https://$urlHost",
                 "Upgrade-Insecure-Requests" to "1"
-            ))
+            ), timeout = 15_000L)
 
             val doc = response.text
             val cookies = response.cookies
@@ -281,7 +279,7 @@ class Ngefilm21Provider : MainAPI() {
                             "User-Agent" to UA_BROWSER,
                             "Referer" to url,
                             "X-Requested-With" to "XMLHttpRequest"
-                        ), cookies = cookies).text
+                        ), cookies = cookies, timeout = 15_000L).text
 
                         linkM3u8 = REGEX_M3U8_REL.find(apiRes)?.groupValues?.get(1)
                     }
@@ -324,7 +322,7 @@ class Ngefilm21Provider : MainAPI() {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Unit
         }
     }
 
@@ -379,7 +377,7 @@ class Ngefilm21Provider : MainAPI() {
             )
             val domain = mainUrl.removePrefix("https://").removePrefix("http://").removeSuffix("/")
             val videoApi = "https://$RPM_PLAYER_DOMAIN/api/v1/video?id=$id&w=1920&h=1080&r=$domain"
-            val encryptedRes = app.get(videoApi, headers = headers).text
+            val encryptedRes = app.get(videoApi, headers = headers, timeout = 15_000L).text
             val jsonStr = if (encryptedRes.isBlank()) return
             else if (encryptedRes.trim().startsWith("{")) encryptedRes else decryptAES(encryptedRes)
             if (jsonStr.isBlank()) return
@@ -395,13 +393,13 @@ class Ngefilm21Provider : MainAPI() {
                 })
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Unit
         }
     }
 
     private suspend fun extractKrakenManual(url: String, callback: (ExtractorLink) -> Unit) {
         try {
-            val text = app.get(url, headers = mapOf("User-Agent" to UA_BROWSER, "Referer" to mainUrl)).text
+            val text = app.get(url, headers = mapOf("User-Agent" to UA_BROWSER, "Referer" to mainUrl), timeout = 15_000L).text
             val videoUrl = REGEX_KRAKEN_SOURCE.find(text)?.groupValues?.get(1)
                 ?: REGEX_KRAKEN_VIDEO.find(text)?.groupValues?.get(1)
             videoUrl?.let { clean ->
@@ -411,7 +409,7 @@ class Ngefilm21Provider : MainAPI() {
                 })
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Unit
         }
     }
 

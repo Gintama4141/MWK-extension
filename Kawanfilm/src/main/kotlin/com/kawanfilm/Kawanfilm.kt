@@ -32,6 +32,7 @@ class Kawanfilm : MainAPI() {
         private val QUALITY_REGEX = Regex("(-\\d*x\\d*)")
         private val EPISODE_REGEX = Regex("(?i)(?:ep|episode)\\s*(\\d+)")
         private val SEASON_REGEX = Regex("(?i)season\\s*(\\d+)")
+        private val TITLE_CLEANUP_REGEX = Regex("\\s+(Season|Episode)\\s+\\d+.*$", RegexOption.IGNORE_CASE)
         private const val DEFAULT_TIMEOUT = 30_000L
     }
 
@@ -92,12 +93,12 @@ class Kawanfilm : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val fetch = app.get(url)
+        val fetch = app.get(url, timeout = 15_000L)
         directUrl = getBaseUrl(fetch.url)
         val document = fetch.document
 
         val title = document.selectFirst("h1.entry-title")?.text()
-            ?.replace(Regex("\\s+(Season|Episode)\\s+\\d+.*$", RegexOption.IGNORE_CASE), "")?.trim() ?: "Unknown"
+            ?.replace(TITLE_CLEANUP_REGEX, "")?.trim() ?: "Unknown"
         val poster = fixUrlNull(document.selectFirst("figure.pull-left > img")?.getImageAttr())?.fixImageQuality()
         val tags = document.select("div.gmr-moviedata a").map { it.text() }
         val year = document.select("div.gmr-moviedata strong:contains(Year:) > a").text().trim().toIntOrNull()

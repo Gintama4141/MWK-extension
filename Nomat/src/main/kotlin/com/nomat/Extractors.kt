@@ -11,6 +11,10 @@ open class Dingtezuni : ExtractorApi() {
     override val mainUrl = "https://dingtezuni.com"
     override val requiresReferer = true
 
+    companion object {
+        private val M3U8_SRC_REGEX = Regex("\"(https?://[^\"]+\\.m3u8[^\"]*)\"")
+    }
+
     override suspend fun getUrl(
         url: String,
         referer: String?,
@@ -39,7 +43,7 @@ open class Dingtezuni : ExtractorApi() {
                 response.document.selectFirst("script:containsData(sources:)")?.data()
             } ?: return
 
-            Regex("\"(https?://[^\"]+\\.m3u8[^\"]*)\"").findAll(script).forEach { match ->
+            M3U8_SRC_REGEX.findAll(script).forEach { match ->
                 generateM3u8(
                     name,
                     fixUrl(match.groupValues[1]),

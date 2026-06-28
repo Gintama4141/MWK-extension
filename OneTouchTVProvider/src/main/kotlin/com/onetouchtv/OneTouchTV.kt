@@ -44,7 +44,7 @@ class OneTouchTV : MainAPI() {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val url = "$mainUrl/vod/search?page=$page&keyword=$encodedQuery"
         val responseText = try {
-            app.get(url, referer = "$mainUrl/").text
+            app.get(url, referer = "$mainUrl/", timeout = 15_000L).text
         } catch (e: Exception) {
             throw ErrorLoadingException("Failed to fetch search data: ${e.message}")
         }
@@ -70,7 +70,7 @@ class OneTouchTV : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val rawResponse = try {
-            app.get("$mainUrl/${request.data}").text
+            app.get("$mainUrl/${request.data}", timeout = 15_000L).text
         } catch (e: Exception) {
             throw ErrorLoadingException("Failed to fetch raw response: ${e.message}")
         }
@@ -114,7 +114,7 @@ class OneTouchTV : MainAPI() {
     private fun CleanMedia.toSearchResponse(mainUrl: String): SearchResponse = newTvSeriesSearchResponse(title ?: "Unknown Title", "$mainUrl/vod/${id ?: ""}/detail", TvType.Movie) { this.posterUrl = image }
 
     override suspend fun load(url: String): LoadResponse {
-        val rawResponse = try { app.get(url).text } catch (e: Exception) { throw ErrorLoadingException("Failed to fetch raw response: ${e.message}") }
+        val rawResponse = try { app.get(url, timeout = 15_000L).text } catch (e: Exception) { throw ErrorLoadingException("Failed to fetch raw response: ${e.message}") }
         val decryptedJson = try { decryptString(rawResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
         val parser = tryParseJson<LoadData>(decryptedJson) ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
         val title = parser.title ?: "Unknown Title"
@@ -130,7 +130,7 @@ class OneTouchTV : MainAPI() {
             val playId = ep.playId ?: return@mapNotNull null
             newEpisode("$mainUrl/vod/$identifier/episode/$playId") { name = "Episode ${ep.episode ?: "?"}" }
         }
-        val rawTopResponse = app.get("$mainUrl/vod/top").text
+        val rawTopResponse = app.get("$mainUrl/vod/top", timeout = 15_000L).text
         val topJson = try { decryptString(rawTopResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
         val topParser = tryParseJson<OneTouchTVParser>(topJson)
             ?: throw ErrorLoadingException("Failed to parse decrypted JSON")
@@ -152,7 +152,7 @@ class OneTouchTV : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean = coroutineScope {
-        val rawResponse = try { app.get(data).text } catch (e: Exception) { throw ErrorLoadingException("Failed to fetch raw response: ${e.message}") }
+        val rawResponse = try { app.get(data, timeout = 15_000L).text } catch (e: Exception) { throw ErrorLoadingException("Failed to fetch raw response: ${e.message}") }
         val decryptedJson = try { decryptString(rawResponse) } catch (e: Exception) { throw ErrorLoadingException("Failed to decrypt response: ${e.message}") }
         val (sources, tracks) = parseSourcesAndTracks(decryptedJson)
         launch { for (track in tracks) subtitleCallback(newSubtitleFile(track.name ?: "Unknown", track.file ?: continue)) }

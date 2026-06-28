@@ -44,7 +44,7 @@ class MoviePedia21Provider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         return try {
-            val doc = app.get("$mainUrl/${request.data.format(page)}").document
+            val doc = app.get("$mainUrl/${request.data.format(page)}", timeout = 15_000L).document
             val items = doc.select(SEL_ITEM).mapNotNull { it.toSearchResult() }
             newHomePageResponse(request.name, items)
         } catch (e: Exception) {
@@ -56,7 +56,7 @@ class MoviePedia21Provider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         return try {
-            val doc = app.get("$mainUrl/?s=$encodedQuery&post_type[]=post&post_type[]=tv").document
+            val doc = app.get("$mainUrl/?s=$encodedQuery&post_type[]=post&post_type[]=tv", timeout = 15_000L).document
             doc.select(SEL_ITEM).mapNotNull { it.toSearchResult() }
         } catch (e: Exception) {
             println("MoviePedia21 search failed: $query - ${e.message}")
@@ -66,7 +66,7 @@ class MoviePedia21Provider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse {
         val fetch = try {
-            app.get(url)
+            app.get(url, timeout = 15_000L)
         } catch (e: Exception) {
             println("MoviePedia21 load failed: $url - ${e.message}")
             throw e
@@ -79,7 +79,7 @@ class MoviePedia21Provider : MainAPI() {
 
         val title = doc.selectFirst("h1.entry-title")?.text()
             ?.substringBefore("Subtitle Indonesia")?.trim()
-            ?.replace(Regex("\\s+"), " ")?.trim() ?: ""
+            ?.replace(WHITESPACE_REGEX, " ")?.trim() ?: ""
 
         val poster = fixUrlNull(doc.selectFirst("figure.pull-left img")?.getImageAttr())?.fixImageQuality()
         val tags = doc.select("div.gmr-moviedata a[rel=category tag]").map { it.text() }
@@ -124,7 +124,7 @@ class MoviePedia21Provider : MainAPI() {
     private suspend fun parseEpisodes(doc: Document, baseUrl: String, poster: String?): List<Episode> {
         val latestEpLink = doc.selectFirst(SEL_SERIES_LINK)?.attr("href") ?: return emptyList()
         return try {
-            val epDoc = app.get(fixUrl(latestEpLink)).document
+            val epDoc = app.get(fixUrl(latestEpLink), timeout = 15_000L).document
             epDoc.select(SEL_EPISODE_TABS).mapNotNull { tab ->
                 val href = fixUrl(tab.attr("href"))
                 val text = tab.text().trim()
@@ -152,7 +152,7 @@ class MoviePedia21Provider : MainAPI() {
     ): Boolean {
         val doc = lastLoadedDoc.takeIf { lastLoadedUrl == data }
             ?: try {
-                app.get(data).document
+                app.get(data, timeout = 15_000L).document
             } catch (e: Exception) {
                 println("MoviePedia21 loadLinks failed: $data - ${e.message}")
                 return false
@@ -241,7 +241,7 @@ class MoviePedia21Provider : MainAPI() {
 
     private fun String?.fixImageQuality(): String? {
         if (this == null) return null
-        val regex = Regex("(-\\d*x\\d*)").find(this)?.value ?: return this
+        val regex = QUALITY_SIZE_REGEX.find(this)?.value ?: return this
         return replace(regex, "")
     }
 
@@ -265,5 +265,7 @@ class MoviePedia21Provider : MainAPI() {
         private const val SEL_DOWNLOAD_LINKS = "ul.gmr-download-list li a"
         private const val SEL_SUBTITLE_TRACKS = "track[kind=subtitles]"
         private val REGEX_EPISODE = Regex("(?i)episode\\s*(\\d+)")
+        private val WHITESPACE_REGEX = Regex("\\s+")
+        private val QUALITY_SIZE_REGEX = Regex("(-\\d*x\\d*)")
     }
 }

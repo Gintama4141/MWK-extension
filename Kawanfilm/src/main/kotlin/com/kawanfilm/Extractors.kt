@@ -41,7 +41,7 @@ open class Dingtezuni : ExtractorApi() {
             "Origin" to mainUrl,
             "User-Agent" to USER_AGENT,
         )
-        val response = app.get(getEmbedUrl(url), referer = referer)
+        val response = app.get(getEmbedUrl(url), referer = referer, timeout = 15_000L)
         val script = if (!getPacked(response.text).isNullOrEmpty()) {
             var result = getAndUnpack(response.text)
             if (result.contains("var links")) result = result.substringAfter("var links")
@@ -49,7 +49,7 @@ open class Dingtezuni : ExtractorApi() {
         } else {
             response.document.selectFirst("script:containsData(sources:)")?.data()
         } ?: return
-        Regex(":\\s*\"(.*?m3u8.*?)\"").findAll(script).forEach { m3u8Match ->
+        M3U8_SRC_REGEX.findAll(script).forEach { m3u8Match ->
             M3u8Helper.generateM3u8(
                 name,
                 fixUrl(m3u8Match.groupValues[1]),
@@ -92,7 +92,7 @@ open class Gofile : ExtractorApi() {
         val id = ID_REGEX.find(url)?.groupValues?.get(1) ?: return
         val token = getToken() ?: return
         val websiteToken = getWebsiteToken() ?: return
-        app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken")
+        app.get("$mainApi/getContent?contentId=$id&token=$token&wt=$websiteToken", timeout = 15_000L)
             .text.let { tryParseJson<Source>(it) }?.data?.contents?.forEach {
                 callback.invoke(
                     newExtractorLink(
@@ -110,14 +110,14 @@ open class Gofile : ExtractorApi() {
     private suspend fun getToken(): String? {
         val now = System.currentTimeMillis()
         if (tokenCache != null && now - tokenTimestamp < TOKEN_TTL) return tokenCache
-        tokenCache = app.get("$mainApi/createAccount").text.let { tryParseJson<Account>(it) }?.data?.get("token")
+        tokenCache = app.get("$mainApi/createAccount", timeout = 15_000L).text.let { tryParseJson<Account>(it) }?.data?.get("token")
         tokenTimestamp = now
         return tokenCache
     }
 
     private suspend fun getWebsiteToken(): String? {
         if (websiteTokenCache != null) return websiteTokenCache
-        websiteTokenCache = app.get("$mainUrl/dist/js/alljs.js").text.let {
+        websiteTokenCache = app.get("$mainUrl/dist/js/alljs.js", timeout = 15_000L).text.let {
             WT_REGEX.find(it)?.groupValues?.get(1)
         }
         return websiteTokenCache

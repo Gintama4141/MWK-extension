@@ -2,8 +2,12 @@ package com.mwk.shared.utils
 
 import com.lagradost.cloudstream3.utils.Qualities
 
+private object QualityRegex {
+    val QUALITY_PIXEL = Regex("(\\d{3,4})[pP]")
+}
+
 fun getIndexQuality(str: String?): Int {
-    return Regex("(\\d{3,4})[pP]").find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return QualityRegex.QUALITY_PIXEL.find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
         ?: Qualities.Unknown.value
 }
 
