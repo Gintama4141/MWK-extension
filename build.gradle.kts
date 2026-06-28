@@ -42,11 +42,6 @@ subprojects {
             setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/Gintama4141/MWK-extension")
             authors = listOf("MWK")
         }
-
-        // Disable make task for SharedModule to prevent SharedModule.cs3 from being generated
-        tasks.named("make") {
-            enabled.set(false)
-        }
     }
 
     android {
@@ -99,8 +94,8 @@ subprojects {
 
     // Disable make task for SharedModule to prevent SharedModule.cs3 from being generated
     if (isSharedModule) {
-        tasks.named("make") {
-            enabled.set(false)
+        tasks.matching { it.name == "make" }.configureEach {
+            enabled = false
         }
     }
 }
