@@ -12,7 +12,7 @@ Maintain and optimize the MWK-extension CloudStream3 plugin repo; fix `NoSuchMet
 - `AesHelper` is allowed — used for AES content decryption, not JSON parsing.
 
 ## Active Providers (17)
-Anichin, Cinemax21, Donghub, Dutamovie, Idlix, Kawanfilm, Kisskh, Klikxxi, Kuronime, Moviebox, MoviePedia21, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream.
+Anichin, Cinemax21, Donghub, Dutamovie, Kawanfilm, Kisskh, Klikxxi, Kuronime, Moviebox, MoviePedia21, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream.
 
 ## Provider Versions
 | Provider | Version | Type |
@@ -21,7 +21,6 @@ Anichin, Cinemax21, Donghub, Dutamovie, Idlix, Kawanfilm, Kisskh, Klikxxi, Kuron
 | Cinemax21 | v13 | Movie & TV |
 | Donghub | v9 | Anime |
 | Dutamovie | v17 | Movie & TV |
-| Idlix | v1 | Movie & TV |
 | Kawanfilm | v6 | Movie |
 | Kisskh | v9 | Movie & TV |
 | Klikxxi | v5 | Movie & TV |
@@ -82,7 +81,7 @@ Analyzed `seoulschool.org/page/kdrama/...` stream page — WordPress Muvipro the
 
 ## Key Files
 - `SharedModule/` — shared library with common extractors, data models, and utilities
-  - `src/main/kotlin/com/mwk/shared/data/` — Shared data classes (IdlixModels, GofileModels, OkRuModels, TmdbModels, AniZipModels, KisskhModels)
+  - `src/main/kotlin/com/mwk/shared/data/` — Shared data classes (GofileModels, OkRuModels, TmdbModels, AniZipModels, KisskhModels)
   - `src/main/kotlin/com/mwk/shared/extractors/` — Shared extractors (Hglink, Ghbrisk, Dhcplay, Jeniusplay, Dingtezuni, Gofile, Odnoklassniki, Lulustream, P2PPlay, StreamHG)
   - `src/main/kotlin/com/mwk/shared/utils/` — Shared utilities (ElementExtensions, UrlUtils, QualityUtils, TmdbUtils)
 - `OtakudesuProvider/src/main/kotlin/com/otakudesu/OtakudesuProvider.kt` (v10) — comprehensive audit: IndexOutOfBounds fix, TMDB key removed, Base64 try-catch, runBlocking removed, URL-encoded search, content-based selectors, withTimeoutOrNull on ani.zip.
@@ -94,7 +93,6 @@ Analyzed `seoulschool.org/page/kdrama/...` stream page — WordPress Muvipro the
 - `AnichinProvider/src/main/kotlin/com/anichin/ExtractorsStreamRuby.kt` (v6) — m3u8 null early return.
 - `KawanfilmProvider/src/main/kotlin/com/kawanfilm/KawanfilmProvider.kt` (v4) — `jacksonObjectMapper` removed, `tryParseJson` for 2 call sites.
 - `OneTouchTVProvider/src/main/kotlin/com/onetouchtv/OneTouchTVParser.kt` (v5) — default values for data class fields.
-- `IdlixProvider/src/main/kotlin/com/idlix/` — Provider Movie & TV streaming Indonesia.
 - `MoviePedia21Provider/src/main/kotlin/com/moviepedia21/MoviePedia21Provider.kt` (v2) — Nonton Movie dan Serial TV.
 - `repo.json` — plugin repo config pointing to `builds` branch.
 - `README.md` — provider list.

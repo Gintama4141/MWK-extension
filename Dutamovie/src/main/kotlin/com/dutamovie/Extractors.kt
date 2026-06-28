@@ -259,7 +259,7 @@ open class P2PPlay : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val id = url.substringAfter("#")
+        val id = url.substringAfter("#").substringBefore("&")
         if (id.isEmpty()) return
 
         val embedUrl = "$mainUrl/#$id"
