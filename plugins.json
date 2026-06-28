@@ -1,10 +1,10 @@
 [
   {
     "iconUrl": "https://anichin.ro/wp-content/uploads/2026/02/cropped-favicon-anichin-192x192.webp",
-    "fileHash": "sha256-aaee7b8ef852a0c6f69bb92eee9b94703a3a7b0c789c10f92cf638a3b0cd1073",
+    "fileHash": "sha256-6547231b3ca47e3e7fe2e5c7752e2b6b38964064da32173125188983326094e2",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 38602,
+    "fileSize": 39791,
     "status": 1,
     "language": "id",
     "authors": [
@@ -23,10 +23,10 @@
   },
   {
     "iconUrl": "https://klikxxi.me/wp-content/uploads/2024/02/cropped-site-icon.png",
-    "fileHash": "sha256-5b89883311b2b78a7852c3b6ed57913dc12270ba8f578ca7c479ebd4f171153b",
+    "fileHash": "sha256-5f2ba1f13b10d23bec68fd46771c0cb9800700128fe3918661ca81384c3f38be",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 262431,
+    "fileSize": 263962,
     "status": 1,
     "language": "id",
     "authors": [
@@ -46,10 +46,10 @@
   },
   {
     "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://donghub.vip&size=%size%",
-    "fileHash": "sha256-b2c458b4b14f40d7962d191c988471c9ca9bc1c190f9631e6a58e32d4d692e3d",
+    "fileHash": "sha256-987e0c72d1280b433ea802dc4729e1d82280c9970b665420f9dbfeb38c7015b5",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 29536,
+    "fileSize": 29941,
     "status": 1,
     "language": "id",
     "authors": [
@@ -68,10 +68,10 @@
     "name": "DonghubProvider"
   },
   {
-    "fileHash": "sha256-5d83c74c1d0e0de835e89620824d93cd0262aa9e6dc8dd995755e40227d7da54",
+    "fileHash": "sha256-c780a1fd179e616329e9ad36ff16ba57bb64cbf5e26ee6e918d9787043f34606",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 41626,
+    "fileSize": 42486,
     "status": 1,
     "language": "id",
     "authors": [
@@ -92,10 +92,10 @@
   },
   {
     "iconUrl": "https://tv10.idlixku.com/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png",
-    "fileHash": "sha256-e649bff2a412bf98ae59af93a6632519057be13b7e41775d776c986c3d634a5a",
+    "fileHash": "sha256-e00fb1301b88a7d7efbdfc4bc651ec5f4efd91bda9c010f6e17b94244c817a67",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 36862,
+    "fileSize": 35213,
     "status": 1,
     "language": "id",
     "authors": [
@@ -113,10 +113,10 @@
     "name": "IdlixProvider"
   },
   {
-    "fileHash": "sha256-806407ba1e1d40290e5be957846f72bbd7732c53de8e65e6dd62b66c64106ee7",
+    "fileHash": "sha256-c9eeb47fa5620dbb2fd32e4a047fbfd0389efeff4170168b81250c76e3532912",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 32326,
+    "fileSize": 32543,
     "status": 1,
     "language": "id",
     "authors": [
@@ -135,10 +135,10 @@
   },
   {
     "iconUrl": "https://www.google.com/s2/favicons?domain=kisskh.co&sz=%size%",
-    "fileHash": "sha256-b219b8a83e46c94e09d7b893e0deb2d589afa47d9e6f50eff1471dabbd887ba5",
+    "fileHash": "sha256-3240bb8ad26bc95fbe4b9a44281a12f8266982ea5624251adbaa48674c39d2fc",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 33083,
+    "fileSize": 33117,
     "status": 1,
     "language": "en",
     "authors": [
@@ -158,10 +158,10 @@
   },
   {
     "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://klikxxi.fit&size=%size%",
-    "fileHash": "sha256-1e2d5f2cf2c93feb72b336bcdbffb6ac4be71036e11c19abdedb960bf5ad3b66",
+    "fileHash": "sha256-26f729eacfa71e7833d7fed0f577455da2e5e2d559a06f045c6e6af40b904824",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 23737,
+    "fileSize": 23816,
     "status": 1,
     "language": "id",
     "authors": [
@@ -180,10 +180,10 @@
   },
   {
     "iconUrl": "https://play-lh.googleusercontent.com/EFMkS1T-8txjLFIl9QxjcTRLa7a7Muv08C04b7ongYgodoY_b2T3GpxzGAQEx-eitfQ=w256",
-    "fileHash": "sha256-2d39d9013fe248b9b86850803707d65d23aad6c404cc212d293eaccca3c0e14b",
+    "fileHash": "sha256-016db97dfb7628a2e4614f9c23eded9f5f8f5b56f6212958def0eb207d391403",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 42917,
+    "fileSize": 43095,
     "status": 1,
     "language": "id",
     "authors": [
@@ -203,10 +203,10 @@
   },
   {
     "iconUrl": "https://movieboxph.app/wp-content/uploads/2025/11/Movie-Box-icon.webp",
-    "fileHash": "sha256-9c3f7cc531ef18681b06b61d863c6d080a9bef89aae7a1b2271bdb81429ce508",
+    "fileHash": "sha256-6e964772288122f69a346a424764d3dc35cef976b548a46a7757cf9ca3d8f0ae",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 36573,
+    "fileSize": 36576,
     "status": 1,
     "language": "id",
     "authors": [
@@ -226,10 +226,10 @@
     "name": "MovieboxProvider"
   },
   {
-    "fileHash": "sha256-583ba0d9a61381786c6c42303b83c80db9c2ef7a367f0afac39dd80bc2ce5bf1",
+    "fileHash": "sha256-b2ca7afc439193b3ebf81b5e3f6bb3663d0630e6be555404c3d50cdf02695f75",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 21027,
+    "fileSize": 21099,
     "status": 1,
     "language": "id",
     "authors": [
@@ -248,7 +248,7 @@
   },
   {
     "iconUrl": "https://new31.ngefilm.site/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png",
-    "fileHash": "sha256-7c3ac5da2b752e903f7f2f4dfff43c88444ba55021a53e4ccb09a9549e3996b5",
+    "fileHash": "sha256-b489b9a30947251eca86c7dc8c034eb7493b58f1d716ab5cac15b666f4b9604c",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
     "fileSize": 33153,
@@ -269,10 +269,10 @@
     "name": "NgeFilm21Provider"
   },
   {
-    "fileHash": "sha256-c41371d7ffdced326de894edc84b9695cf498db14bfe81956c4d64c89d405ecc",
+    "fileHash": "sha256-ee75cb97fc8c3915d2a90b95442d7584d0cdeda29698d070467d2ee088da867a",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 21815,
+    "fileSize": 22433,
     "status": 1,
     "language": "id",
     "authors": [
@@ -291,7 +291,7 @@
   },
   {
     "iconUrl": "https://www.google.com/s2/favicons?domain=onetouchtv.xyz/&sz=%size%",
-    "fileHash": "sha256-77d4e63af33cc13cfe5347d4ce1922a50c6e7991e2fbaf1ee36724c81307a661",
+    "fileHash": "sha256-e563945b2b469fee306015894b098a916cd39ff880f6329c703bd52be786aae0",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
     "fileSize": 43445,
@@ -312,10 +312,10 @@
   },
   {
     "iconUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRr-sfek8gXmLpcAppEpaYbUDVtndQbCm_boh1-E91QrmSvsw-2l3-s2JOP&s=10",
-    "fileHash": "sha256-6384b33360dc907f0eb8c76a0736cb002f254d9f4c7aa7c986fc75135c044190",
+    "fileHash": "sha256-2686c7cf4cd2587e2064e97d08e5dbd1accffd21391fa443ece702832c12ade3",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 36227,
+    "fileSize": 36677,
     "status": 1,
     "language": "id",
     "authors": [
@@ -335,10 +335,10 @@
   },
   {
     "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://ww03.pencurimovie.bond&size=%size%",
-    "fileHash": "sha256-2cbba03160b2e98778bb7292d4cd8b745750ea4559dba28ff5e16c2af6bf2cf3",
+    "fileHash": "sha256-95fecb86c4cdb5f1918f38ee7b096af3cc5829f3487c98452e31e538d6d8e7f6",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 17674,
+    "fileSize": 18051,
     "status": 1,
     "language": "id",
     "authors": [
@@ -355,9 +355,9 @@
     "name": "PencuriMovieProvider"
   },
   {
-    "fileHash": "sha256-c9b4285d0031b368a74b3769085833a523a948f4cbe2112cc317c46c1f3cbe71",
+    "fileHash": "sha256-e9d5a9be89a89a3b95936e1f19f775a5d28d99e83a1fc9b0d003db5a9d4d10b3",
     "apiVersion": 1,
-    "fileSize": 54881,
+    "fileSize": 56198,
     "status": 3,
     "language": "id",
     "authors": [
@@ -371,10 +371,10 @@
   },
   {
     "iconUrl": "https://torrentio.strem.fun/images/logo_v1.png",
-    "fileHash": "sha256-a21c0233ca2e6a9881d276aac186f4f938648906c1a9da955306628b26d7aa40",
+    "fileHash": "sha256-1f3559d84e706a7bc570c9924f98e84cd2b7e02e3d5c95ae967a2bf39f781c6b",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 213978,
+    "fileSize": 215253,
     "status": 1,
     "language": "en",
     "authors": [
