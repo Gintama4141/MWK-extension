@@ -45,10 +45,10 @@
     "name": "DonghubProvider"
   },
   {
-    "fileHash": "sha256-8cef56a2c29d8a575a79649230035984299757a61361abf8c013fd2e361e46ab",
+    "fileHash": "sha256-1ecb78962493550be1d3490cf02c7088803e11c0f4e48e511fd28b23ef64d1a9",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 42551,
+    "fileSize": 42579,
     "status": 1,
     "language": "id",
     "authors": [
@@ -66,28 +66,6 @@
     "description": "DutaMovie - Streaming Movie and TV Series",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Dutamovie.cs3",
     "name": "Dutamovie"
-  },
-  {
-    "iconUrl": "https://tv10.idlixku.com/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png",
-    "fileHash": "sha256-9faf195527edd3a1a94bc9bcc9a75f9441cf54effa57c26b14006c7ce81d898b",
-    "apiVersion": 1,
-    "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 35450,
-    "status": 1,
-    "language": "id",
-    "authors": [
-      "MWK"
-    ],
-    "tvTypes": [
-      "AsianDrama",
-      "TvSeries",
-      "Movie"
-    ],
-    "version": 2,
-    "internalName": "IdlixProvider",
-    "description": "Idlix \u2014 Streaming Movie and TV Series Indonesia",
-    "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/IdlixProvider.cs3",
-    "name": "IdlixProvider"
   },
   {
     "fileHash": "sha256-45c8e68c60634983636ad1c6b605f61f79f75c6c0e48aff591c8a8d366e33dd1",
