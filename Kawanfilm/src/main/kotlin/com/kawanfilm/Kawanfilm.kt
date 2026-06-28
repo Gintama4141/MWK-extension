@@ -33,8 +33,10 @@ class Kawanfilm : MainAPI() {
         private val EPISODE_REGEX = Regex("(?i)(?:ep|episode)\\s*(\\d+)")
         private val SEASON_REGEX = Regex("(?i)season\\s*(\\d+)")
         private val TITLE_CLEANUP_REGEX = Regex("\\s+(Season|Episode)\\s+\\d+.*$", RegexOption.IGNORE_CASE)
-        private const val DEFAULT_TIMEOUT = 30_000L
+        private const val DEFAULT_TIMEOUT = 60_000L
     }
+    
+    // v5
 
     override val mainPage = mainPageOf(
         "/page/%d/?s&search=advanced&post_type=movie&index&orderby&genre&movieyear&country&quality=" to "Update Terbaru",
@@ -180,6 +182,7 @@ class Kawanfilm : MainAPI() {
                             val server = app.post(
                                 "$directUrl/wp-admin/admin-ajax.php",
                                 data = mapOf("action" to "muvipro_player_content", "tab" to ele.attr("id"), "post_id" to "$id"),
+                                headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
                                 timeout = DEFAULT_TIMEOUT
                             ).document.select("iframe").attr("src").let { httpsify(it) }
                             if (server.isNotBlank()) loadExtractor(server, referer, subtitleCallback, callback)
