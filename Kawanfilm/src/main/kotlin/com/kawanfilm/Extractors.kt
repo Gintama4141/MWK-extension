@@ -156,26 +156,4 @@ class Vidshare : VidStack() {
     override var name = "Vidshare"
     override var mainUrl = "https://vidshare.rpmvid.com"
     override var requiresReferer = true
-
-    override suspend fun getUrl(
-        url: String,
-        referer: String?,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
-    ) {
-        super.getUrl(url, referer, subtitleCallback) { link ->
-            callback.invoke(
-                newExtractorLink(
-                    link.source,
-                    link.name,
-                    link.url.replace("https://", "http://")
-                ) {
-                    this.referer = link.referer
-                    this.quality = link.quality
-                    this.isM3u8 = link.isM3u8
-                    this.headers = link.headers
-                }
-            )
-        }
-    }
 }

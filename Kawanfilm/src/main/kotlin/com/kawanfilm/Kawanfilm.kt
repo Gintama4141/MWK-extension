@@ -168,7 +168,7 @@ class Kawanfilm : MainAPI() {
                     tabs.map { ele ->
                         async {
                             val iframe = app.get(fixUrl(ele.attr("href")), timeout = DEFAULT_TIMEOUT).document
-                                .selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it) }
+                                .selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it).replace("https://", "http://") }
                                 ?: return@async
                             loadExtractor(iframe, referer, subtitleCallback, callback)
                         }
@@ -184,7 +184,7 @@ class Kawanfilm : MainAPI() {
                                 data = mapOf("action" to "muvipro_player_content", "tab" to ele.attr("id"), "post_id" to "$id"),
                                 headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
                                 timeout = DEFAULT_TIMEOUT
-                            ).document.select("iframe").attr("src").let { httpsify(it) }
+                            ).document.select("iframe").attr("src").let { httpsify(it).replace("https://", "http://") }
                             if (server.isNotBlank()) loadExtractor(server, referer, subtitleCallback, callback)
                         }
                     }.awaitAll()
