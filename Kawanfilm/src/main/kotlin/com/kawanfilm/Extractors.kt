@@ -165,7 +165,11 @@ class Vidshare : VidStack() {
     ) {
         super.getUrl(url, referer, subtitleCallback) { link ->
             callback.invoke(
-                newExtractorLink(link.source, link.name, link.url.replace("https://", "http://")) {
+                newExtractorLink(
+                    link.source,
+                    link.name,
+                    link.url.replace("https://", "http://")
+                ) {
                     this.referer = link.referer
                     this.quality = link.quality
                     this.isM3u8 = link.isM3u8
