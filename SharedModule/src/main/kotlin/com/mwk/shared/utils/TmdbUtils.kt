@@ -8,6 +8,8 @@ import com.mwk.shared.data.TmdbImagesResponse
 import com.mwk.shared.data.TmdbLogo
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 private object TmdbUtilsRegex {
     val FULL_TAG = Regex("(?i)(.*)\\.(?:mkv|mp4|avi)")
@@ -16,8 +18,6 @@ private object TmdbUtilsRegex {
     val FILE_SIZE = Regex("(?i)([\\d.]+\\s*(?:gb|mb))")
     val NON_ALPHA_NUM = Regex("[^a-zA-Z\\d]")
 }
-import java.util.Date
-import java.util.Locale
 
 suspend fun fetchTmdbLogoUrl(
     tmdbAPI: String,
