@@ -14,7 +14,6 @@ import com.lagradost.cloudstream3.base64Decode
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
 import com.lagradost.cloudstream3.extractors.DoodLaExtractor
 import com.fasterxml.jackson.annotation.JsonProperty
-import java.net.URI
 
 
 class Hglink : StreamWishExtractor() {

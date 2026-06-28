@@ -73,10 +73,12 @@ subprojects {
 
     dependencies {
         val implementation by configurations
+        val cloudstream by configurations
+
+        cloudstream("com.lagradost:cloudstream3:pre-release")
 
         if (!isSharedModule) {
-            val cloudstream by configurations
-            cloudstream("com.lagradost:cloudstream3:pre-release")
+            // This is empty now because dependency moved up
         }
 
         implementation(kotlin("stdlib"))
