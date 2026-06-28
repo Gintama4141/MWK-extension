@@ -42,6 +42,11 @@ subprojects {
             setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/Gintama4141/MWK-extension")
             authors = listOf("MWK")
         }
+
+        // Disable make task for SharedModule to prevent SharedModule.cs3 from being generated
+        tasks.named("make") {
+            enabled.set(false)
+        }
     }
 
     android {
@@ -73,9 +78,9 @@ subprojects {
 
     dependencies {
         val implementation by configurations
+
         if (!isSharedModule) {
             val cloudstream by configurations
-
             cloudstream("com.lagradost:cloudstream3:pre-release")
         }
 
@@ -89,6 +94,13 @@ subprojects {
 
         if (!isSharedModule) {
             implementation(project(":SharedModule"))
+        }
+    }
+
+    // Disable make task for SharedModule to prevent SharedModule.cs3 from being generated
+    if (isSharedModule) {
+        tasks.named("make") {
+            enabled.set(false)
         }
     }
 }
