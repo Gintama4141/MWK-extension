@@ -33,11 +33,11 @@ fun Project.android(configuration: BaseExtension.() -> Unit) = extensions.getByN
 subprojects {
     apply(plugin = "com.android.library")
     apply(plugin = "kotlin-android")
+    apply(plugin = "com.lagradost.cloudstream3.gradle")
+
     val isSharedModule = project.name == "SharedModule"
 
     if (!isSharedModule) {
-        apply(plugin = "com.lagradost.cloudstream3.gradle")
-
         cloudstream {
             setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/Gintama4141/MWK-extension")
             authors = listOf("MWK")
