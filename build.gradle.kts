@@ -96,8 +96,14 @@ subprojects {
 
     // Disable make task for SharedModule to prevent SharedModule.cs3 from being generated
     if (isSharedModule) {
-        tasks.matching { it.name == "make" }.configureEach {
+        tasks.matching { it.name == "make" || it.name == "writeCacheEntry" }.configureEach {
             enabled = false
+        }
+        // Create dummy file so writeCacheEntry validation passes
+        val dummy = file("build/SharedModule.cs3")
+        dummy.parentFile.mkdirs()
+        if (!dummy.exists()) {
+            dummy.createNewFile()
         }
     }
 }
