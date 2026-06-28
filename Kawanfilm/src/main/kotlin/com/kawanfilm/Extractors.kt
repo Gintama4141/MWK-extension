@@ -28,6 +28,9 @@ open class Dingtezuni : ExtractorApi() {
     override val name = "Earnvids"
     override val mainUrl = "https://dingtezuni.com"
     override val requiresReferer = true
+    companion object {
+        private val M3U8_SRC_REGEX = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
+    }
     override suspend fun getUrl(
         url: String,
         referer: String?,

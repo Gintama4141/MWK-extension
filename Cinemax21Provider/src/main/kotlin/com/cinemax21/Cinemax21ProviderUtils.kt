@@ -1,25 +1,5 @@
 package com.cinemax21
 import android.util.Base64
-
-private object Cinemax21UtilsRegex {
-    val QUALITY_2160_1080_720 = Regex("(?i)(2160p|1080p|720p)")
-    val QUALITY_2160_1080 = Regex("(?i)(2160p|1080p)")
-    val VIDEO_EXT = Regex("\\.mkv|\\.mp4|\\.avi")
-    val SPACE_PLUS = "\\s+".toRegex()
-    val NON_ALPHA_NUM = Regex("[^a-zA-Z\\d]")
-    val FILE_SIZE_FULL = Regex("(?i)(\\d+\\.?\\d+\\sGB|MB)")
-    val DECIMAL_NUM = Regex("(\\d+\\.?\\d+)")
-    val UHD_TAG = Regex("\\d{3,4}[Pp]\\.?(.*?)\\[")
-    val FULL_TAG = Regex("(?i)(.*)\\.(?:mkv|mp4|avi)")
-    val QUALITY_TAG = Regex("(?i)\\d{3,4}[pP]\\.?(.*?)\\.(mkv|mp4|avi)")
-    val QUALITY_PIXEL = Regex("(\\d{3,4})[pP]")
-    val FILE_SIZE_SIMPLE = Regex("(?i)([\\d.]+\\s*(?:gb|mb))")
-    val IFRAME_SRC = Regex("""<iframe src="(.*?)"""")
-    val HLS2 = Regex("\"hls2\":\\s*\"(.*?m3u8.*?)\"")
-    val YEAR_PAREN = Regex("\\(\\d{4}\\)")
-    val NON_ALPHA_NUM_SPACE = Regex("[^a-zA-Z0-9\\s]")
-    val NON_ALPHA_LOWER = Regex("[^a-z0-9]")
-}
 import com.cinemax21.Cinemax21Provider.Companion.anilistAPI
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.APIHolder.unixTimeMS
@@ -44,6 +24,26 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.max
 import kotlin.text.isLowerCase
+
+private object Cinemax21UtilsRegex {
+    val QUALITY_2160_1080_720 = Regex("(?i)(2160p|1080p|720p)")
+    val QUALITY_2160_1080 = Regex("(?i)(2160p|1080p)")
+    val VIDEO_EXT = Regex("\\.mkv|\\.mp4|\\.avi")
+    val SPACE_PLUS = "\\s+".toRegex()
+    val NON_ALPHA_NUM = Regex("[^a-zA-Z\\d]")
+    val FILE_SIZE_FULL = Regex("(?i)(\\d+\\.?\\d+\\sGB|MB)")
+    val DECIMAL_NUM = Regex("(\\d+\\.?\\d+)")
+    val UHD_TAG = Regex("\\d{3,4}[Pp]\\.?(.*?)\\[")
+    val FULL_TAG = Regex("(?i)(.*)\\.(?:mkv|mp4|avi)")
+    val QUALITY_TAG = Regex("(?i)\\d{3,4}[pP]\\.?(.*?)\\.(mkv|mp4|avi)")
+    val QUALITY_PIXEL = Regex("(\\d{3,4})[pP]")
+    val FILE_SIZE_SIMPLE = Regex("(?i)([\\d.]+\\s*(?:gb|mb))")
+    val IFRAME_SRC = Regex("""<iframe src="(.*?)"""")
+    val HLS2 = Regex("\"hls2\":\\s*\"(.*?m3u8.*?)\"")
+    val YEAR_PAREN = Regex("\\(\\d{4}\\)")
+    val NON_ALPHA_NUM_SPACE = Regex("[^a-zA-Z0-9\\s]")
+    val NON_ALPHA_LOWER = Regex("[^a-z0-9]")
+}
 @Volatile
 var gomoviesCookies: Map<String, String>? = null
 val mimeType = arrayOf(
