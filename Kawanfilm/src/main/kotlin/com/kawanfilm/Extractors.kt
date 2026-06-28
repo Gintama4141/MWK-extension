@@ -171,9 +171,8 @@ class Vidshare : VidStack() {
                     link.url.replace("https://", "http://"),
                     link.referer,
                     link.quality,
-                    link.type,
-                    link.headers,
-                    link.isM3u8
+                    link.isM3u8,
+                    link.headers
                 )
             )
         }
