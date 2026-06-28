@@ -36,7 +36,7 @@ class Kawanfilm : MainAPI() {
         private const val DEFAULT_TIMEOUT = 60_000L
     }
     
-    // v5
+    // v6
 
     override val mainPage = mainPageOf(
         "/page/%d/?s&search=advanced&post_type=movie&index&orderby&genre&movieyear&country&quality=" to "Update Terbaru",
