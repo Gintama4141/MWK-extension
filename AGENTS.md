@@ -81,6 +81,10 @@ Analyzed `seoulschool.org/page/kdrama/...` stream page — WordPress Muvipro the
 - voe.sx and minochinos.com have strong anti-scraping (JW encrypted / reCAPTCHA) — may need user input
 
 ## Key Files
+- `SharedModule/` — shared library with common extractors, data models, and utilities
+  - `src/main/kotlin/com/mwk/shared/data/` — Shared data classes (IdlixModels, GofileModels, OkRuModels, TmdbModels, AniZipModels, KisskhModels)
+  - `src/main/kotlin/com/mwk/shared/extractors/` — Shared extractors (Hglink, Ghbrisk, Dhcplay, Jeniusplay, Dingtezuni, Gofile, Odnoklassniki, Lulustream, P2PPlay, StreamHG)
+  - `src/main/kotlin/com/mwk/shared/utils/` — Shared utilities (ElementExtensions, UrlUtils, QualityUtils, TmdbUtils)
 - `OtakudesuProvider/src/main/kotlin/com/otakudesu/OtakudesuProvider.kt` (v10) — comprehensive audit: IndexOutOfBounds fix, TMDB key removed, Base64 try-catch, runBlocking removed, URL-encoded search, content-based selectors, withTimeoutOrNull on ani.zip.
 - `KuronimeProvider/src/main/kotlin/com/kuronime/KuronimeProvider.kt` — AES key `"3&!Z0M,;dZWVIZ=="`, `decryptCryptoJS()`, `tryParseJson`, `src_sd` support, AES/CBC/PKCS5Padding.
 - `TorraStreamProvider/src/main/kotlin/com/torrastream/` — `TorraStreamProvider.kt` (v88), magnet tracker cache, getQuality fix, 30s timeouts.
