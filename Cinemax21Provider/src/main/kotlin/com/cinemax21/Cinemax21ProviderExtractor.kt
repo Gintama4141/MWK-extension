@@ -83,7 +83,7 @@ object Cinemax21ProviderExtractor : Cinemax21Provider() {
 
                 val metrix = tryParseJson<AesData>(json.embed_url)?.m ?: return@amap
                 val password = createIdlixKey(json.key, metrix)
-                val decrypted = AesHelper.cryptoAESHandler(json.embed_url, password.toByteArray(), false)
+                val decrypted = AesHelper.cryptoAESHandler(json.embed_url, password.toByteArray(), false, "AES/CBC/PKCS5Padding")
                     ?.fixUrlBloat() ?: return@amap
 
                 when {

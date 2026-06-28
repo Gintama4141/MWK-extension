@@ -26,7 +26,7 @@ object IdlixCrypto {
     fun decryptEmbedUrl(embedUrl: String, key: String, metrix: String): String? {
         val password = createIdlixKey(key, metrix)
         return try {
-            AesHelper.cryptoAESHandler(embedUrl, password.toByteArray(), false)?.fixUrlBloat()
+            AesHelper.cryptoAESHandler(embedUrl, password.toByteArray(), false, "AES/CBC/PKCS5Padding")?.fixUrlBloat()
         } catch (_: Exception) { null }
     }
 
