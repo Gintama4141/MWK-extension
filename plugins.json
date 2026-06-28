@@ -1,10 +1,10 @@
 [
   {
     "iconUrl": "https://anichin.ro/wp-content/uploads/2026/02/cropped-favicon-anichin-192x192.webp",
-    "fileHash": "sha256-5f0cb746a4748db93b021662f99a98c0ea3504f6109b0b4f8a1fba29f4efa520",
+    "fileHash": "sha256-8a63e828755796673d9af1d9faf4210d82d67470e13b2efce9d75fbf010162d7",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 39795,
+    "fileSize": 39793,
     "status": 1,
     "language": "id",
     "authors": [
@@ -335,10 +335,10 @@
   },
   {
     "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://ww03.pencurimovie.bond&size=%size%",
-    "fileHash": "sha256-9153fb5d8a905941e2a8fe96f94b50664c9723a5270ad99ece71d32e2e51bd6b",
+    "fileHash": "sha256-08bb6811a4029397ea0d2e953a575d076b1c557a4a7fea77b9130d348917fa1f",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 18000,
+    "fileSize": 18002,
     "status": 1,
     "language": "id",
     "authors": [
@@ -353,21 +353,6 @@
     "description": "PencuriMovie \u2014 Streaming Movie and TV Series",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/PencuriMovieProvider.cs3",
     "name": "PencuriMovieProvider"
-  },
-  {
-    "fileHash": "sha256-e9d5a9be89a89a3b95936e1f19f775a5d28d99e83a1fc9b0d003db5a9d4d10b3",
-    "apiVersion": 1,
-    "fileSize": 56198,
-    "status": 3,
-    "language": "id",
-    "authors": [
-      "MWK"
-    ],
-    "version": -1,
-    "internalName": "SharedModule",
-    "description": "MWK Shared Library",
-    "url": "",
-    "name": "SharedModule"
   },
   {
     "iconUrl": "https://torrentio.strem.fun/images/logo_v1.png",
