@@ -62,21 +62,8 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew make makePluginsJson
-          # Copy all .cs3 files except SharedModule
-          find . -path "*/build/*.cs3" ! -name "SharedModule.cs3" -exec cp {} ${{ github.workspace }}/builds/ \;
-          # Copy plugins.json and remove SharedModule entry if present
+          find . -path "*/build/*.cs3" -exec cp {} ${{ github.workspace }}/builds/ \;
           cp build/plugins.json ${{ github.workspace }}/builds/
-          if [ -f "${{ github.workspace }}/builds/plugins.json" ]; then
-            python3 -c "
-          import json, sys
-          with open('${{ github.workspace }}/builds/plugins.json', 'r') as f:
-              data = json.load(f)
-          if 'plugins' in data:
-              data['plugins'] = [p for p in data['plugins'] if 'SharedModule' not in p.get('url', '') and 'SharedModule' not in p.get('name', '')]
-          with open('${{ github.workspace }}/builds/plugins.json', 'w') as f:
-              json.dump(data, f, indent=2)
-          " || echo "python3 not available, skipping SharedModule cleanup from plugins.json"
-          fi
 
       - name: Push builds
         working-directory: ${{ github.workspace }}/builds
