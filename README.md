@@ -43,7 +43,6 @@ https://raw.githubusercontent.com/Gintama4141/MWK-extension/master/repo.json
 | **CineMax21** | Movie & TV | Streaming Movie dan TV Series (TMDB-based, multi-source) |
 | **Donghub** | Anime | Streaming Donghua Subtitle Indonesia |
 | **DutaMovie** | Movie & TV | Streaming Movie dan TV Series |
-| **Kawanfilm** | Movie | Streaming Movie Sub Indo |
 | **Kisskh** | Movie & TV | Streaming Movie dan TV Series (TMDB-based) |
 | **KlikXXI** | Movie & TV | Streaming Movie dan TV Series |
 | **Kuronime** | Anime | Streaming Anime Subtitle Indonesia |
