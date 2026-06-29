@@ -36,7 +36,7 @@ class Kawanfilm : MainAPI() {
         private const val DEFAULT_TIMEOUT = 60_000L
     }
     
-    // v7
+    // v8
 
     override val mainPage = mainPageOf(
         "/page/%d/?s&search=advanced&post_type=movie&index&orderby&genre&movieyear&country&quality=" to "Update Terbaru",
@@ -159,30 +159,20 @@ class Kawanfilm : MainAPI() {
     ): Boolean {
         return try {
             val document = app.get(data, timeout = DEFAULT_TIMEOUT).document
+            
+            // Handle player tabs for both Movie and Episode pages
             val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
             val referer = "$directUrl/"
 
             if (id.isNullOrEmpty()) {
-                val tabs = document.select("ul.muvipro-player-tabs li a")
-                if (tabs.isNotEmpty()) {
-                    coroutineScope {
-                        tabs.map { ele ->
-                            async {
-                                val iframe = app.get(fixUrl(ele.attr("href")), timeout = DEFAULT_TIMEOUT).document
-                                    .selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it).replace(Regex("^https://"), "http://") }
-                                    ?: return@async
-                                loadExtractor(iframe, referer, subtitleCallback, callback)
-                            }
-                        }.awaitAll()
-                    }
-                } else {
-                    document.select("div.gmr-embed-responsive iframe").forEach { iframe ->
-                        val url = iframe.getIframeAttr()?.let { httpsify(it).replace(Regex("^https://"), "http://") }
-                            ?: return@forEach
-                        loadExtractor(url, referer, subtitleCallback, callback)
-                    }
+                // Static iframe approach
+                document.select("div.gmr-embed-responsive iframe, .gmr-player-nav iframe").forEach { iframe ->
+                    val url = iframe.getIframeAttr()?.let { httpsify(it).replace(Regex("^https://"), "http://") }
+                        ?: return@forEach
+                    loadExtractor(url, referer, subtitleCallback, callback)
                 }
             } else {
+                // AJAX approach
                 val ajaxTabs = document.select("div.tab-content-ajax")
                 coroutineScope {
                     ajaxTabs.map { ele ->
@@ -198,6 +188,7 @@ class Kawanfilm : MainAPI() {
                     }.awaitAll()
                 }
             }
+
 
             document.select("ul.gmr-download-list li a").forEach { linkEl ->
                 val downloadUrl = linkEl.attr("href")
