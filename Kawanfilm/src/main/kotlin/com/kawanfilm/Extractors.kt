@@ -55,7 +55,7 @@ open class Dingtezuni : ExtractorApi() {
         M3U8_SRC_REGEX.findAll(script).forEach { m3u8Match ->
             M3u8Helper.generateM3u8(
                 name,
-                fixUrl(m3u8Match.groupValues[1]),
+                fixUrl(m3u8Match.value),
                 referer = "$mainUrl/",
                 headers = headers
             ).forEach(callback)
@@ -182,7 +182,7 @@ class Vidshare : ExtractorApi() {
             response.document.selectFirst("script:containsData(sources:)")?.data()
         } ?: return
         M3U8_SRC_REGEX.findAll(script).forEach { m3u8Match ->
-            val m3u8Url = m3u8Match.groupValues[1].replace(Regex("^https://"), "http://")
+            val m3u8Url = m3u8Match.value.replace(Regex("^https://"), "http://")
             M3u8Helper.generateM3u8(
                 name,
                 m3u8Url,
