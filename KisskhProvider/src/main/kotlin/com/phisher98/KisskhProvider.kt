@@ -42,14 +42,11 @@ class KisskhProvider : MainAPI() {
     )
 
     override val mainPage = mainPageOf(
-        "&type=2&sub=0&country=2&status=0&order=1" to "Movie Popular",
-        "&type=2&sub=0&country=2&status=0&order=2" to "Movie Last Update",
-        "&type=1&sub=0&country=2&status=0&order=1" to "TVSeries Popular",
-        "&type=1&sub=0&country=2&status=0&order=2" to "TVSeries Last Update",
-        "&type=3&sub=0&country=0&status=0&order=1" to "Anime Popular",
-        "&type=3&sub=0&country=0&status=0&order=2" to "Anime Last Update",
-        "&type=4&sub=0&country=0&status=0&order=1" to "Hollywood Popular",
-        "&type=4&sub=0&country=0&status=0&order=2" to "Hollywood Last Update",
+        "&sub=0&country=0&status=0&order=2" to "Latest Update",
+        "&sub=0&country=2&status=0&order=1" to "Top Kdrama",
+        "&sub=0&country=1&status=0&order=1" to "Top Cdrama",
+        "&type=3&sub=0&country=0&status=0&order=1" to "Anime",
+        "&type=4&sub=0&country=0&status=0&order=1" to "Hollywood",
     )
 
     override suspend fun getMainPage(
