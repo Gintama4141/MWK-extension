@@ -10,6 +10,7 @@ class KlikxxiProviderPlugin : Plugin() {
         registerMainAPI(KlikxxiProvider())
         registerExtractorAPI(Klixxistrp2p())
         registerExtractorAPI(Klixxiupns())
-        registerExtractorAPI(Hglink())  
+        registerExtractorAPI(Hglink())
+        registerExtractorAPI(Hexload())
     }
 }
