@@ -69,10 +69,10 @@
   },
   {
     "iconUrl": "https://www.google.com/s2/favicons?domain=kisskh.co&sz=%size%",
-    "fileHash": "sha256-8ab33bc0e11e04ef036d7bac97491e9212bbbeaa94a3c7294c55e5479e7ecb55",
+    "fileHash": "sha256-88acbe5f0141a7806831c9bfacad9237d1d19b00ee32cc610b8e794d85c2605a",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 33114,
+    "fileSize": 33654,
     "status": 1,
     "language": "en",
     "authors": [
@@ -85,7 +85,7 @@
       "Anime",
       "Movie"
     ],
-    "version": 10,
+    "version": 11,
     "internalName": "KisskhProvider",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/KisskhProvider.cs3",
     "name": "KisskhProvider"
