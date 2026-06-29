@@ -21,7 +21,7 @@ Anichin, Cinemax21, Donghub, Dutamovie, Kisskh, Klikxxi, Kuronime, Moviebox, Mov
 | Cinemax21 | v13 | Movie & TV |
 | Donghub | v9 | Anime |
 | Dutamovie | v17 | Movie & TV |
-| Kisskh | v9 | Movie & TV |
+| Kisskh | v10 | Movie & TV |
 | Klikxxi | v5 | Movie & TV |
 | Kuronime | v13 | Anime |
 | MoviePedia21 | v2 | Movie & TV |
@@ -42,6 +42,7 @@ Anichin, Cinemax21, Donghub, Dutamovie, Kisskh, Klikxxi, Kuronime, Moviebox, Mov
 - Build/deploy via GitHub Actions → `builds` branch.
 
 ## Recent Pushes
+- Kisskh v10: restructure home page menus to 5 categories (Latest Update, Top Kdrama, Top Cdrama, Anime, Hollywood)
 - Otakudesu v10: comprehensive audit — fix IndexOutOfBounds crash, remove hardcoded TMDB API key (security), try-catch Base64 decode, error handling on network requests, URL-encode search, content-based selectors (replaced brittle nth-child), deduplicate regex, withTimeoutOrNull on ani.zip API
 - `d748f6a` Klikxxi v5: comprehensive audit fixes — error handling, URL encoding, pagination, episode dedup, regex, CSS constants
 - `aaa74a9` Donghub v6: added Odnoklassniki (OKRU) extractor for mirror server support
