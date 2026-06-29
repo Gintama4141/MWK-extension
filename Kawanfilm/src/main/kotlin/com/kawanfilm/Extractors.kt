@@ -152,8 +152,43 @@ class Dhcplay : StreamWishExtractor() {
     override var name = "DHC Play"
     override var mainUrl = "https://dhcplay.com"
 }
-class Vidshare : VidStack() {
+class Vidshare : ExtractorApi() {
     override var name = "Vidshare"
     override var mainUrl = "https://vidshare.rpmvid.com"
     override var requiresReferer = true
+
+    companion object {
+        private val M3U8_SRC_REGEX = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
+    }
+
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val headers = mapOf(
+            "Sec-Fetch-Dest" to "empty",
+            "Sec-Fetch-Mode" to "cors",
+            "Sec-Fetch-Site" to "cross-site",
+            "User-Agent" to USER_AGENT,
+        )
+        val response = app.get(url, referer = referer, timeout = 15_000L)
+        val script = if (!getPacked(response.text).isNullOrEmpty()) {
+            var result = getAndUnpack(response.text)
+            if (result.contains("var links")) result = result.substringAfter("var links")
+            result
+        } else {
+            response.document.selectFirst("script:containsData(sources:)")?.data()
+        } ?: return
+        M3U8_SRC_REGEX.findAll(script).forEach { m3u8Match ->
+            val m3u8Url = m3u8Match.groupValues[1].replace(Regex("^https://"), "http://")
+            M3u8Helper.generateM3u8(
+                name,
+                m3u8Url,
+                referer = "$mainUrl/",
+                headers = headers
+            ).forEach(callback)
+        }
+    }
 }
