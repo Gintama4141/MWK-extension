@@ -92,10 +92,10 @@
   },
   {
     "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://klikxxi.fit&size=%size%",
-    "fileHash": "sha256-ce08a7c54c801c5bcaf1011aa0015db31a80f284b7bd1f5236adca462c7a8199",
+    "fileHash": "sha256-8c97df1f715e3fdfcc96cfc29a8259cd59b8a7a2546ac38cfe79cbf7a30a732d",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 23888,
+    "fileSize": 23349,
     "status": 1,
     "language": "id",
     "authors": [
@@ -106,7 +106,7 @@
       "TvSeries",
       "Movie"
     ],
-    "version": 5,
+    "version": 6,
     "internalName": "KlikxxiProvider",
     "description": "KlikXXI \u2014 Streaming Movie and TV Series",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/KlikxxiProvider.cs3",
