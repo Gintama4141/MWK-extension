@@ -36,7 +36,7 @@ class Kawanfilm : MainAPI() {
         private const val DEFAULT_TIMEOUT = 60_000L
     }
     
-    // v6
+    // v7
 
     override val mainPage = mainPageOf(
         "/page/%d/?s&search=advanced&post_type=movie&index&orderby&genre&movieyear&country&quality=" to "Update Terbaru",
@@ -164,15 +164,23 @@ class Kawanfilm : MainAPI() {
 
             if (id.isNullOrEmpty()) {
                 val tabs = document.select("ul.muvipro-player-tabs li a")
-                coroutineScope {
-                    tabs.map { ele ->
-                        async {
-                            val iframe = app.get(fixUrl(ele.attr("href")), timeout = DEFAULT_TIMEOUT).document
-                                .selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it).replace(Regex("^https://"), "http://") }
-                                ?: return@async
-                            loadExtractor(iframe, referer, subtitleCallback, callback)
-                        }
-                    }.awaitAll()
+                if (tabs.isNotEmpty()) {
+                    coroutineScope {
+                        tabs.map { ele ->
+                            async {
+                                val iframe = app.get(fixUrl(ele.attr("href")), timeout = DEFAULT_TIMEOUT).document
+                                    .selectFirst("div.gmr-embed-responsive iframe")?.getIframeAttr()?.let { httpsify(it).replace(Regex("^https://"), "http://") }
+                                    ?: return@async
+                                loadExtractor(iframe, referer, subtitleCallback, callback)
+                            }
+                        }.awaitAll()
+                    }
+                } else {
+                    document.select("div.gmr-embed-responsive iframe").forEach { iframe ->
+                        val url = iframe.getIframeAttr()?.let { httpsify(it).replace(Regex("^https://"), "http://") }
+                            ?: return@forEach
+                        loadExtractor(url, referer, subtitleCallback, callback)
+                    }
                 }
             } else {
                 val ajaxTabs = document.select("div.tab-content-ajax")
