@@ -4,16 +4,37 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
-import com.lagradost.cloudstream3.MainAPI
-import com.lagradost.cloudstream3.SearchResponse
-import com.lagradost.cloudstream3.TvType
-import com.lagradost.cloudstream3.mainPageOf
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.loadExtractor
+import com.mwk.shared.utils.getIframeAttr
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
 
+private val IMAGE_SIZE_REGEX = Regex("-\\d+x\\d+(?=\\.(webp|jpg|jpeg|png))", RegexOption.IGNORE_CASE)
+
+private fun Element?.getPosterImageUrl(): String? {
+    if (this == null) return null
+
+    if (hasAttr("srcset")) {
+        val best = attr("srcset").trim().split(",")
+            .map { it.trim().split(" ")[0] }
+            .lastOrNull()
+        if (!best.isNullOrBlank()) return best.replace(IMAGE_SIZE_REGEX, "")
+    }
+
+    val dataSrc = when {
+        hasAttr("data-lazy-src") -> attr("data-lazy-src")
+        hasAttr("data-src") -> attr("data-src")
+        else -> null
+    }
+    if (!dataSrc.isNullOrBlank()) return dataSrc.replace(IMAGE_SIZE_REGEX, "")
+
+    val src = attr("src")
+    if (!src.isNullOrBlank()) return src.replace(IMAGE_SIZE_REGEX, "")
+
+    return null
+}
 
 class KlikxxiProvider : MainAPI() {
     companion object {
@@ -29,7 +50,6 @@ class KlikxxiProvider : MainAPI() {
         private val QUALITY_CLASS_REGEX = Regex("hd|sd|cam|ts|hdts|hdts2|hdrip|webrip|bluray|brrip|fhd|uhd|4k", RegexOption.IGNORE_CASE)
         private val DIGIT_REGEX = Regex("(\\d+)")
         private val EPISODE_NUM_REGEX = Regex("(?:E(?:p(?:isode)?)?|Episode|Ep\\.?)\\s*(\\d+)", RegexOption.IGNORE_CASE)
-        private val IMAGE_SIZE_REGEX = Regex("-\\d+x\\d+(?=\\.(webp|jpg|jpeg|png))", RegexOption.IGNORE_CASE)
     }
 
     override var mainUrl = "https://klikxxi.me"
@@ -39,27 +59,26 @@ class KlikxxiProvider : MainAPI() {
 
     override val supportedTypes =
         setOf(TvType.Movie, TvType.TvSeries, TvType.Anime, TvType.AsianDrama)
-    
 
     override val mainPage = mainPageOf(
         "?s=&search=advanced&post_type=movie&index=&orderby=&genre=&movieyear=&country=&quality=&paged=%d" to "Latest Movie",
         "tv/page/%d/" to "TV Series",
         "category/action/page/%d/" to "Action",
-        "category/adventure/page/%d/" to "Adventure",  
-        "category/animation/page/%d/" to "Animation",  
-        "category/comedy/page/%d/" to "Comedy",  
-        "category/crime/page/%d/" to "Crime",  
-        "category/drama/page/%d/" to "Drama",  
-        "category/family/page/%d/" to "Family",  
-        "category/fantasy/page/%d/" to "Fantasy",  
-        "category/history/page/%d/" to "History",  
-        "category/horror/page/%d/" to "Horror",  
-        "category/music/page/%d/" to "Music",  
-        "category/mystery/page/%d/" to "Mystery",  
-        "category/romance/page/%d/" to "Romance",  
-        "category/science-fiction/page/%d/" to "Sci-Fi",  
-        "category/thriller/page/%d/" to "Thriller",  
-        "category/war/page/%d/" to "War",  
+        "category/adventure/page/%d/" to "Adventure",
+        "category/animation/page/%d/" to "Animation",
+        "category/comedy/page/%d/" to "Comedy",
+        "category/crime/page/%d/" to "Crime",
+        "category/drama/page/%d/" to "Drama",
+        "category/family/page/%d/" to "Family",
+        "category/fantasy/page/%d/" to "Fantasy",
+        "category/history/page/%d/" to "History",
+        "category/horror/page/%d/" to "Horror",
+        "category/music/page/%d/" to "Music",
+        "category/mystery/page/%d/" to "Mystery",
+        "category/romance/page/%d/" to "Romance",
+        "category/science-fiction/page/%d/" to "Sci-Fi",
+        "category/thriller/page/%d/" to "Thriller",
+        "category/war/page/%d/" to "War",
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -80,7 +99,6 @@ class KlikxxiProvider : MainAPI() {
         return newHomePageResponse(request.name, items, hasNext = items.isNotEmpty())
     }
 
-
     private fun Element.toSearchResult(): SearchResponse? {
         val linkElement = selectFirst("a[href][title]") ?: return null
 
@@ -96,27 +114,13 @@ class KlikxxiProvider : MainAPI() {
 
         if (title.isBlank()) return null
 
-        val posterElement = this.selectFirst("img.wp-post-image, img.attachment-large, img")
-        val posterUrl = posterElement?.fixPoster()?.let { fixUrl(it) }
+        val posterUrl = selectFirst("img.wp-post-image, img.attachment-large, img")
+            ?.getPosterImageUrl()
+            ?.let { fixUrl(it) }
 
-        val quality = this.selectFirst(".gmr-quality-item")?.let { el ->
-        val directText = el.text().trim()
-        if (directText.isNotEmpty()) {
-        directText
-        } else {
-        val aText = el.selectFirst("a")?.text()?.trim()
-        if (!aText.isNullOrBlank()) {
-            aText
-        } else {
-            el.classNames().firstOrNull { cls ->
-                cls.matches(QUALITY_CLASS_REGEX)
-            }?.uppercase()
-        }
-    }
-}
-
+        val quality = extractQuality()
         val typeText = selectFirst(".gmr-posttype-item")?.text()?.trim()
-        val ratingText = this.selectFirst("div.gmr-rating-item")?.ownText()?.trim()
+        val ratingText = selectFirst("div.gmr-rating-item")?.ownText()?.trim()
         val isSeries = typeText.equals("TV Show", ignoreCase = true)
 
         return if (isSeries) {
@@ -132,6 +136,15 @@ class KlikxxiProvider : MainAPI() {
         }
     }
 
+    private fun Element.extractQuality(): String? {
+        val el = selectFirst(".gmr-quality-item") ?: return null
+        return el.text().trim().ifBlank {
+            el.selectFirst("a")?.text()?.trim()
+        }?.ifBlank {
+            el.classNames().firstOrNull { cls -> cls.matches(QUALITY_CLASS_REGEX) }?.uppercase()
+        }
+    }
+
     override suspend fun search(query: String): List<SearchResponse> {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val document = runCatching {
@@ -141,13 +154,13 @@ class KlikxxiProvider : MainAPI() {
             .mapNotNull { it.toSearchResult() }
     }
 
-    /** Kadang rekomendasi punya struktur HTML beda */
     private fun Element.toRecommendResult(): SearchResponse? {
-        val title = this.selectFirst("h2.entry-title > a")?.text()?.trim() ?: return null
-        val href = this.selectFirst("a")?.attr("href") ?: return null
-        val posterElement = this.selectFirst("img.wp-post-image, img.attachment-large, img")
-        val posterUrl = posterElement?.fixPoster()?.let { fixUrl(it) }
-        val typeText = this.selectFirst(".gmr-posttype-item")?.text()?.trim()
+        val title = selectFirst("h2.entry-title > a")?.text()?.trim() ?: return null
+        val href = selectFirst("a")?.attr("href") ?: return null
+        val posterUrl = selectFirst("img.wp-post-image, img.attachment-large, img")
+            ?.getPosterImageUrl()
+            ?.let { fixUrl(it) }
+        val typeText = selectFirst(".gmr-posttype-item")?.text()?.trim()
         val isSeries = typeText.equals("TV Show", ignoreCase = true)
         return if (isSeries) {
             newTvSeriesSearchResponse(title, href, TvType.TvSeries) {
@@ -160,25 +173,20 @@ class KlikxxiProvider : MainAPI() {
         }
     }
 
-
     override suspend fun load(url: String): LoadResponse {
         val document = runCatching { app.get(url, timeout = 15_000L).document }.getOrNull()
             ?: return newMovieLoadResponse("Error", url, TvType.Movie, url) {
                 this.plot = "Failed to load page: network error"
             }
 
-        val title = cleanTitle(
-            document.selectFirst(SEL_TITLE)?.text()
-        )
+        val title = cleanTitle(document.selectFirst(SEL_TITLE)?.text())
 
         val poster = document
             .selectFirst(SEL_POSTER)
-            .fixPoster()
+            ?.getPosterImageUrl()
             ?.let { fixUrl(it) }
 
-        val description = document.selectFirst(SEL_DESC)
-            ?.text()
-            ?.trim()
+        val description = document.selectFirst(SEL_DESC)?.text()?.trim()
 
         val tags = document.select("strong:contains(Genre) ~ a").eachText()
 
@@ -205,6 +213,36 @@ class KlikxxiProvider : MainAPI() {
             .select(SEL_RECOMMEND)
             .mapNotNull { it.toRecommendResult() }
 
+        val episodes = parseEpisodes(document)
+
+        val tvType = if (episodes.isNotEmpty()) TvType.TvSeries else TvType.Movie
+
+        return if (tvType == TvType.TvSeries) {
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                this.posterUrl = poster
+                this.plot = description
+                this.tags = tags
+                this.year = year
+                if (rating != null) addScore(rating.toString(), 10)
+                addActors(actors)
+                addTrailer(trailer)
+                this.recommendations = recommendations
+            }
+        } else {
+            newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl = poster
+                this.plot = description
+                this.tags = tags
+                this.year = year
+                if (rating != null) addScore(rating.toString(), 10)
+                addActors(actors)
+                addTrailer(trailer)
+                this.recommendations = recommendations
+            }
+        }
+    }
+
+    private fun parseEpisodes(document: org.jsoup.nodes.Document): List<Episode> {
         val seasonBlocks = document.select(SEL_SEASON_BLOCK)
         val allEpisodes = mutableListOf<Episode>()
 
@@ -247,34 +285,9 @@ class KlikxxiProvider : MainAPI() {
             allEpisodes.addAll(eps)
         }
 
-        val episodes = allEpisodes
+        return allEpisodes
             .distinctBy { it.data }
             .sortedWith(compareBy({ it.season }, { it.episode }))
-
-        val tvType = if (episodes.isNotEmpty()) TvType.TvSeries else TvType.Movie
-
-        return if (tvType == TvType.TvSeries) {
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
-                this.plot = description
-                this.tags = tags
-                this.year = year
-                if (rating != null) addScore(rating.toString(), 10)
-                addActors(actors)
-                this.recommendations = recommendations
-            }
-        } else {
-            newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = poster
-                this.plot = description
-                this.tags = tags
-                this.year = year
-                addActors(actors)
-                addTrailer(trailer)
-                if (rating != null) addScore(rating.toString(), 10)
-                this.recommendations = recommendations
-            }
-        }
     }
 
     override suspend fun loadLinks(
@@ -283,7 +296,8 @@ class KlikxxiProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = runCatching { app.get(data, timeout = 15_000L).document }.getOrNull() ?: throw ErrorLoadingException("Gagal memuat video")
+        val document = runCatching { app.get(data, timeout = 15_000L).document }.getOrNull()
+            ?: throw ErrorLoadingException("Gagal memuat video")
         val postId = document
             .selectFirst(SEL_PLAYER_ID)
             ?.attr("data-id")
@@ -319,30 +333,6 @@ class KlikxxiProvider : MainAPI() {
         return foundAny
     }
 
-    private fun Element?.fixPoster(): String? {
-    if (this == null) return null
-
-    if (this.hasAttr("srcset")) {
-        val srcset = this.attr("srcset").trim()
-        val best = srcset.split(",")
-            .map { it.trim().split(" ")[0] }
-            .lastOrNull()
-        if (!best.isNullOrBlank()) return fixUrl(best.fixImageQuality())
-    }
-
-    val dataSrc = when {
-        this.hasAttr("data-lazy-src") -> this.attr("data-lazy-src")
-        this.hasAttr("data-src") -> this.attr("data-src")
-        else -> null
-    }
-    if (!dataSrc.isNullOrBlank()) return fixUrl(dataSrc.fixImageQuality())
-
-    val src = this.attr("src")
-    if (!src.isNullOrBlank()) return fixUrl(src.fixImageQuality())
-
-    return null
-}
-
     private fun cleanTitle(raw: String?): String {
         return raw
             ?.substringBefore("Season")
@@ -350,15 +340,5 @@ class KlikxxiProvider : MainAPI() {
             ?.substringBefore("(")
             ?.trim()
             .orEmpty()
-    }
-
-    private fun Element?.getIframeAttr(): String? {
-        return this?.attr("data-litespeed-src").takeIf { !it.isNullOrEmpty() }
-            ?: this?.attr("src")
-    }
-
-    private fun String?.fixImageQuality(): String {
-        if (this == null) return ""
-        return this.replace(IMAGE_SIZE_REGEX, "")
     }
 }
