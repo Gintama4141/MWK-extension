@@ -134,21 +134,38 @@ class KisskhProvider : MainAPI() {
         }
     }
 
-    private fun getLanguage(str: String): String {
-        return when (str) {
-            "Indonesia" -> "Indonesian"
-            else -> str
+    private fun getLanguage(sub: Subtitle): String {
+        return when {
+            !sub.land.isNullOrBlank() -> sub.land
+            !sub.label.isNullOrBlank() -> when (sub.label) {
+                "Indonesia" -> "id"
+                "English" -> "en"
+                "Arabic" -> "ar"
+                "Khmer" -> "km"
+                "Malay" -> "ms"
+                else -> sub.label
+            }
+            else -> "en"
         }
     }
 
     private fun inferQuality(url: String): Int {
         val lowerUrl = url.lowercase()
         return when {
+            // Standard quality markers
             lowerUrl.contains("2160p") || lowerUrl.contains("4k") -> Qualities.P2160.value
             lowerUrl.contains("1080p") -> Qualities.P1080.value
             lowerUrl.contains("720p") -> Qualities.P720.value
             lowerUrl.contains("480p") -> Qualities.P480.value
             lowerUrl.contains("360p") -> Qualities.P360.value
+            // Kisskh URL pattern: v{number} where higher = better quality
+            // v765 = 720p (default), v1080 = 1080p, etc.
+            lowerUrl.contains("v1080") -> Qualities.P1080.value
+            lowerUrl.contains("v765") -> Qualities.P720.value
+            lowerUrl.contains("v480") -> Qualities.P480.value
+            lowerUrl.contains("v360") -> Qualities.P360.value
+            // Default to 720p for kisskh streams
+            lowerUrl.contains("hls") || lowerUrl.contains("cdnvideo") -> Qualities.P720.value
             else -> Qualities.P720.value
         }
     }
@@ -241,7 +258,7 @@ class KisskhProvider : MainAPI() {
                 val src = sub.src ?: return@forEach
                 subtitleCallback.invoke(
                     newSubtitleFile(
-                        getLanguage(sub.label ?: return@forEach),
+                        getLanguage(sub),
                         src
                     )
                 )
@@ -292,6 +309,7 @@ class KisskhProvider : MainAPI() {
     data class Subtitle(
         @JsonProperty("src") val src: String?,
         @JsonProperty("label") val label: String?,
+        @JsonProperty("land") val land: String?,
     )
 
     data class Responses(
