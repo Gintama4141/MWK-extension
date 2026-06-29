@@ -6,8 +6,6 @@ import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
-import com.lagradost.cloudstream3.extractors.VidStack
-import java.net.URI
 class Movearnpre : Dingtezuni() {
     override var name = "Movearnpre"
     override var mainUrl = "https://movearnpre.com"
@@ -46,7 +44,7 @@ open class Dingtezuni : ExtractorApi() {
         )
         val response = app.get(getEmbedUrl(url), referer = referer, timeout = 15_000L)
         val script = if (!getPacked(response.text).isNullOrEmpty()) {
-            var result = getAndUnpack(response.text)
+            var result = getAndUnpack(response.text) ?: return
             if (result.contains("var links")) result = result.substringAfter("var links")
             result
         } else {
@@ -101,7 +99,7 @@ open class Gofile : ExtractorApi() {
                     newExtractorLink(
                         name,
                         name,
-                        it.value["link"] ?: return,
+                        it.value["link"] ?: return@forEach,
                     ) {
                         this.quality = getQuality(it.value["name"])
                         this.headers = mapOf("Cookie" to "accountToken=$token")
@@ -175,7 +173,7 @@ class Vidshare : ExtractorApi() {
         )
         val response = app.get(url, referer = referer, timeout = 15_000L)
         val script = if (!getPacked(response.text).isNullOrEmpty()) {
-            var result = getAndUnpack(response.text)
+            var result = getAndUnpack(response.text) ?: return
             if (result.contains("var links")) result = result.substringAfter("var links")
             result
         } else {

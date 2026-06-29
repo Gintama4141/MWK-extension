@@ -15,6 +15,7 @@ import java.net.URI
 import java.net.URLEncoder
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import org.jsoup.nodes.Element
 
@@ -160,7 +161,8 @@ class Kawanfilm : MainAPI() {
         return try {
             val document = app.get(data, timeout = DEFAULT_TIMEOUT).document
             val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
-            val referer = "$directUrl/"
+            val baseUrl = directUrl ?: getBaseUrl(data)
+            val referer = "$baseUrl/"
 
             if (id.isNullOrEmpty()) {
                 document.select("div.gmr-embed-responsive iframe, .gmr-player-nav iframe").forEach { iframe ->
@@ -174,7 +176,7 @@ class Kawanfilm : MainAPI() {
                     ajaxTabs.map { ele ->
                         async {
                             val server = app.post(
-                                "$directUrl/wp-admin/admin-ajax.php",
+                                "$baseUrl/wp-admin/admin-ajax.php",
                                 data = mapOf("action" to "muvipro_player_content", "tab" to ele.attr("id"), "post_id" to "$id"),
                                 headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
                                 timeout = DEFAULT_TIMEOUT
@@ -191,6 +193,8 @@ class Kawanfilm : MainAPI() {
             }
 
             true
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw ErrorLoadingException(e.message ?: "Gagal memuat video")
         }
