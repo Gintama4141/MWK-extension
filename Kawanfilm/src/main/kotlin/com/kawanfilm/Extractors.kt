@@ -192,3 +192,7 @@ class Vidshare : ExtractorApi() {
         }
     }
 }
+class Minochinos : Dingtezuni() {
+    override var name = "Minochinos"
+    override var mainUrl = "https://minochinos.com"
+}

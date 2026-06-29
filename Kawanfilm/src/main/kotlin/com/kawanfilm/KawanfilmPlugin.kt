@@ -19,5 +19,6 @@ class KawanfilmPlugin : Plugin() {
         registerExtractorAPI(Gofile())
         registerExtractorAPI(Movearnpre())
         registerExtractorAPI(Vidshare())
+        registerExtractorAPI(Minochinos())
     }
 }

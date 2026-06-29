@@ -36,7 +36,7 @@ class Kawanfilm : MainAPI() {
         private const val DEFAULT_TIMEOUT = 60_000L
     }
     
-    // v9
+    // v10
 
     override val mainPage = mainPageOf(
         "/page/%d/?s&search=advanced&post_type=movie&index&orderby&genre&movieyear&country&quality=" to "Update Terbaru",
@@ -159,20 +159,16 @@ class Kawanfilm : MainAPI() {
     ): Boolean {
         return try {
             val document = app.get(data, timeout = DEFAULT_TIMEOUT).document
-            
-            // Handle player tabs for both Movie and Episode pages
             val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
             val referer = "$directUrl/"
 
             if (id.isNullOrEmpty()) {
-                // Static iframe approach
                 document.select("div.gmr-embed-responsive iframe, .gmr-player-nav iframe").forEach { iframe ->
                     val url = iframe.getIframeAttr()?.let { httpsify(it) }
                         ?: return@forEach
                     loadExtractor(url, referer, subtitleCallback, callback)
                 }
             } else {
-                // AJAX approach
                 val ajaxTabs = document.select("div.tab-content-ajax")
                 coroutineScope {
                     ajaxTabs.map { ele ->
@@ -189,8 +185,7 @@ class Kawanfilm : MainAPI() {
                 }
             }
 
-
-            document.select("ul.gmr-download-list li a").forEach { linkEl ->
+            document.select("ul.gmr-download-list li a, p a[href*=\"filepress\"]").forEach { linkEl ->
                 val downloadUrl = linkEl.attr("href")
                 if (downloadUrl.isNotBlank()) loadExtractor(downloadUrl, data, subtitleCallback, callback)
             }
