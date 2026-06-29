@@ -68,10 +68,10 @@
     "name": "Dutamovie"
   },
   {
-    "fileHash": "sha256-4fbbbd4b787f9be446342abbce316b9978801af37512f75936a1b1f15a638ff6",
+    "fileHash": "sha256-18d3474ad8f40b5b088456695e751ed9205bc304f616e2a9eccb45d4013625bd",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 34003,
+    "fileSize": 34193,
     "status": 1,
     "language": "id",
     "authors": [
@@ -82,7 +82,7 @@
       "TvSeries",
       "Movie"
     ],
-    "version": 9,
+    "version": 10,
     "internalName": "Kawanfilm",
     "description": "Kawanfilm - Streaming Movie Sub Indo",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Kawanfilm.cs3",
