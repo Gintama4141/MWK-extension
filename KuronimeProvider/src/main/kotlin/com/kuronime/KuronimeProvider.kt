@@ -1,6 +1,5 @@
 package com.kuronime
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
@@ -15,6 +14,10 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.nicehttp.RequestBodyTypes
+import com.miku.BuildConfig
+import com.mwk.shared.data.MetaAnimeData
+import com.mwk.shared.utils.fetchTmdbLogoUrl
+import com.mwk.shared.utils.getImageAttr
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.jsoup.nodes.Element
@@ -35,7 +38,6 @@ class KuronimeProvider : MainAPI() {
 
     companion object {
         private const val AES_KEY = "3&!Z0M,VIZ;dZW=="
-        private const val TMDB_API_KEY = "98ae14df2b8d8f8f8136499daf79f0e0"
         private const val ANIZIP_API = "https://api.ani.zip/mappings"
         private const val SOURCES_API_PATH = "/api/v9/sources"
         private val VIDEO_ID_REGEX = Regex("""\bid\b\s*[:=]\s*["']([a-zA-Z0-9_-]+)["']""")
@@ -102,15 +104,6 @@ class KuronimeProvider : MainAPI() {
         }
 
         return "$baseUrl/anime/$title"
-    }
-
-    private fun Element.getImageAttr(): String? {
-        return when {
-            this.hasAttr("data-src") -> this.attr("abs:data-src")
-            this.hasAttr("data-lazy-src") -> this.attr("abs:data-lazy-src")
-            this.hasAttr("srcset") -> this.attr("abs:srcset").substringBefore(" ")
-            else -> this.attr("abs:src")
-        }
     }
 
     private fun Element.toSearchResult(baseUrl: String): AnimeSearchResponse {
@@ -181,8 +174,8 @@ class KuronimeProvider : MainAPI() {
         if (malId != null) {
             runCatching {
                 val syncMetaData = app.get("$ANIZIP_API?mal_id=$malId", timeout = 15_000L).text
-                animeMetaData = parseAnimeData(syncMetaData)
-                tmdbid = animeMetaData?.mappings?.themoviedbId
+                animeMetaData = tryParseJson<MetaAnimeData>(syncMetaData)
+                tmdbid = (animeMetaData?.mappings?.themoviedbId as? Number)?.toInt()
                 kitsuid = animeMetaData?.mappings?.kitsuId
             }.onFailure {
                 // ani.zip API unavailable, continue without metadata
@@ -191,7 +184,7 @@ class KuronimeProvider : MainAPI() {
 
         val logoUrl = fetchTmdbLogoUrl(
             tmdbAPI = "https://api.themoviedb.org/3",
-            apiKey = TMDB_API_KEY,
+            apiKey = BuildConfig.TMDB_API_KEY,
             type = type,
             tmdbId = tmdbid,
             appLangCode = "en"
@@ -353,21 +346,19 @@ class KuronimeProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ) {
         loadExtractor(url ?: return, referer, subtitleCallback) { link ->
-            kotlinx.coroutines.runBlocking {
-                callback(
-                    newExtractorLink(
-                        link.name,
-                        link.name,
-                        link.url,
-                        link.type,
-                    ) {
-                        this.referer = link.referer
-                        this.headers = link.headers
-                        this.extractorData = link.extractorData
-                        this.quality = getQualityFromName(quality)
-                    }
-                )
-            }
+            callback(
+                newExtractorLink(
+                    link.name,
+                    link.name,
+                    link.url,
+                    link.type,
+                ) {
+                    this.referer = link.referer
+                    this.headers = link.headers
+                    this.extractorData = link.extractorData
+                    this.quality = getQualityFromName(quality)
+                }
+            )
         }
     }
 
@@ -377,151 +368,36 @@ class KuronimeProvider : MainAPI() {
         }
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class MetaImage(
-        @JsonProperty("coverType") val coverType: String?,
-        @JsonProperty("url") val url: String?
-    )
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class MetaEpisode(
-        @JsonProperty("episode") val episode: String?,
-        @JsonProperty("airDateUtc") val airDateUtc: String?,
-        @JsonProperty("runtime") val runtime: Int?,
-        @JsonProperty("image") val image: String?,
-        @JsonProperty("title") val title: Map<String, String>?,
-        @JsonProperty("overview") val overview: String?,
-        @JsonProperty("rating") val rating: String?,
-        @JsonProperty("finaleType") val finaleType: String?
-    )
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class MetaAnimeData(
-        @JsonProperty("titles") val titles: Map<String, String>?,
-        @JsonProperty("description") val description: String?,
-        @JsonProperty("images") val images: List<MetaImage>?,
-        @JsonProperty("episodes") val episodes: Map<String, MetaEpisode>?,
-        @JsonProperty("mappings") val mappings: MetaMappings? = null
-    )
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class MetaMappings(
-        @JsonProperty("themoviedb_id") val themoviedbId: Int? = null,
-        @JsonProperty("kitsu_id") val kitsuId: String? = null
-    )
-
-    private fun parseAnimeData(jsonString: String): MetaAnimeData? =
-        tryParseJson(jsonString)
-
     data class Mirrors(
         @JsonProperty("embed") val embed: Map<String, Map<String, String>> = emptyMap(),
     )
 
     data class Sources(
-        @JsonProperty("src") var src: String? = null,
+        @JsonProperty("src") val src: String? = null,
     )
 
     data class Servers(
-        @JsonProperty("src") var src: String? = null,
-        @JsonProperty("mirror") var mirror: String? = null,
+        @JsonProperty("src") val src: String? = null,
+        @JsonProperty("mirror") val mirror: String? = null,
     )
 
     data class All(
-        @JsonProperty("post_image") var postImage: String? = null,
-        @JsonProperty("post_image_html") var postImageHtml: String? = null,
-        @JsonProperty("ID") var ID: Int? = null,
-        @JsonProperty("post_title") var postTitle: String? = null,
-        @JsonProperty("post_genres") var postGenres: String? = null,
-        @JsonProperty("post_type") var postType: String? = null,
-        @JsonProperty("post_latest") var postLatest: String? = null,
-        @JsonProperty("post_sub") var postSub: String? = null,
-        @JsonProperty("post_link") var postLink: String? = null
+        @JsonProperty("post_image") val postImage: String? = null,
+        @JsonProperty("post_image_html") val postImageHtml: String? = null,
+        @JsonProperty("ID") val ID: Int? = null,
+        @JsonProperty("post_title") val postTitle: String? = null,
+        @JsonProperty("post_genres") val postGenres: String? = null,
+        @JsonProperty("post_type") val postType: String? = null,
+        @JsonProperty("post_latest") val postLatest: String? = null,
+        @JsonProperty("post_sub") val postSub: String? = null,
+        @JsonProperty("post_link") val postLink: String? = null
     )
 
     data class Anime(
-        @JsonProperty("all") var all: ArrayList<All> = arrayListOf(),
+        @JsonProperty("all") val all: List<All> = emptyList(),
     )
 
     data class Search(
-        @JsonProperty("anime") var anime: ArrayList<Anime> = arrayListOf()
+        @JsonProperty("anime") val anime: List<Anime> = emptyList()
     )
-}
-
-data class TmdbImagesResponse(
-    val logos: List<TmdbLogo>? = null
-)
-data class TmdbLogo(
-    @param:JsonProperty("aspect_ratio") val aspectRatio: Double? = null,
-    val height: Int? = null,
-    @param:JsonProperty("iso_639_1") val iso6391: String? = null,
-    @param:JsonProperty("file_path") val filePath: String? = null,
-    @param:JsonProperty("vote_average") val voteAverage: Double? = null,
-    @param:JsonProperty("vote_count") val voteCount: Int? = null,
-    val width: Int? = null
-)
-
-suspend fun fetchTmdbLogoUrl(
-    tmdbAPI: String,
-    apiKey: String,
-    type: TvType,
-    tmdbId: Int?,
-    appLangCode: String?
-): String? {
-    if (tmdbId == null) return null
-
-    val url = if (type == TvType.AnimeMovie)
-        "$tmdbAPI/movie/$tmdbId/images?api_key=$apiKey"
-    else
-        "$tmdbAPI/tv/$tmdbId/images?api_key=$apiKey"
-
-    val imageResponse = runCatching {
-        app.get(url, timeout = 15_000L).text.let { tryParseJson<TmdbImagesResponse>(it) }
-    }.getOrNull() ?: return null
-    val logos = imageResponse.logos?.filter { !it.filePath.isNullOrBlank() } ?: return null
-
-    val lang = appLangCode?.trim()?.lowercase()
-
-    fun path(o: TmdbLogo) = o.filePath ?: ""
-    fun isSvg(o: TmdbLogo) = path(o).endsWith(".svg", true)
-    fun urlOf(o: TmdbLogo) = "https://image.tmdb.org/t/p/w500${path(o)}"
-
-    var svgFallback: TmdbLogo? = null
-
-    for (logo in logos) {
-        val p = path(logo)
-        if (p.isBlank()) continue
-
-        val l = logo.iso6391?.trim()?.lowercase()
-        if (l == lang) {
-            if (!isSvg(logo)) return urlOf(logo)
-            if (svgFallback == null) svgFallback = logo
-        }
-    }
-    svgFallback?.let { return urlOf(it) }
-
-    var best: TmdbLogo? = null
-    var bestSvg: TmdbLogo? = null
-
-    fun voted(o: TmdbLogo) = (o.voteAverage ?: 0.0) > 0 && (o.voteCount ?: 0) > 0
-    fun better(a: TmdbLogo?, b: TmdbLogo): Boolean {
-        if (a == null) return true
-        val aAvg = a.voteAverage ?: 0.0
-        val aCnt = a.voteCount ?: 0
-        val bAvg = b.voteAverage ?: 0.0
-        val bCnt = b.voteCount ?: 0
-        return bAvg > aAvg || (bAvg == aAvg && bCnt > aCnt)
-    }
-
-    for (logo in logos) {
-        if (!voted(logo)) continue
-        if (isSvg(logo)) {
-            if (better(bestSvg, logo)) bestSvg = logo
-        } else {
-            if (better(best, logo)) best = logo
-        }
-    }
-
-    best?.let { return urlOf(it) }
-    bestSvg?.let { return urlOf(it) }
-    return null
 }
