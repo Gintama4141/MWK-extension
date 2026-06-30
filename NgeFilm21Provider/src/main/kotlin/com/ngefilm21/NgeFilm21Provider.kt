@@ -2,6 +2,7 @@ package com.ngefilm21
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import org.jsoup.nodes.Element
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
@@ -10,8 +11,15 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
+private data class RpmResponse(
+    val source: String? = null,
+    val hlsVideoTiktok: String? = null,
+)
+
+private fun String.cleanSlashes(): String = replace("\\/", "/")
+
 class Ngefilm21Provider : MainAPI() {
-    override var mainUrl = "https://new31.ngefilm.site"
+    override var mainUrl = "https://new37.ngefilm.site"
     override var name = "NgeFilm21"
     override val hasMainPage = true
     override var lang = "id"
@@ -32,12 +40,10 @@ class Ngefilm21Provider : MainAPI() {
         private val REGEX_M3U8 = Regex("""["'](https?://[^"']+\.m3u8[^"']*)["']""")
         private val REGEX_M3U8_REL = Regex("""["']([^"']+\.m3u8[^"']*)["']""")
         private val REGEX_HASH = Regex("""hash\s*:\s*["']([^"']+)["']""")
-        private val REGEX_SOURCE = Regex(""""source"\s*:\s*"([^"]+)"""")
-        private val REGEX_HLS_TIKTOK = Regex(""""hlsVideoTiktok"\s*:\s*"([^"]+)"""")
         private val REGEX_KRAKEN_SOURCE = Regex("""<source[^>]+src=["'](https:[^"']+)["']""")
         private val REGEX_KRAKEN_VIDEO = Regex("""src=["'](https:[^"']+/play/video/[^"']+)["']""")
         private val REGEX_EP_NUMBER = Regex("""(\d+)""")
-        private val REGEX_HEX_CLEAN = Regex("[^0-9a-fA-F]")
+        private val REGEX_NON_HEX = Regex("[^0-9a-fA-F]")
     }
 
     private fun Element.getImageAttr(): String? {
@@ -85,7 +91,9 @@ class Ngefilm21Provider : MainAPI() {
                         val document = app.get(finalUrl, timeout = 15_000L).document
                         val items = document.select("article.item-infinite").mapNotNull { it.toSearchResult() }
                         if (items.isNotEmpty()) HomePageList(title, items) else null
-                    } catch (e: Exception) { null }
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
             }.awaitAll().filterNotNull()
         }
@@ -97,7 +105,7 @@ class Ngefilm21Provider : MainAPI() {
         val href = this.selectFirst(".entry-title a")?.attr("href") ?: return null
         val qualityText = this.selectFirst(".gmr-quality-item")?.text()?.trim() ?: "HD"
         return newMovieSearchResponse(title, href, TvType.Movie) {
-            this.posterUrl = this@toSearchResult.selectFirst(".content-thumbnail img")?.getImageAttr()
+            this.posterUrl = selectFirst(".content-thumbnail img")?.getImageAttr()
             addQuality(qualityText)
         }
     }
@@ -210,6 +218,7 @@ class Ngefilm21Provider : MainAPI() {
                                 }
                             }
                         } catch (_: Exception) {
+                            // Player URL failed — try remaining servers
                         }
                     }
                 }.awaitAll()
@@ -231,7 +240,7 @@ class Ngefilm21Provider : MainAPI() {
             val unpackedJs = Unpacker.unpack(packedCode)
 
             REGEX_M3U8.find(unpackedJs)?.groupValues?.get(1)?.let { rawLink ->
-                val cleanLink = rawLink.replace("\\/", "/")
+                val cleanLink = rawLink.cleanSlashes()
                 val origin = try {
                     java.net.URL(url).protocol + "://" + java.net.URL(url).host
                 } catch (_: Exception) { "https://xshotcok.com" }
@@ -252,6 +261,7 @@ class Ngefilm21Provider : MainAPI() {
                 )
             }
         } catch (_: Exception) {
+            // Xshotcok extractor gagal — lewati
         }
     }
 
@@ -290,7 +300,7 @@ class Ngefilm21Provider : MainAPI() {
                 }
 
                 if (linkM3u8 != null) {
-                    val cleanUrl = linkM3u8.replace("\\/", "/")
+                    val cleanUrl = linkM3u8.cleanSlashes()
                     val finalUrl = if (cleanUrl.startsWith("/")) "https://$domain$cleanUrl" else cleanUrl
                     callback.invoke(
                         newExtractorLink(
@@ -310,7 +320,7 @@ class Ngefilm21Provider : MainAPI() {
             } else {
                 val directM3u8 = REGEX_M3U8_REL.find(doc)?.groupValues?.get(1)
                 if (directM3u8 != null) {
-                    val cleanUrl = directM3u8.replace("\\/", "/")
+                    val cleanUrl = directM3u8.cleanSlashes()
                     val finalUrl = if (cleanUrl.startsWith("/")) "https://$domain$cleanUrl" else cleanUrl
 
                     callback.invoke(
@@ -325,8 +335,8 @@ class Ngefilm21Provider : MainAPI() {
                     )
                 }
             }
-        } catch (e: Exception) {
-            Unit
+        } catch (_: Exception) {
+            // Masukestin extractor gagal — lewati
         }
     }
 
@@ -386,18 +396,20 @@ class Ngefilm21Provider : MainAPI() {
             else if (encryptedRes.trim().startsWith("{")) encryptedRes else decryptAES(encryptedRes)
             if (jsonStr.isBlank()) return
 
-            REGEX_SOURCE.find(jsonStr)?.groupValues?.get(1)?.let { link ->
-                callback.invoke(newExtractorLink("RPM Live", "RPM Live", link.replace("\\/", "/"), ExtractorLinkType.M3U8) {
-                    this.referer = "https://$RPM_PLAYER_DOMAIN/"
-                })
-            }
-            REGEX_HLS_TIKTOK.find(jsonStr)?.groupValues?.get(1)?.let { link ->
-                callback.invoke(newExtractorLink("RPM Live (Backup)", "RPM Live (Backup)", "https://$RPM_PLAYER_DOMAIN" + link.replace("\\/", "/"), ExtractorLinkType.M3U8) {
-                    this.referer = "https://$RPM_PLAYER_DOMAIN/"
-                })
+            tryParseJson<RpmResponse>(jsonStr)?.let { data ->
+                data.source?.let { link ->
+                    callback.invoke(newExtractorLink("RPM Live", "RPM Live", link.cleanSlashes(), ExtractorLinkType.M3U8) {
+                        this.referer = "https://$RPM_PLAYER_DOMAIN/"
+                    })
+                }
+                data.hlsVideoTiktok?.let { link ->
+                    callback.invoke(newExtractorLink("RPM Live (Backup)", "RPM Live (Backup)", "https://$RPM_PLAYER_DOMAIN${link.cleanSlashes()}", ExtractorLinkType.M3U8) {
+                        this.referer = "https://$RPM_PLAYER_DOMAIN/"
+                    })
+                }
             }
         } catch (e: Exception) {
-            Unit
+            // RPM extractor failed — player might use a different server
         }
     }
 
@@ -412,15 +424,15 @@ class Ngefilm21Provider : MainAPI() {
                     this.headers = mapOf("User-Agent" to UA_BROWSER)
                 })
             }
-        } catch (e: Exception) {
-            Unit
+        } catch (_: Exception) {
+            // Krakenfiles extractor gagal — lewati
         }
     }
 
     private fun decryptAES(text: String): String {
         if (text.isEmpty()) return ""
         return try {
-            val cleanHex = text.replace(REGEX_HEX_CLEAN, "")
+            val cleanHex = text.replace(REGEX_NON_HEX, "")
             if (cleanHex.length % 2 != 0) return ""
             val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
             cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(hexToBytes(RPM_KEY), "AES"), IvParameterSpec(hexToBytes(RPM_IV)))
