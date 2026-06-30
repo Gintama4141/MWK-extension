@@ -7,11 +7,17 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.httpsify
 import com.lagradost.cloudstream3.utils.loadExtractor
-import com.mwk.shared.utils.getIframeAttr
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
 
 private val IMAGE_SIZE_REGEX = Regex("-\\d+x\\d+(?=\\.(webp|jpg|jpeg|png))", RegexOption.IGNORE_CASE)
+
+private fun Element?.getIframeAttr(): String? {
+    return this?.let {
+        val lsSrc = it.attr("data-litespeed-src")
+        if (lsSrc.isNotEmpty()) lsSrc else it.attr("src")
+    }
+}
 
 private fun Element?.getPosterImageUrl(): String? {
     if (this == null) return null
