@@ -1,5 +1,5 @@
 // use an integer for version numbers
-version = 6
+version = 7
 
 
 cloudstream {
@@ -24,6 +24,6 @@ cloudstream {
     )
 
 
-    iconUrl = "https://new31.ngefilm.site/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png"
+    iconUrl = "https://new37.ngefilm.site/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png"
 
 }
