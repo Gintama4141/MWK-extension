@@ -41,6 +41,7 @@ class KuronimeProvider : MainAPI() {
         private const val ANIZIP_API = "https://api.ani.zip/mappings"
         private const val SOURCES_API_PATH = "/api/v9/sources"
         private val VIDEO_ID_REGEX = Regex("""\bid\b\s*[:=]\s*["']([a-zA-Z0-9_-]+)["']""")
+        private val BASE64_ID_REGEX = Regex("""_0x[a-f0-9]+\s*=\s*"([A-Za-z0-9+/=]+)"""")
         private val EPISODE_NUM_REGEX = Regex("(\\d+)")
         private val NON_DIGIT_REGEX = Regex("\\D")
         private val NON_WORD_REGEX = Regex("\\W")
@@ -263,10 +264,11 @@ class KuronimeProvider : MainAPI() {
         val document = req.document
         val currentBaseUrl = getBaseUrl(req.url)
 
-        val id = document.select("script:containsData(id)")
+        val id = document.select("script")
             .map { it.data() }
             .firstNotNullOfOrNull { script ->
                 VIDEO_ID_REGEX.find(script)?.groupValues?.get(1)
+                    ?: BASE64_ID_REGEX.find(script)?.groupValues?.get(1)
             } ?: throw ErrorLoadingException("Video ID not found in page scripts")
 
         val servers = try {
@@ -294,7 +296,7 @@ class KuronimeProvider : MainAPI() {
                         "AES/CBC/PKCS5Padding"
                     )
                     val source =
-                        tryParseJson<Sources>(decrypt?.toJsonFormat())?.src?.replace("\\", "")
+                        tryParseJson<Sources>(decrypt?.toJsonFormat())?.src?.replace("\\/", "/")
                     M3u8Helper.generateM3u8(
                         this.name,
                         source ?: return@runAllAsync,
@@ -313,7 +315,7 @@ class KuronimeProvider : MainAPI() {
                         false,
                         "AES/CBC/PKCS5Padding"
                     )
-                    tryParseJson<Mirrors>(decrypt)?.embed?.forEach { (version, entries) ->
+                    tryParseJson<Mirrors>(decrypt?.toJsonFormat())?.embed?.forEach { (version, entries) ->
                         entries.forEach { (_, entryUrl) ->
                             loadFixedExtractor(
                                 entryUrl,
@@ -333,9 +335,11 @@ class KuronimeProvider : MainAPI() {
         return true
     }
 
-    private fun String.toJsonFormat(): String {
-        return if (this.startsWith("\"")) this.substringAfter("\"").substringBeforeLast("\"")
-            .replace("\\\"", "\"") else this
+    private fun String?.toJsonFormat(): String? {
+        val s = this?.trim() ?: return null
+        return if (s.startsWith("\"") && s.endsWith("\""))
+            s.substring(1, s.length - 1).replace("\\\"", "\"")
+        else s
     }
 
     private suspend fun loadFixedExtractor(
