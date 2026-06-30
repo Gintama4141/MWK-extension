@@ -181,11 +181,11 @@
     "name": "MoviePedia21Provider"
   },
   {
-    "iconUrl": "https://new31.ngefilm.site/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png",
-    "fileHash": "sha256-769ecab8c809ff152c80967c0602ea11964e2e9b57d0ef437a25d69a1a36e2b6",
+    "iconUrl": "https://new37.ngefilm.site/wp-content/uploads/2023/08/cropped-imageedit_8_4481000408-60x60.png",
+    "fileHash": "sha256-a2d8c64a0d28f7f3447b1b81b9c891a59f26e56d02184611b5abec813b5a6262",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 36134,
+    "fileSize": 37278,
     "status": 1,
     "language": "id",
     "authors": [
@@ -196,7 +196,7 @@
       "TvSeries",
       "Movie"
     ],
-    "version": 6,
+    "version": 7,
     "internalName": "NgeFilm21Provider",
     "description": "NgeFilm21 \u2014 Streaming Movie and TV Series",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/NgeFilm21Provider.cs3",
