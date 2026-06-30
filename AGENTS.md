@@ -24,7 +24,7 @@ Anichin, Cinemax21, Donghub, Dutamovie, Kisskh, Klikxxi, Kuronime, Moviebox, Mov
 | Kisskh | v11 | Movie & TV |
 | Klikxxi | v7 | Movie & TV |
 | Kuronime | v13 | Anime |
-| MoviePedia21 | v2 | Movie & TV |
+| MoviePedia21 | v4 | Movie & TV |
 | Moviebox | v8 | Movie & TV |
 | NgeFilm21 | v5 | Movie & TV |
 | Nomat | v6 | Movie & TV |

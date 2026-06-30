@@ -11,7 +11,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.net.URI
 import java.net.URLEncoder
-import java.util.Locale
+
 
 class MoviePedia21Provider : MainAPI() {
 
@@ -156,14 +156,6 @@ class MoviePedia21Provider : MainAPI() {
             }
         }
 
-        doc.select(SEL_DOWNLOAD_LINKS).forEach { link ->
-            currentCoroutineContext().ensureActive()
-            val href = link.attr("href")
-            if (href.isNotBlank()) {
-                loadExtractor(href, referer, subtitleCallback, callback)
-            }
-        }
-
         val playerId = doc.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
         if (!playerId.isNullOrEmpty()) {
             doc.select("div.tab-content-ajax").forEach { ele ->
@@ -201,15 +193,6 @@ class MoviePedia21Provider : MainAPI() {
                     }
                 }
             } catch (_: Exception) {}
-        }
-
-        doc.select(SEL_SUBTITLE_TRACKS).forEach { track ->
-            currentCoroutineContext().ensureActive()
-            val subUrl = track.attr("abs:src")
-            val langCode = track.attr("srclang").ifBlank { "id" }
-            if (subUrl.isNotBlank()) {
-                subtitleCallback(newSubtitleFile(getSubtitleLangName(langCode), fixUrl(subUrl)))
-            }
         }
 
         return true
@@ -255,9 +238,6 @@ class MoviePedia21Provider : MainAPI() {
     private fun getBaseUrl(url: String): String =
         URI(url).let { "${it.scheme}://${it.host}" }
 
-    private fun getSubtitleLangName(code: String): String =
-        try { Locale(code.lowercase()).displayLanguage } catch (_: Exception) { code }
-
     companion object {
         private const val SEL_ITEM = "article.item-infinite"
         private const val SEL_TITLE = "h2.entry-title a"
@@ -270,8 +250,6 @@ class MoviePedia21Provider : MainAPI() {
         private const val SEL_SERIES_LINK = ".gmr-listseries a:not([href*=\"/tv/\"])"
         private const val SEL_EPISODE_TABS = "ul.muvipro-player-tabs li a"
         private const val SEL_IFRAME = "div.gmr-embed-responsive iframe"
-        private const val SEL_DOWNLOAD_LINKS = "ul.gmr-download-list li a"
-        private const val SEL_SUBTITLE_TRACKS = "track[kind=subtitles]"
         private val REGEX_EPISODE = Regex("(?i)episode\\s*(\\d+)")
         private val WHITESPACE_REGEX = Regex("\\s+")
         private val QUALITY_SIZE_REGEX = Regex("(-\\d*x\\d*)")
