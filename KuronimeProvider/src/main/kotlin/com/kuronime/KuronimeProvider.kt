@@ -14,7 +14,6 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.nicehttp.RequestBodyTypes
-import com.miku.BuildConfig
 import com.mwk.shared.data.MetaAnimeData
 import com.mwk.shared.utils.fetchTmdbLogoUrl
 import com.mwk.shared.utils.getImageAttr
@@ -38,6 +37,7 @@ class KuronimeProvider : MainAPI() {
 
     companion object {
         private const val AES_KEY = "3&!Z0M,VIZ;dZW=="
+        private const val TMDB_API_KEY = "98ae14df2b8d8f8f8136499daf79f0e0"
         private const val ANIZIP_API = "https://api.ani.zip/mappings"
         private const val SOURCES_API_PATH = "/api/v9/sources"
         private val VIDEO_ID_REGEX = Regex("""\bid\b\s*[:=]\s*["']([a-zA-Z0-9_-]+)["']""")
@@ -184,7 +184,7 @@ class KuronimeProvider : MainAPI() {
 
         val logoUrl = fetchTmdbLogoUrl(
             tmdbAPI = "https://api.themoviedb.org/3",
-            apiKey = BuildConfig.TMDB_API_KEY,
+            apiKey = TMDB_API_KEY,
             type = type,
             tmdbId = tmdbid,
             appLangCode = "en"
@@ -346,19 +346,21 @@ class KuronimeProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ) {
         loadExtractor(url ?: return, referer, subtitleCallback) { link ->
-            callback(
-                newExtractorLink(
-                    link.name,
-                    link.name,
-                    link.url,
-                    link.type,
-                ) {
-                    this.referer = link.referer
-                    this.headers = link.headers
-                    this.extractorData = link.extractorData
-                    this.quality = getQualityFromName(quality)
-                }
-            )
+            kotlinx.coroutines.runBlocking {
+                callback(
+                    newExtractorLink(
+                        link.name,
+                        link.name,
+                        link.url,
+                        link.type,
+                    ) {
+                        this.referer = link.referer
+                        this.headers = link.headers
+                        this.extractorData = link.extractorData
+                        this.quality = getQualityFromName(quality)
+                    }
+                )
+            }
         }
     }
 
