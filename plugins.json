@@ -160,10 +160,10 @@
     "name": "MovieboxProvider"
   },
   {
-    "fileHash": "sha256-68091e6f17129a853e18e08697288922d84ab827c93ebef187af7f5b6f1861b5",
+    "fileHash": "sha256-34d93341fddf613897fa205037de6829a19df169af3a7b9f1336abe214970956",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 24726,
+    "fileSize": 22699,
     "status": 1,
     "language": "id",
     "authors": [
@@ -174,7 +174,7 @@
       "TvSeries",
       "AsianDrama"
     ],
-    "version": 3,
+    "version": 4,
     "internalName": "MoviePedia21Provider",
     "description": "MoviePedia21 \u2014 Nonton Movie dan Serial TV",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/MoviePedia21Provider.cs3",
