@@ -5,10 +5,13 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.*
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.net.URI
 import java.net.URLEncoder
+import java.util.Locale
 
 class MoviePedia21Provider : MainAPI() {
 
@@ -17,9 +20,6 @@ class MoviePedia21Provider : MainAPI() {
     override val hasMainPage = true
     override var lang = "id"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.AsianDrama)
-
-    private var lastLoadedDoc: Document? = null
-    private var lastLoadedUrl: String? = null
 
     override val mainPage = mainPageOf(
         "category/movie/page/%d/" to "Movie Terbaru",
@@ -45,10 +45,9 @@ class MoviePedia21Provider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         return try {
             val doc = app.get("$mainUrl/${request.data.format(page)}", timeout = 15_000L).document
-            val items = doc.select(SEL_ITEM).mapNotNull { it.toSearchResult() }
+            val items = doc.select(SEL_ITEM).mapNotNull { it.toSearchItem(SEL_POSTER) }
             newHomePageResponse(request.name, items)
         } catch (e: Exception) {
-            println("MoviePedia21 getMainPage failed: ${request.data} - ${e.message}")
             newHomePageResponse(request.name, emptyList())
         }
     }
@@ -57,25 +56,18 @@ class MoviePedia21Provider : MainAPI() {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         return try {
             val doc = app.get("$mainUrl/?s=$encodedQuery&post_type[]=post&post_type[]=tv", timeout = 15_000L).document
-            doc.select(SEL_ITEM).mapNotNull { it.toSearchResult() }
+            doc.select(SEL_ITEM).mapNotNull { it.toSearchItem(SEL_POSTER) }
         } catch (e: Exception) {
-            println("MoviePedia21 search failed: $query - ${e.message}")
             emptyList()
         }
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val fetch = try {
-            app.get(url, timeout = 15_000L)
+        val doc = try {
+            app.get(url, timeout = 15_000L).document
         } catch (e: Exception) {
-            println("MoviePedia21 load failed: $url - ${e.message}")
-            throw e
+            throw ErrorLoadingException("Gagal memuat halaman: ${e.message}")
         }
-        val doc = fetch.document
-        val baseUrl = getBaseUrl(fetch.url)
-
-        lastLoadedDoc = doc
-        lastLoadedUrl = url
 
         val title = doc.selectFirst("h1.entry-title")?.text()
             ?.substringBefore("Subtitle Indonesia")?.trim()
@@ -91,10 +83,10 @@ class MoviePedia21Provider : MainAPI() {
         val actors = doc.select("span[itemprop=actors] a").map { it.text() }
         val duration = doc.selectFirst("div.gmr-moviedata strong:contains(Duration)")
             ?.parent()?.ownText()?.filter { it.isDigit() }?.toIntOrNull()
-        val recommendations = doc.select("article.item").mapNotNull { it.toRecommendResult() }
+        val recommendations = doc.select(SEL_RECOMMEND).mapNotNull { it.toSearchItem(SEL_RECOMMEND_POSTER) }
 
         return if (tvType == TvType.TvSeries) {
-            val episodes = parseEpisodes(doc, baseUrl, poster)
+            val episodes = parseEpisodes(doc, poster)
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = poster
                 this.year = year
@@ -121,25 +113,23 @@ class MoviePedia21Provider : MainAPI() {
         }
     }
 
-    private suspend fun parseEpisodes(doc: Document, baseUrl: String, poster: String?): List<Episode> {
+    private suspend fun parseEpisodes(doc: Document, poster: String?): List<Episode> {
         val latestEpLink = doc.selectFirst(SEL_SERIES_LINK)?.attr("href") ?: return emptyList()
         return try {
             val epDoc = app.get(fixUrl(latestEpLink), timeout = 15_000L).document
             epDoc.select(SEL_EPISODE_TABS).mapNotNull { tab ->
                 val href = fixUrl(tab.attr("href"))
+                if (href.isBlank()) return@mapNotNull null
                 val text = tab.text().trim()
                 val epNum = REGEX_EPISODE.find(text)
                     ?.groupValues?.getOrNull(1)?.toIntOrNull()
-                if (href.isNotBlank()) {
-                    newEpisode(href) {
-                        this.name = text
-                        this.episode = epNum
-                        this.posterUrl = poster
-                    }
-                } else null
+                newEpisode(href) {
+                    this.name = text
+                    this.episode = epNum
+                    this.posterUrl = poster
+                }
             }
         } catch (e: Exception) {
-            println("MoviePedia21 episode fetch failed: $latestEpLink - ${e.message}")
             emptyList()
         }
     }
@@ -150,46 +140,85 @@ class MoviePedia21Provider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val doc = lastLoadedDoc.takeIf { lastLoadedUrl == data }
-            ?: try {
-                app.get(data, timeout = 15_000L).document
-            } catch (e: Exception) {
-                throw ErrorLoadingException("Gagal memuat video")
-            }
+        val doc = try {
+            app.get(data, timeout = 15_000L).document
+        } catch (e: Exception) {
+            throw ErrorLoadingException("Gagal memuat video")
+        }
 
         val baseUrl = getBaseUrl(data)
+        val referer = "$baseUrl/"
 
         doc.select(SEL_IFRAME).forEach { iframe ->
+            currentCoroutineContext().ensureActive()
             iframe.getIframeAttr()?.let { src ->
-                loadExtractor(httpsify(src), baseUrl, subtitleCallback, callback)
+                loadExtractor(httpsify(src), referer, subtitleCallback, callback)
             }
         }
+
         doc.select(SEL_DOWNLOAD_LINKS).forEach { link ->
+            currentCoroutineContext().ensureActive()
             val href = link.attr("href")
             if (href.isNotBlank()) {
-                loadExtractor(href, baseUrl, subtitleCallback, callback)
+                loadExtractor(href, referer, subtitleCallback, callback)
             }
+        }
+
+        val playerId = doc.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
+        if (!playerId.isNullOrEmpty()) {
+            doc.select("div.tab-content-ajax").forEach { ele ->
+                currentCoroutineContext().ensureActive()
+                try {
+                    val ajaxDoc = app.post(
+                        "$baseUrl/wp-admin/admin-ajax.php",
+                        data = mapOf(
+                            "action" to "muvipro_player_content",
+                            "tab" to ele.attr("id"),
+                            "post_id" to playerId
+                        ),
+                        timeout = 15_000L
+                    ).document
+                    ajaxDoc.select("iframe").forEach { iframe ->
+                        val src = httpsify(iframe.attr("src"))
+                        if (src.isNotBlank()) {
+                            loadExtractor(src, referer, subtitleCallback, callback)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+
+        val tabs = doc.select("ul.muvipro-player-tabs li a")
+            .map { fixUrl(it.attr("href")) }
+            .filter { it != data }
+        for (tabUrl in tabs) {
+            currentCoroutineContext().ensureActive()
+            try {
+                val tabDoc = app.get(tabUrl, timeout = 15_000L).document
+                tabDoc.select(SEL_IFRAME).forEach { iframe ->
+                    iframe.getIframeAttr()?.let { src ->
+                        loadExtractor(httpsify(src), referer, subtitleCallback, callback)
+                    }
+                }
+            } catch (_: Exception) {}
         }
 
         doc.select(SEL_SUBTITLE_TRACKS).forEach { track ->
+            currentCoroutineContext().ensureActive()
             val subUrl = track.attr("abs:src")
-            val lang = track.attr("srclang").ifBlank { "id" }
+            val langCode = track.attr("srclang").ifBlank { "id" }
             if (subUrl.isNotBlank()) {
-                subtitleCallback(
-                    newSubtitleFile(lang, fixUrl(subUrl))
-                )
+                subtitleCallback(newSubtitleFile(getSubtitleLangName(langCode), fixUrl(subUrl)))
             }
         }
 
-        lastLoadedDoc = null
-        lastLoadedUrl = null
         return true
     }
 
-    private fun Element.toSearchResult(): SearchResponse? {
+    private fun Element.toSearchItem(posterSelector: String): SearchResponse? {
         val title = selectFirst(SEL_TITLE)?.text()?.trim() ?: return null
         val href = fixUrl(selectFirst(SEL_TITLE)?.attr("href") ?: return null)
-        val poster = fixUrlNull(selectFirst(SEL_POSTER)?.getImageAttr())?.fixImageQuality()
+        val poster = fixUrlNull(selectFirst(posterSelector)?.getImageAttr())?.fixImageQuality()
         val rating = selectFirst(SEL_RATING)?.ownText()?.trim()
         val isTV = selectFirst(SEL_TYPE)?.text()?.contains("TV", true) == true
         val eps = selectFirst(SEL_EP_COUNT)?.text()?.toIntOrNull()
@@ -202,28 +231,7 @@ class MoviePedia21Provider : MainAPI() {
         } else {
             newMovieSearchResponse(title, href, TvType.Movie) {
                 this.posterUrl = poster
-                addQuality("HD")
                 this.score = Score.from10(rating?.toDoubleOrNull())
-            }
-        }
-    }
-
-    private fun Element.toRecommendResult(): SearchResponse? {
-        val title = selectFirst(SEL_TITLE)?.text()?.trim() ?: return null
-        val href = selectFirst(SEL_TITLE)?.attr("href") ?: return null
-        val poster = fixUrlNull(selectFirst("div.content-thumbnail img")?.attr("src"))?.fixImageQuality()
-        val isTV = selectFirst(SEL_TYPE)?.text()?.contains("TV", true) == true
-        val eps = selectFirst(SEL_EP_COUNT)?.text()?.toIntOrNull()
-
-        return if (isTV) {
-            newAnimeSearchResponse(title, href, TvType.TvSeries) {
-                this.posterUrl = poster
-                addSub(eps)
-            }
-        } else {
-            newMovieSearchResponse(title, href, TvType.Movie) {
-                this.posterUrl = poster
-                addQuality("HD")
             }
         }
     }
@@ -245,16 +253,17 @@ class MoviePedia21Provider : MainAPI() {
     }
 
     private fun getBaseUrl(url: String): String =
-        try {
-            URI(url).let { "${it.scheme}://${it.host}" }
-        } catch (e: Exception) {
-            url.substringBefore("/", missingDelimiterValue = mainUrl)
-        }
+        URI(url).let { "${it.scheme}://${it.host}" }
+
+    private fun getSubtitleLangName(code: String): String =
+        try { Locale(code.lowercase()).displayLanguage } catch (_: Exception) { code }
 
     companion object {
         private const val SEL_ITEM = "article.item-infinite"
         private const val SEL_TITLE = "h2.entry-title a"
         private const val SEL_POSTER = "img.wp-post-image"
+        private const val SEL_RECOMMEND = "article.item.col-md-20"
+        private const val SEL_RECOMMEND_POSTER = "div.content-thumbnail img"
         private const val SEL_RATING = ".gmr-rating-item"
         private const val SEL_TYPE = ".gmr-posttype-item"
         private const val SEL_EP_COUNT = ".gmr-numbeps span"
