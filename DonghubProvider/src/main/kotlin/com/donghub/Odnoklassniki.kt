@@ -82,7 +82,7 @@ class Odnoklassniki : ExtractorApi() {
 
     companion object {
         private val UNICODE_ESC_REGEX = Regex("\\\\u([0-9A-Fa-f]{4})")
-        private val VIDEOS_JSON_REGEX = Regex(""""videos"\s*:\s*\[("[^"]*"|\{[^}]*\})*\]""")
+        private val VIDEOS_JSON_REGEX = Regex(""""videos":(\[[^]]*])""")
     }
 
     data class OkRuVideo(

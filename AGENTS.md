@@ -19,7 +19,7 @@ Anichin, Cinemax21, Donghub, Dutamovie, Kisskh, Klikxxi, Kuronime, Moviebox, Mov
 |----------|---------|------|
 | Anichin | v7 | Anime |
 | Cinemax21 | v13 | Movie & TV |
-| Donghub | v9 | Anime |
+| Donghub | v10 | Anime |
 | Dutamovie | v17 | Movie & TV |
 | Kisskh | v11 | Movie & TV |
 | Klikxxi | v7 | Movie & TV |
