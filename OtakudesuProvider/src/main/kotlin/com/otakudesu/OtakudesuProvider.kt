@@ -5,8 +5,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addKitsuId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addMalId
-import com.lagradost.cloudstream3.extractors.Filesim
-import com.lagradost.cloudstream3.extractors.JWPlayer
+
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
@@ -359,32 +358,3 @@ class OtakudesuProvider : MainAPI() {
     }
 }
 
-class Moedesu : JWPlayer() {
-    override val name = "Moedesu"
-    override val mainUrl = "https://desustream.me/moedesu/"
-}
-
-class DesuBeta : JWPlayer() {
-    override val name = "DesuBeta"
-    override val mainUrl = "https://desustream.me/beta/"
-}
-
-class Desudesuhd : JWPlayer() {
-    override val name = "Desudesuhd"
-    override val mainUrl = "https://desustream.me/desudesuhd/"
-}
-
-class Odvidhide : Filesim() {
-    override val name = "Odvidhide"
-    override var mainUrl = "https://odvidhide.com"
-}
-
-class DesustreamInfo : JWPlayer() {
-    override val name = "DesustreamInfo"
-    override val mainUrl = "https://desustream.info"
-}
-
-class Updesu : JWPlayer() {
-    override val name = "Updesu"
-    override val mainUrl = "https://desustream.info/dstream/updesu"
-}
