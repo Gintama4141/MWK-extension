@@ -33,7 +33,7 @@ class Ngefilm21Provider : MainAPI() {
 
         private val REGEX_RESIZE = Regex("""-\d+x\d+""")
         private val REGEX_RPM_ID = Regex("""rpmlive\.online.*?[#&?]id=([a-zA-Z0-9]+)|rpmlive\.online.*?#([a-zA-Z0-9]+)""")
-        private val REGEX_VIBUXER = Regex("""(?i)(?:src|href)\s*=\s*["'](https://(?:hglink\.(?:to|com|net)|vibuxer\.(?:com|net|to)|masukestin\.(?:com|net))/e/[a-zA-Z0-9]+)["']""")
+        private val REGEX_VIBUXER = Regex("""(?i)(?:src|href)\s*=\s*["'](https://(?:hglink\.(?:to|com|net)|vibuxer\.(?:com|net|to)|masukestin\.(?:com|net)|gradehgplus\.com|hgplaycdn\.com)/e/[a-zA-Z0-9]+)["']""")
         private val REGEX_KRAKEN = Regex("""src=["'](https://krakenfiles\.com/embed-video/[^"']+)["']""")
         private val REGEX_EMBED_HOSTS = Regex("""(?i)src=["'](https://[^"']*(?:short\.icu|mixdrop|xshotcok|hxfile)[^"']*)["']""")
         private val REGEX_EMBED_ALL = Regex("""(?:src|data-litespeed-src)=["'](https?://(?!(?:www\.)?googletagmanager|www\.google|data:)[^"']+)["']""")
@@ -206,7 +206,8 @@ class Ngefilm21Provider : MainAPI() {
                                 when {
                                     url.contains("xshotcok") || url.contains("hxfile") -> extractXshotcok(url, callback)
                                     url.contains("krakenfiles") -> extractKrakenManual(url, callback)
-                                    url.contains("masukestin") || url.contains("hglink") || url.contains("vibuxer") ->
+                                    url.contains("masukestin") || url.contains("hglink") || url.contains("vibuxer") ||
+                                    url.contains("gradehgplus") || url.contains("hgplaycdn") ->
                                         extractMasukestin(url, fixedUrl, callback)
                                     url.contains("short.icu") -> {
                                         val finalUrl = app.get(url, headers = mapOf("Referer" to fixedUrl), timeout = 15_000L).url
@@ -216,6 +217,7 @@ class Ngefilm21Provider : MainAPI() {
                                     url.contains("vidara.to") -> extractPackedM3u8(url, "Vidara", callback)
                                     url.contains("abyss") -> loadExtractor(url, subtitleCallback, callback)
                                     url.contains("hgcloud") -> loadExtractor(url, subtitleCallback, callback)
+                                    url.contains("bangjago") -> loadExtractor(url, subtitleCallback, callback)
                                     else -> loadExtractor(url, subtitleCallback, callback)
                                 }
                             }
