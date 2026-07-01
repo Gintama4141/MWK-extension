@@ -36,9 +36,9 @@ class OneTouchTV : MainAPI() {
     override var name = "OneTouchTV"
     override val hasMainPage = true
     override val hasDownloadSupport = true
-    override val supportedTypes = setOf(TvType.AsianDrama, TvType.Anime)
+    override val supportedTypes = setOf(TvType.AsianDrama, TvType.Anime, TvType.Movie)
 
-    override val mainPage = mainPageOf("vod/home" to "Home")
+    override val mainPage = mainPageOf("vod/home" to "Home", "vod/movie" to "Movie")
 
     override suspend fun search(query: String, page: Int): SearchResponseList? {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
@@ -69,38 +69,56 @@ class OneTouchTV : MainAPI() {
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        val url = if (request.data == "vod/movie") "$mainUrl/${request.data}?page=$page"
+                   else "$mainUrl/${request.data}"
         val rawResponse = try {
-            app.get("$mainUrl/${request.data}", timeout = 15_000L).text
+            app.get(url, timeout = 15_000L).text
         } catch (e: Exception) {
-            throw ErrorLoadingException("Failed to fetch home page: ${e.message}")
+            throw ErrorLoadingException("Failed to fetch ${request.name}: ${e.message}")
         }
         val decryptedJson = try {
             decryptString(rawResponse)
         } catch (e: Exception) {
-            throw ErrorLoadingException("Failed to decrypt home page response: ${e.message}")
+            throw ErrorLoadingException("Failed to decrypt ${request.name} response: ${e.message}")
         }
-        if (decryptedJson.isBlank()) throw ErrorLoadingException("Home page: empty response after decryption")
-        val parser = tryParseJson<MediaResult>(decryptedJson)
-            ?: throw ErrorLoadingException("Failed to parse home page data")
-        val allMedia = buildList {
-            addAll(parser.randomSlideShow ?: emptyList())
-            addAll(parser.recents ?: emptyList())
-        }
-        val uniqueMedia = allMedia.distinctBy { it.id2 ?: it.id ?: it.title }
-        val filteredMedia = uniqueMedia.filter { media ->
-            settingsForProvider.enableAdult || !(media.type?.contains("RAW", ignoreCase = true) ?: false)
-        }
-        val groupedByCountry = filteredMedia.groupBy { it.country?.trim()?.lowercase() ?: "unknown" }
-        val homeLists = groupedByCountry.mapNotNull { (country, items) ->
-            if (items.size > 4) {
-                HomePageList(
-                    name = country.replaceFirstChar { it.uppercase() },
-                    list = items.map { it.toSearchResponse(mainUrl) },
+        if (decryptedJson.isBlank()) throw ErrorLoadingException("${request.name}: empty response after decryption")
+
+        return if (request.data == "vod/movie") {
+            val movies = tryParseJson<Array<SearchResult>>(decryptedJson)?.toList()
+                ?: throw ErrorLoadingException("Failed to parse movie data")
+            newHomePageResponse(
+                list = listOf(HomePageList(
+                    name = "Movie",
+                    list = movies.map { movie ->
+                        newTvSeriesSearchResponse(movie.title ?: "Unknown", "$mainUrl/vod/${movie.id}/detail", TvType.Movie) { posterUrl = movie.image }
+                    },
                     isHorizontalImages = false
-                )
-            } else null
+                )),
+                hasNext = movies.size >= 30
+            )
+        } else {
+            val parser = tryParseJson<MediaResult>(decryptedJson)
+                ?: throw ErrorLoadingException("Failed to parse home page data")
+            val allMedia = buildList {
+                addAll(parser.randomSlideShow ?: emptyList())
+                addAll(parser.recents ?: emptyList())
+            }
+            val uniqueMedia = allMedia.distinctBy { it.id2 ?: it.id ?: it.title }
+            val filteredMedia = uniqueMedia.filter { media ->
+                settingsForProvider.enableAdult || !(media.type?.contains("RAW", ignoreCase = true) ?: false)
+            }
+            val groupedByCountry = filteredMedia.groupBy { it.country?.trim()?.lowercase() ?: "unknown" }
+            val homeLists = groupedByCountry.mapNotNull { (country, items) ->
+                if (items.size > 4) {
+                    HomePageList(
+                        name = country.replaceFirstChar { it.uppercase() },
+                        list = items.map { it.toSearchResponse(mainUrl) },
+                        isHorizontalImages = false
+                    )
+                } else null
+            }
+            newHomePageResponse(list = homeLists, hasNext = false)
         }
-        return newHomePageResponse(list = homeLists, hasNext = false)
     }
 
     private fun MediaItem.toSearchResponse(mainUrl: String): SearchResponse =
@@ -190,6 +208,7 @@ class OneTouchTV : MainAPI() {
                 val sourceName = src.name?.replaceFirstChar { it.uppercase() } ?: "Source"
                 callback(newExtractorLink(sourceName, sourceName, url, INFER_TYPE) {
                     this.quality = getQualityFromName(src.quality ?: "")
+                    this.referer = "$mainUrl/"
                     this.headers = src.headers ?: emptyMap()
                 })
             }
