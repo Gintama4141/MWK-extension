@@ -79,6 +79,7 @@ class OneTouchTV : MainAPI() {
         } catch (e: Exception) {
             throw ErrorLoadingException("Failed to decrypt home page response: ${e.message}")
         }
+        if (decryptedJson.isBlank()) throw ErrorLoadingException("Home page: empty response after decryption")
         val parser = tryParseJson<MediaResult>(decryptedJson)
             ?: throw ErrorLoadingException("Failed to parse home page data")
         val allMedia = buildList {

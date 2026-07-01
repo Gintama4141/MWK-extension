@@ -34,10 +34,13 @@ fun decryptAes256Cbc(cipherBytes: ByteArray, key: ByteArray, iv: ByteArray): Byt
 private data class DecryptResult(val result: String)
 
 fun decryptString(input: String): String {
-    val normalized = normalizeCustomAlphabet(input)
-    val cipherBytes = base64ToBytes(normalized)
-    val plaintextBytes = decryptAes256Cbc(cipherBytes, key, iv)
+    val trimmed = input.trim()
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return trimmed
     return runCatching {
-        tryParseJson<DecryptResult>(String(plaintextBytes, Charsets.UTF_8))
-    }.getOrNull()?.result ?: ""
+        val normalized = normalizeCustomAlphabet(input)
+        val cipherBytes = base64ToBytes(normalized)
+        val plaintextBytes = decryptAes256Cbc(cipherBytes, key, iv)
+        val plaintext = String(plaintextBytes, Charsets.UTF_8)
+        tryParseJson<DecryptResult>(plaintext)?.result ?: plaintext
+    }.getOrDefault("")
 }
