@@ -10,5 +10,7 @@ class PencurimoviePluginProvider: Plugin() {
         registerMainAPI(PencurimovieProvider())
         registerExtractorAPI(Dsvplay())
         registerExtractorAPI(Hglink())
+        registerExtractorAPI(VoeSx())
+        registerExtractorAPI(StreamTapeCom())
     }
 }
