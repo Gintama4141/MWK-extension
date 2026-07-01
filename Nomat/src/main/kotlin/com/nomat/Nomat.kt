@@ -4,15 +4,8 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
-import com.lagradost.cloudstream3.MainAPI
-import com.lagradost.cloudstream3.SearchResponse
-import com.lagradost.cloudstream3.TvType
-import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.mvvm.logError
-import com.lagradost.cloudstream3.base64Decode
-import com.lagradost.cloudstream3.newSubtitleFile
 import java.net.URLEncoder
 import org.jsoup.nodes.Element
 
@@ -183,9 +176,9 @@ class Nomat : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            val nhDoc = app.get(data, referer = mainUrl, timeout = 30_000L).document
+            val embedDoc = app.get(data, referer = mainUrl, timeout = 30_000L).document
 
-            nhDoc.select("track[kind=subtitles], .subtitle-option, [data-subtitle]").forEach { subEl ->
+            embedDoc.select("track[kind=subtitles], .subtitle-option, [data-subtitle]").forEach { subEl ->
                 val subUrl = subEl.attr("src").takeIf { it.isNotBlank() }
                     ?: subEl.attr("data-src").takeIf { it.isNotBlank() }
                     ?: subEl.attr("data-subtitle").takeIf { it.isNotBlank() }
@@ -194,7 +187,7 @@ class Nomat : MainAPI() {
                 subUrl?.let { subtitleCallback(newSubtitleFile(label, it)) }
             }
 
-            nhDoc.select("div.server-item").amap { el ->
+            embedDoc.select("div.server-item").amap { el ->
                 val encoded = el.attr("data-url")
                 if (encoded.isNotBlank()) {
                     try {

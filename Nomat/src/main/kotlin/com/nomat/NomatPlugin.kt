@@ -9,7 +9,7 @@ class NomatPlugin : Plugin() {
     override fun load(context: Context) {
         registerMainAPI(Nomat())
         registerExtractorAPI(Hydrax())
-		registerExtractorAPI(Dingtezuni())
+        registerExtractorAPI(Dingtezuni())
         registerExtractorAPI(Movearnpre())
         registerExtractorAPI(Mivalyo())
         registerExtractorAPI(Bingezove())

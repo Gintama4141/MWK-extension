@@ -2,7 +2,6 @@ package com.nomat
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.extractors.VidHidePro
 
@@ -44,7 +43,7 @@ open class Dingtezuni : ExtractorApi() {
             } ?: return
 
             M3U8_SRC_REGEX.findAll(script).forEach { match ->
-                generateM3u8(
+                M3u8Helper.generateM3u8(
                     name,
                     fixUrl(match.groupValues[1]),
                     referer = "$mainUrl/",
