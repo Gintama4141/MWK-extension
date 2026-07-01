@@ -37,6 +37,8 @@ import com.lagradost.cloudstream3.toNewSearchResponseList
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.INFER_TYPE
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.phisher98.BuildConfig
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -160,6 +162,25 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
     override suspend fun quickSearch(query: String): List<SearchResponse>? = search(query,1)?.items
 
     override suspend fun search(query: String, page: Int): SearchResponseList? {
+        if (page <= 1) {
+            val torrentHits = searchTorrentSources(query)
+            if (torrentHits.isNotEmpty()) {
+                return torrentHits.take(20).amap { hit ->
+                    val cleanTitle = hit.title.substringBefore(" [").substringBefore(" | ").trim()
+                    val poster = try {
+                        val q = URLEncoder.encode(cleanTitle, "UTF-8")
+                        app.get(
+                            "$tmdbAPI/search/multi?api_key=$apiKey&query=$q",
+                            timeout = 5_000L
+                        ).text.let { tryParseJson<Results>(it) }?.results?.firstOrNull()?.posterPath
+                            ?.let { getImageUrl(it) }
+                    } catch (_: Exception) { null }
+                    newMovieSearchResponse(cleanTitle, hit.toJson(), TvType.Movie) {
+                        this.posterUrl = poster
+                    }
+                }.toNewSearchResponseList()
+            }
+        }
         return app.get(
             "$tmdbAPI/search/multi?api_key=$apiKey&language=en-US&query=$query&page=$page&include_adult=${settingsForProvider.enableAdult}",
             timeout = 15_000L
@@ -170,6 +191,12 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
 
 
     override suspend fun load(url: String): LoadResponse? {
+        tryParseJson<TorrentSearchResult>(url)?.let { hit ->
+            val cleanTitle = hit.title.substringBefore(" [").substringBefore(" | ").trim()
+            return newMovieLoadResponse(cleanTitle, url, TvType.Movie, url) {
+                this.posterUrl = null
+            }
+        }
         val data = tryParseJson<Data>(url) ?: return null
         val type = getType(data.type)
         val resUrl = if (type == TvType.Movie) {
@@ -376,6 +403,12 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
+        tryParseJson<TorrentSearchResult>(data)?.let { hit ->
+            callback(newExtractorLink("Torrent", hit.title, hit.magnet, INFER_TYPE) {
+                this.referer = ""
+            })
+            return true
+        }
         val provider = sharedPref.getString("debrid_provider", null)
         val key = sharedPref.getString("debrid_key", null)
         val dataObj = tryParseJson<LoadData>(data) ?: throw ErrorLoadingException("Gagal memuat data video")

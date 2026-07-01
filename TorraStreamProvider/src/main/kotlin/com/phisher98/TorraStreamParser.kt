@@ -432,3 +432,8 @@ data class MeteorHints(
     val filename: String?,
     val videoSize: Long?
 )
+
+data class TorrentSearchResult(
+    val title: String,
+    val magnet: String
+)
