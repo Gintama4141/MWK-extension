@@ -87,3 +87,8 @@ class Hydrax : VidHidePro() {
     override var name = "Hydrax"
     override var mainUrl = "https://playhydrax.com"
 }
+
+class FilelionsTo : VidHidePro() {
+    override var name = "Filelions"
+    override var mainUrl = "https://filelions.to"
+}

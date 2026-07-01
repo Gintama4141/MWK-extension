@@ -1,4 +1,4 @@
-version = 7
+version = 8
 
 cloudstream {
     description = "Nomat - Streaming Movie and TV Series"

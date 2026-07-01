@@ -14,5 +14,6 @@ class NomatPlugin : Plugin() {
         registerExtractorAPI(Mivalyo())
         registerExtractorAPI(Bingezove())
         registerExtractorAPI(Ryderjet())
+        registerExtractorAPI(FilelionsTo())
     }
 }
