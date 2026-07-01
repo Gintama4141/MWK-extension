@@ -15,10 +15,11 @@ class PencurimovieProvider : MainAPI() {
     override val hasMainPage = true
     override var lang = "id"
     override val hasDownloadSupport = true
-    override val supportedTypes = setOf(TvType.Movie, TvType.Anime, TvType.Cartoon)
+    override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     companion object {
         private val NON_DIGIT_REGEX = Regex("\\D")
+        private val DURATION_REGEX = Regex("(\\d+)")
         private val SEASON_REGEX = Regex("Season\\s*(\\d+)")
         private val EPISODE_REGEX = Regex("Episode\\s*(\\d+)")
     }
@@ -41,13 +42,8 @@ class PencurimovieProvider : MainAPI() {
         val document = app.get("$mainUrl/${request.data}/page/$page", timeout = 30_000L).document
         val home = document.select("div.ml-item").mapNotNull { it.toSearchResult() }
         val hasNext = document.selectFirst("a.next, a.page-numbers.next:not(.dots)") != null
-
         return newHomePageResponse(
-            list = HomePageList(
-                name = request.name,
-                list = home,
-                isHorizontalImages = false
-            ),
+            list = HomePageList(name = request.name, list = home),
             hasNext = hasNext
         )
     }
@@ -63,47 +59,41 @@ class PencurimovieProvider : MainAPI() {
         }
     }
 
-
     override suspend fun search(query: String): List<SearchResponse> {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val document = app.get("${mainUrl}?s=$encodedQuery", timeout = 30_000L).document
-        val results = document.select("div.ml-item").mapNotNull { it.toSearchResult() }
-        return results
+        return document.select("div.ml-item").mapNotNull { it.toSearchResult() }
     }
+
+    private fun infoParagraphs(doc: Element, key: String): List<Element> =
+        doc.select("div.mvic-info p").filter { it.text().startsWith(key) }
 
     override suspend fun load(url: String): LoadResponse {
         val document = app.get(url, timeout = 30_000L).document
-        val title =
-            document.selectFirst("div.mvic-desc h3")?.text()?.trim().toString().substringBefore("(")
-        val poster = document.select("meta[property=og:image]").attr("content").toString()
+        val title = document.selectFirst("div.mvic-desc h3")?.text()?.trim()
+            ?.substringBefore("(")?.trim() ?: ""
+        val poster = document.select("meta[property=og:image]").attr("content")
         val description = document.selectFirst("div.desc p.f-desc")?.text()?.trim()
-        val tvtag = if (document.select("div.tvseason").isNotEmpty()) TvType.TvSeries else TvType.Movie
-        val trailer = document.select("meta[itemprop=embedUrl]").attr("content") ?: ""
-        val genre = document.select("div.mvic-info p").filter { it.text().startsWith("Genre") }.flatMap { it.select("a") }.map { it.text() }
+        val tvType = if (document.select("div.tvseason").isNotEmpty()) TvType.TvSeries else TvType.Movie
+        val trailer = document.select("meta[itemprop=embedUrl]").attr("content")
+        val genre = infoParagraphs(document, "Genre").flatMap { it.select("a") }.map { it.text() }
         val rating = document.selectFirst("span.imdb-r[itemprop=ratingValue]")
-            ?.text()
-            ?.toDoubleOrNull()
+            ?.text()?.toDoubleOrNull()
         val duration = document.selectFirst("span[itemprop=duration]")
-            ?.text()
-            ?.replace(NON_DIGIT_REGEX, "")
-            ?.toIntOrNull()
+            ?.text()?.let { DURATION_REGEX.find(it)?.value }?.toIntOrNull()
+        val actors = infoParagraphs(document, "Actors").flatMap { it.select("a") }.map { it.text() }
+        val year = infoParagraphs(document, "Release").flatMap { it.select("a") }.firstNotNullOfOrNull { it.text().toIntOrNull() }
+        val recommendations = document.select("div.ml-item").mapNotNull { it.toSearchResult() }
 
-        val actors =
-            document.select("div.mvic-info p").filter { it.text().startsWith("Actors") }.flatMap { it.select("a") }.map { it.text() }
-        val year =
-            document.select("div.mvic-info p").filter { it.text().startsWith("Release") }.flatMap { it.select("a") }.joinToString("") { it.text() }.toIntOrNull()
-        val recommendation=document.select("div.ml-item").mapNotNull {
-            it.toSearchResult()
-        }
-        return if (tvtag == TvType.TvSeries) {
+        return if (tvType == TvType.TvSeries) {
             val episodes = mutableListOf<Episode>()
-            document.select("div.tvseason").amap { info ->
+            document.select("div.tvseason").forEach { info ->
                 val season = info.select("strong").text().let { text ->
                     SEASON_REGEX.find(text)?.groupValues?.get(1)?.trim()?.toIntOrNull()
                 }
                 info.select("div.les-content a").forEach { elem ->
                     val epText = elem.text()
-                    val href = elem.attr("href") ?: ""
+                    val href = elem.attr("href")
                     val episode = EPISODE_REGEX.find(epText)?.groupValues?.get(1)?.trim()?.toIntOrNull()
                     val name = epText.substringAfter("-").trim()
                     episodes.add(
@@ -121,10 +111,10 @@ class PencurimovieProvider : MainAPI() {
                 this.plot = description
                 this.tags = genre
                 this.year = year
+                this.duration = duration ?: 0
+                this.recommendations = recommendations
                 addTrailer(trailer)
                 addActors(actors)
-                this.recommendations=recommendation
-                this.duration = duration ?: 0
                 if (rating != null) addScore(rating.toString(), 10)
             }
         } else {
@@ -133,10 +123,10 @@ class PencurimovieProvider : MainAPI() {
                 this.plot = description
                 this.tags = genre
                 this.year = year
+                this.duration = duration ?: 0
+                this.recommendations = recommendations
                 addTrailer(trailer)
                 addActors(actors)
-                this.recommendations=recommendation
-                this.duration = duration ?: 0
                 if (rating != null) addScore(rating.toString(), 10)
             }
         }
@@ -162,7 +152,7 @@ class PencurimovieProvider : MainAPI() {
                 val src = track.attr("src")
                 val label = track.attr("label").ifBlank { "Subtitle" }
                 if (src.isNotBlank()) {
-                    subtitleCallback(SubtitleFile(src, label))
+                    subtitleCallback(newSubtitleFile(src, label))
                 }
             }
             found
