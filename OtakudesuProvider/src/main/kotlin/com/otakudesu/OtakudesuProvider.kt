@@ -1,5 +1,6 @@
 package com.otakudesu
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
@@ -12,11 +13,6 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import kotlinx.coroutines.runBlocking
-import com.mwk.shared.data.MetaAnimeData
-import com.mwk.shared.data.MetaEpisode
-import com.mwk.shared.data.MetaImage
-import com.mwk.shared.data.MetaMappings
-import com.mwk.shared.utils.getIndexQuality
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
@@ -50,6 +46,7 @@ class OtakudesuProvider : MainAPI() {
         private val EMBED_ACTION_REGEX = Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]+)"""")
         private val NONCE_ACTION2_REGEX = Regex("""nonce:[^,]+,action:"([^"]+)"""")
         private val FILE_ID_REGEX = Regex("""(?:/f/|/file/)(\w+)""")
+        private val QUALITY_PIXEL_REGEX = Regex("(\\d{3,4})[pP]")
 
         fun getType(t: String): TvType = when {
             t.contains("OVA", true) || t.contains("Special", true) -> TvType.OVA
@@ -287,14 +284,14 @@ class OtakudesuProvider : MainAPI() {
                             val decodedEmbed = runCatching { base64Decode(embedData) }.getOrNull() ?: return@amap null
                             val sources = Jsoup.parse(decodedEmbed).select("iframe").attr("src")
 
-                            loadCustomExtractor(sources, data, subtitleCallback, callback, getIndexQuality(res.q))
+                            loadCustomExtractor(sources, data, subtitleCallback, callback, getQuality(res.q))
                         }
                     }
                 }
             },
             {
                 document.select("div.download li").map { ele ->
-                    val quality = getIndexQuality(ele.select("strong").text())
+                    val quality = getQuality(ele.select("strong").text())
                     ele.select("a").map {
                         it.attr("href") to it.text()
                     }.filter {
@@ -356,5 +353,43 @@ class OtakudesuProvider : MainAPI() {
     private fun inBlacklist(host: String?): Boolean {
         return mirrorBlackList.any { it.equals(host, true) }
     }
+
+    private fun getQuality(str: String?): Int {
+        return QUALITY_PIXEL_REGEX.find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
+            ?: Qualities.Unknown.value
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    data class MetaImage(
+        @JsonProperty("coverType") val coverType: String?,
+        @JsonProperty("url") val url: String?
+    )
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    data class MetaEpisode(
+        @JsonProperty("episode") val episode: String?,
+        @JsonProperty("airDateUtc") val airDateUtc: String?,
+        @JsonProperty("runtime") val runtime: Int?,
+        @JsonProperty("image") val image: String?,
+        @JsonProperty("title") val title: Map<String, String>?,
+        @JsonProperty("overview") val overview: String?,
+        @JsonProperty("rating") val rating: String?,
+        @JsonProperty("finaleType") val finaleType: String?
+    )
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    data class MetaAnimeData(
+        @JsonProperty("titles") val titles: Map<String, String>?,
+        @JsonProperty("description") val description: String?,
+        @JsonProperty("images") val images: List<MetaImage>?,
+        @JsonProperty("episodes") val episodes: Map<String, MetaEpisode>?,
+        @JsonProperty("mappings") val mappings: MetaMappings? = null
+    )
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    data class MetaMappings(
+        @JsonProperty("themoviedb_id") val themoviedbId: Int? = null,
+        @JsonProperty("kitsu_id") val kitsuId: String? = null
+    )
 }
 
