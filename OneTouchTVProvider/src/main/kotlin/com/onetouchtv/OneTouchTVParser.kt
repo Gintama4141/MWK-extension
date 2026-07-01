@@ -23,22 +23,49 @@ data class OneTouchTVParser(
     )
 }
 
+// Unified type for RandomSlideShow and Recent (identical JSON shape)
+data class MediaItem(
+    @param:JsonProperty("_id") val id: String? = null,
+    @param:JsonProperty("id") val id2: String? = null,
+    val title: String? = null,
+    val image: String? = null,
+    val country: String? = null,
+    val type: String? = null,
+    val year: String? = null,
+    val popularity: Long? = null,
+    val description: String? = null,
+    val status: String? = null,
+    val releaseDate: String? = null,
+    val isSub: Boolean? = null
+)
+
+data class MediaResult(
+    val randomSlideShow: List<MediaItem>? = null,
+    val recents: List<MediaItem>? = null,
+    val result: ResultWrapper? = null
+)
+
+data class ResultWrapper(
+    val randomSlideShow: List<MediaItem>? = null,
+    val recents: List<MediaItem>? = null
+)
+
 data class SourceItem(
-    val type: String?,
-    val contentId: String?,
-    val id: String?,
-    val name: String?,
-    val quality: String?,
-    val url: String?,
+    val type: String? = null,
+    val contentId: String? = null,
+    val id: String? = null,
+    val name: String? = null,
+    val quality: String? = null,
+    val url: String? = null,
     val headers: Map<String, String>? = null
 )
 
 data class TrackItem(
-    val file: String?,
-    val name: String?,
+    val file: String? = null,
+    val name: String? = null,
     val isDefault: Boolean = false,
-    val kind: String?,
-    val format: String?
+    val kind: String? = null,
+    val format: String? = null
 )
 
 data class ParserResponse(
@@ -47,6 +74,7 @@ data class ParserResponse(
     val track: List<TrackItem>? = null,
     val tracks: List<TrackItem>? = null
 )
+
 data class ParserResult(
     val sources: List<SourceItem>? = null,
     val track: List<TrackItem>? = null,
@@ -54,28 +82,15 @@ data class ParserResult(
 )
 
 fun parseSourcesAndTracks(decryptedJson: String): Pair<List<SourceItem>, List<TrackItem>> {
-    val sourcesList = mutableListOf<SourceItem>()
-    val tracksList = mutableListOf<TrackItem>()
-    val root = tryParseJson<ParserResponse>(decryptedJson)
-    val result = root?.result
-    val sourcesArray = result?.sources ?: root?.sources
-    if (sourcesArray != null) {
-        for (s in sourcesArray) {
-            sourcesList.add(s)
-        }
-    }
-    val tracksArray = result?.track ?: result?.tracks ?: root?.track ?: root?.tracks
-    if (tracksArray != null) {
-        for (t in tracksArray) {
-            tracksList.add(t)
-        }
-    }
-    return Pair(sourcesList, tracksList)
+    val parsed = tryParseJson<ParserResponse>(decryptedJson) ?: return emptyList<SourceItem>() to emptyList<TrackItem>()
+    val sources = parsed.result?.sources ?: parsed.sources ?: emptyList()
+    val tracks = parsed.result?.track ?: parsed.result?.tracks ?: parsed.track ?: parsed.tracks ?: emptyList()
+    return sources to tracks
 }
 
 data class Search(
-    val status: Long,
-    val result: List<SearchResult>
+    val status: Long = 0,
+    val result: List<SearchResult> = emptyList()
 )
 
 data class SearchResult(
@@ -95,54 +110,26 @@ data class SearchResult(
     val otherTitles: List<String> = emptyList()
 )
 
-data class MediaResult(
-    val randomSlideShow: List<RandomSlideShow>?,
-    val recents: List<Recent>?,
-    val result: ResultWrapper?
+// Load/detail response models
+data class LoadData(
+    val title: String? = null,
+    val image: String? = null,
+    val poster: String? = null,
+    val description: String? = null,
+    val year: String? = null,
+    val status: String? = null,
+    val actors: List<ActorItem> = emptyList(),
+    val genres: List<String> = emptyList(),
+    val episodes: List<EpisodeItem> = emptyList()
 )
 
-data class ResultWrapper(
-    val randomSlideShow: List<RandomSlideShow>?,
-    val recents: List<Recent>?
+data class ActorItem(
+    val name: String? = null,
+    val image: String? = null
 )
 
-data class RandomSlideShow(
-    @param:JsonProperty("_id") val id: String?,
-    @param:JsonProperty("id") val id2: String?,
-    val title: String?,
-    val image: String?,
-    val country: String?,
-    val type: String?,
-    val year: String?,
-    val popularity: Long?,
-    val description: String?,
-    val status: String?,
-    val releaseDate: String?,
-    val isSub: Boolean?
-)
-
-data class Recent(
-    @param:JsonProperty("_id") val id: String?,
-    @param:JsonProperty("id") val id2: String?,
-    val title: String?,
-    val image: String?,
-    val country: String?,
-    val type: String?,
-    val year: String?,
-    val popularity: Long?,
-    val description: String?,
-    val status: String?,
-    val releaseDate: String?,
-    val isSub: Boolean?
-)
-
-data class CleanMedia(
-    val id: String?,
-    val title: String?,
-    val image: String?,
-    val country: String?,
-    val type: String?,
-    val year: String?,
-    val status: String?,
-    val isSub: Boolean?
+data class EpisodeItem(
+    val episode: String? = null,
+    val identifier: String? = null,
+    val playId: String? = null
 )

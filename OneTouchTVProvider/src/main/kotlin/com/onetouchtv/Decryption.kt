@@ -31,11 +31,12 @@ fun decryptAes256Cbc(cipherBytes: ByteArray, key: ByteArray, iv: ByteArray): Byt
     return cipher.doFinal(cipherBytes)
 }
 
+private data class DecryptResult(val result: String)
+
 fun decryptString(input: String): String {
     val normalized = normalizeCustomAlphabet(input)
     val cipherBytes = base64ToBytes(normalized)
     val plaintextBytes = decryptAes256Cbc(cipherBytes, key, iv)
-    data class DecryptResult(val result: String)
     return runCatching {
         tryParseJson<DecryptResult>(String(plaintextBytes, Charsets.UTF_8))
     }.getOrNull()?.result ?: ""
