@@ -164,7 +164,7 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         val syncMetaData = runCatching {
             app.get("https://api.ani.zip/mappings?anilist_id=${ids.id}", timeout = 15_000L).text
         }.getOrNull().orEmpty()
-        val animeMetaData = parseAnimeData(syncMetaData)
+        val animeMetaData = tryParseJson<MetaAnimeData>(syncMetaData)
         val logoposter = animeMetaData?.images?.find { it.coverType == "Clearlogo" }?.url
 
         val href = LinkData(
@@ -469,24 +469,24 @@ open class TorraStreamAnime(private val sharedPref: SharedPreferences) : MainAPI
         return AniIds(res?.id, res?.idMal)
     }
 
-    data class AniIds(var id: Int? = null, var idMal: Int? = null)
+    data class AniIds(val id: Int? = null, val idMal: Int? = null)
 
     data class AniMedia(
-        @param:JsonProperty("id") var id: Int? = null,
-        @param:JsonProperty("idMal") var idMal: Int? = null
+        @param:JsonProperty("id") val id: Int? = null,
+        @param:JsonProperty("idMal") val idMal: Int? = null
     )
 
     data class AniPage(
-        @param:JsonProperty("media") var media: ArrayList<AniMedia> = arrayListOf()
+        @param:JsonProperty("media") val media: ArrayList<AniMedia> = arrayListOf()
     )
 
     data class AniData(
-        @param:JsonProperty("Page") var Page: AniPage? = null,
-        @param:JsonProperty("media") var media: ArrayList<AniMedia>? = null
+        @param:JsonProperty("Page") val Page: AniPage? = null,
+        @param:JsonProperty("media") val media: ArrayList<AniMedia>? = null
     )
 
     data class AniSearch(
-        @param:JsonProperty("data") var data: AniData? = null
+        @param:JsonProperty("data") val data: AniData? = null
     )
 
     fun getStatus(t: String?): ShowStatus {

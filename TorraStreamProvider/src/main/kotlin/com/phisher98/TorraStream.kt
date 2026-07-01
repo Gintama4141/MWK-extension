@@ -264,7 +264,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                 val syncMetaData = runCatching {
                     app.get("https://api.ani.zip/mappings?imdb_id=$imdbId", timeout = 15_000L).text
                 }.getOrNull().orEmpty()
-                val animeMetaData = parseAnimeData(syncMetaData)
+                val animeMetaData = tryParseJson<MetaAnimeData>(syncMetaData)
                 val kitsuid = animeMetaData?.mappings?.kitsuid
                 fun buildEpisodeList(isDub: Boolean) = animeVideos.map { video ->
                     val videoYear = video.released?.split("-")?.firstOrNull()?.toIntOrNull()

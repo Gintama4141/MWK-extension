@@ -9,42 +9,23 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.SubtitleHelper
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import com.lagradost.cloudstream3.utils.getQualityFromName
-import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
-private object TorraUtilsRegex {
-    val QUALITY_PIXEL = Regex("(\\d{3,4})[pP]")
-    val QUALITY_FULL = Regex("""\b(4K|2160p|1080p|720p|WEB[-\s]?DL|BluRay|HDRip|DVDRip)\b""", RegexOption.IGNORE_CASE)
-    val QUALITY_COMMON = Regex("""\b(2160p|1440p|1080p|720p|480p|360p)\b""", RegexOption.IGNORE_CASE)
-    val SIZE = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
-}
+private val qualityPixelRegex = Regex("(\\d{3,4})[pP]")
+private val qualityCommonRegex = Regex("""\b(2160p|1440p|1080p|720p|480p|360p)\b""", RegexOption.IGNORE_CASE)
+private val sizeRegex = Regex("""(\d+(?:[.,]\d+)?)\s*(GB|MB)""", RegexOption.IGNORE_CASE)
 
 fun getIndexQuality(str: String?): Int {
-    return TorraUtilsRegex.QUALITY_PIXEL.find(str ?: "") ?. groupValues ?. getOrNull(1) ?. toIntOrNull()
+    return qualityPixelRegex.find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
         ?: Qualities.Unknown.value
-}
-
-
-fun getQuality(str: String): Int {
-    return when (str) {
-        "360p" -> Qualities.P360.value
-        "480p" -> Qualities.P480.value
-        "HD" -> Qualities.P720.value
-        "HEVC" -> Qualities.P1440.value
-        "UHD" -> Qualities.P2160.value
-        else -> getQualityFromName(str)
-    }
 }
 
 fun getLanguage(language: String?): String? {
     return SubtitleHelper.fromTagToEnglishLanguageName(language ?: return null)
         ?: SubtitleHelper.fromTagToEnglishLanguageName(language.substringBefore("-"))
 }
-
 
 data class TorrentioResponse(
     @JsonProperty("streams") val streams: List<TorrentioStream> = emptyList()
@@ -76,24 +57,6 @@ data class BehaviorHints(
     @JsonProperty("filename") val filename: String? = null
 )
 
-//Subtitles
-
-data class Subtitles(
-    val subtitles: List<Subtitle>,
-    val cacheMaxAge: Long,
-)
-
-data class Subtitle(
-    val id: String,
-    val url: String,
-    @param:JsonProperty("SubEncoding")
-    val subEncoding: String,
-    val lang: String,
-    val m: String,
-    val g: String,
-)
-
-
 data class AniZipEpisodes(
     val episodes: Map<String, AniZipEpisode>? = null
 )
@@ -109,11 +72,6 @@ fun getAnidbEid(jsonString: String, episodeNumber: Int?): Int? {
     } catch (e: Exception) {
         null
     }
-}
-
-
-fun parseAnimeData(jsonString: String): MetaAnimeData? {
-    return tryParseJson(jsonString)
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -145,7 +103,6 @@ data class MetaEpisode(
     @param:JsonProperty("finaleType") val finaleType: String?
 )
 
-
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class MetaAnimeData(
     @param:JsonProperty("titles") val titles: Map<String, String>? = null,
@@ -154,72 +111,27 @@ data class MetaAnimeData(
     @param:JsonProperty("mappings") val mappings: MetaMappings? = null
 )
 
-data class StreamsResponse(
-    val streams: List<StreamItem>? = null
-)
-data class StreamItem(
-    val infoHash: String? = null,
-    val name: String? = null,
-    val sources: List<String>? = null,
-    val behaviorHints: BehaviorHintsItem? = null
-)
-data class BehaviorHintsItem(
-    val bingeGroup: String? = null
-)
-
-fun parseStreamsToMagnetLinks(jsonString: String): List<MagnetStream> {
-    val response = tryParseJson<StreamsResponse>(jsonString)
-    val streams = response?.streams ?: return emptyList()
-
-    return streams.mapNotNull { item ->
-        val infoHash = item.infoHash
-        if (infoHash.isNullOrBlank()) return@mapNotNull null
-
-        val originalName = item.name ?: "Unnamed"
-        val sources = item.sources ?: return@mapNotNull null
-
-        val bingeGroup = item.behaviorHints?.bingeGroup.orEmpty()
-        bingeGroup.split("|").filter { it.isNotBlank() && it != "Unknown" }
-
-        val qualityMatch = TorraUtilsRegex.QUALITY_FULL.find(originalName)?.value ?: "Unknown"
-
-        val encodedName = URLEncoder.encode(originalName, "UTF-8")
-        val trackers = sources.joinToString("&") { tracker ->
-            "tr=${URLEncoder.encode(tracker, "UTF-8")}"
-        }
-
-        val magnet = "magnet:?xt=urn:btih:$infoHash&dn=$encodedName&$trackers"
-
-        MagnetStream(
-            title = originalName,
-            quality = qualityMatch,
-            magnet = magnet
-        )
-    }
-}
-
 fun extractResolutionFromDescription(description: String?): String? {
     if (description.isNullOrBlank()) return null
-    return TorraUtilsRegex.QUALITY_COMMON.find(description)?.value
+    return qualityCommonRegex.find(description)?.value
 }
 
 fun getDate(): TmdbDate {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val calendar = Calendar.getInstance()
+    val now = Calendar.getInstance()
+    val today = formatter.format(now.time)
 
-    val today = formatter.format(calendar.time)
+    val nextWeekCal = Calendar.getInstance().apply { add(Calendar.WEEK_OF_YEAR, 1) }
+    val nextWeek = formatter.format(nextWeekCal.time)
 
-    calendar.add(Calendar.WEEK_OF_YEAR, 1)
-    val nextWeek = formatter.format(calendar.time)
+    val lastWeekCal = Calendar.getInstance().apply {
+        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        add(Calendar.WEEK_OF_YEAR, -1)
+    }
+    val lastWeekStart = formatter.format(lastWeekCal.time)
 
-    calendar.time = Date()
-    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-    calendar.add(Calendar.WEEK_OF_YEAR, -1)
-    val lastWeekStart = formatter.format(calendar.time)
-
-    calendar.time = Date()
-    calendar.set(Calendar.DAY_OF_MONTH, 1)
-    val monthStart = formatter.format(calendar.time)
+    val monthCal = Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1) }
+    val monthStart = formatter.format(monthCal.time)
 
     return TmdbDate(today, nextWeek, lastWeekStart, monthStart)
 }
@@ -338,7 +250,6 @@ fun filteredCallback(
     val maxSize = sharedPref.getString("sizefilter", "")?.toDoubleOrNull()
     val limit = sharedPref.getString("limit", "")?.toIntOrNull() ?: 0
     var resultCount = 0
-    val sizeRegex = TorraUtilsRegex.SIZE
 
     return fun(link: ExtractorLink) {
 

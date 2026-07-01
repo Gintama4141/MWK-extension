@@ -83,13 +83,6 @@ data class AnimetoshoItem(
     val websiteUrl: String?
 )
 
-data class MagnetStream(
-    val title: String,
-    val quality: String,
-    val magnet: String
-)
-
-
 data class AIODebian(
     val streams: List<AIODebianStream> = emptyList()
 )
