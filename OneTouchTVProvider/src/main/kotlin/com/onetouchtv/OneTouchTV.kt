@@ -38,7 +38,14 @@ class OneTouchTV : MainAPI() {
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.AsianDrama, TvType.Anime, TvType.Movie)
 
-    override val mainPage = mainPageOf("vod/home" to "Home", "vod/movie?page=%d" to "Movie")
+    override val mainPage = mainPageOf(
+        "vod/home" to "Home",
+        "vod/movie?page=%d" to "Movie",
+        "vod/filter?country=korean&page=%d" to "Korean",
+        "vod/filter?country=chinese&page=%d" to "Chinese",
+        "vod/filter?country=thai&page=%d" to "Thai",
+        "vod/filter?country=japanese&page=%d" to "Japanese"
+    )
 
     override suspend fun search(query: String, page: Int): SearchResponseList? {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
@@ -82,20 +89,7 @@ class OneTouchTV : MainAPI() {
         }
         if (decryptedJson.isBlank()) throw ErrorLoadingException("${request.name}: empty response after decryption")
 
-        return if (request.name == "Movie") {
-            val movies = tryParseJson<Array<SearchResult>>(decryptedJson)?.toList()
-                ?: throw ErrorLoadingException("Failed to parse movie data")
-            newHomePageResponse(
-                list = listOf(HomePageList(
-                    name = "Movie",
-                    list = movies.map { movie ->
-                        newTvSeriesSearchResponse(movie.title ?: "Unknown", "$mainUrl/vod/${movie.id}/detail", TvType.Movie) { posterUrl = movie.image }
-                    },
-                    isHorizontalImages = false
-                )),
-                hasNext = movies.size >= 30
-            )
-        } else {
+        return if (request.name == "Home") {
             val parser = tryParseJson<MediaResult>(decryptedJson)
                 ?: throw ErrorLoadingException("Failed to parse home page data")
             val allMedia = buildList {
@@ -117,6 +111,20 @@ class OneTouchTV : MainAPI() {
                 } else null
             }
             newHomePageResponse(list = homeLists, hasNext = false)
+        } else {
+            val items = tryParseJson<Array<SearchResult>>(decryptedJson)?.toList()
+                ?: throw ErrorLoadingException("Failed to parse ${request.name} data")
+            val tvType = if (request.name == "Movie") TvType.Movie else TvType.TvSeries
+            newHomePageResponse(
+                list = listOf(HomePageList(
+                    name = request.name,
+                    list = items.map { item ->
+                        newTvSeriesSearchResponse(item.title ?: "Unknown", "$mainUrl/vod/${item.id}/detail", tvType) { posterUrl = item.image }
+                    },
+                    isHorizontalImages = false
+                )),
+                hasNext = items.size >= 30
+            )
         }
     }
 
