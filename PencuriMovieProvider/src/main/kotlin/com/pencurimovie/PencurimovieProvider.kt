@@ -51,7 +51,7 @@ class PencurimovieProvider : MainAPI() {
     private fun Element.toSearchResult(): SearchResponse {
         val title = this.select("a").attr("oldtitle").substringBefore("(")
         val href = fixUrl(this.select("a").attr("href"))
-        val posterUrl = this.select("a img").attr("data-original").takeIf { it.isNotBlank() }?.let { fixUrlNull(it) }
+        val posterUrl = this.select("a img").attr("src").takeIf { it.isNotBlank() }?.let { fixUrlNull(it) }
         val quality = getQualityFromString(this.select("span.mli-quality").text())
         return newMovieSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = posterUrl
