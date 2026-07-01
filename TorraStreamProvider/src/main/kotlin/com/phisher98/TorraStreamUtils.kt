@@ -292,6 +292,8 @@ fun buildTorrentioApiUrl(sharedPref: SharedPreferences, mainUrl: String): String
 
     val params = mutableListOf<String>()
     if (!sort.isNullOrEmpty()) params += "sort=$sort"
+    val provider = sharedPref.getString("provider", "")
+    if (!provider.isNullOrEmpty()) params += "provider=$provider"
     if (!languageOption.isNullOrEmpty()) params += "language=${languageOption.lowercase()}"
     if (!qualityFilter.isNullOrEmpty()) params += "qualityfilter=$qualityFilter"
     if (!limit.isNullOrEmpty()) params += "limit=$limit"

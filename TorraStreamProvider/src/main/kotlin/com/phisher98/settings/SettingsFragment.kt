@@ -159,11 +159,7 @@ class SettingsFragment(
 
         // ===== QUALITY FILTER =====
         val qualityTextView = root.findView<TextView>("quality_spinner")
-        val qualities = listOf(
-            "Brremux", "Hdrall", "Dolbyvision", "Dolbyvisionwithhdr",
-            "Threed", "Nonthreed", "4k", "1080p", "720p", "480p",
-            "Other", "Scr", "Cam", "Unknown"
-        )
+        val qualities = listOf("4k", "1080p", "720p", "480p", "Other")
         val selectedQualities = BooleanArray(qualities.size)
         sharedPref.getString("qualityfilter", "")?.split(",")?.forEach { saved ->
             val index = qualities.indexOf(saved)
