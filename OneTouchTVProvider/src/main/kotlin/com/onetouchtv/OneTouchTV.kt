@@ -38,7 +38,7 @@ class OneTouchTV : MainAPI() {
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(TvType.AsianDrama, TvType.Anime, TvType.Movie)
 
-    override val mainPage = mainPageOf("vod/home" to "Home", "vod/movie" to "Movie")
+    override val mainPage = mainPageOf("vod/home" to "Home", "vod/movie?page=%d" to "Movie")
 
     override suspend fun search(query: String, page: Int): SearchResponseList? {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
@@ -69,8 +69,7 @@ class OneTouchTV : MainAPI() {
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url = if (request.data == "vod/movie") "$mainUrl/${request.data}?page=$page"
-                   else "$mainUrl/${request.data}"
+        val url = "$mainUrl/${request.data.format(page)}"
         val rawResponse = try {
             app.get(url, timeout = 15_000L).text
         } catch (e: Exception) {
@@ -83,7 +82,7 @@ class OneTouchTV : MainAPI() {
         }
         if (decryptedJson.isBlank()) throw ErrorLoadingException("${request.name}: empty response after decryption")
 
-        return if (request.data == "vod/movie") {
+        return if (request.name == "Movie") {
             val movies = tryParseJson<Array<SearchResult>>(decryptedJson)?.toList()
                 ?: throw ErrorLoadingException("Failed to parse movie data")
             newHomePageResponse(
