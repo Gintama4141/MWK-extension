@@ -225,10 +225,10 @@
   },
   {
     "iconUrl": "https://www.google.com/s2/favicons?domain=onetouchtv.xyz/&sz=%size%",
-    "fileHash": "sha256-9528f20271d153fbdb74542acad7d105965b99524cd640a8f70bc8b32b475d10",
+    "fileHash": "sha256-d5969e46c05af74c42ea392bb19a19573eef3bb17c642685ed04be8eab0cf020",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 42402,
+    "fileSize": 42471,
     "status": 1,
     "language": "id",
     "authors": [
@@ -240,7 +240,7 @@
       "TvSeries",
       "Movie"
     ],
-    "version": 12,
+    "version": 13,
     "internalName": "OneTouchTVProvider",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/OneTouchTVProvider.cs3",
     "name": "OneTouchTVProvider"
