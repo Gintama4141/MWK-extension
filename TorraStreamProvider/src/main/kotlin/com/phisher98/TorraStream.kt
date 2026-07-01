@@ -88,7 +88,6 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
             trackersLastFetched = System.currentTimeMillis()
             return fetched
         }
-        private const val Uindex = "https://uindex.org"
         private const val Knaben = "https://knaben.org"
         private const val TorrentsDB = "https://torrentsdb.com"
         const val Meteorfortheweebs ="https://meteorfortheweebs.midnightignite.me"
@@ -437,7 +436,6 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                     runAllAsync(
                         { invokeTorrentio(torrentioapiUrl, id, season, episode, callback, filtered) },
                         { invokeThepiratebay(ThePirateBayApi, id, season, episode, callback) },
-                        { invokeUindex(Uindex, title, year, season, episode, callback, filtered) },
                         { invokeTorrentsDB(TorrentsDB, id, season, episode, callback) },
                         { invokeKnaben(Knaben, isAnime, title, year, season, episode, callback, filtered) },
                         { invokeSubtitleAPI(id, season, episode, subtitleCallback) }
