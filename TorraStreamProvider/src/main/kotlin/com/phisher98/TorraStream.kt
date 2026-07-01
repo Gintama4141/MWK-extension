@@ -124,6 +124,8 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
         "$tmdbAPI/tv/top_rated?api_key=$apiKey&region=US" to "Top Rated TV Shows",
         "$tmdbAPI/discover/tv?api_key=$apiKey&with_original_language=ko" to "Korean Shows",
         "$tmdbAPI/discover/tv?api_key=$apiKey&with_genres=99" to "Documentary",
+        "$tmdbAPI/discover/movie?api_key=$apiKey&with_original_language=id&sort_by=popularity.desc" to "Film Indonesia",
+        "$tmdbAPI/discover/tv?api_key=$apiKey&with_original_language=id&sort_by=popularity.desc" to "TV Indonesia",
     )
 
     private fun getImageUrl(link: String?): String? {
