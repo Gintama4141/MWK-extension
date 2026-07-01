@@ -150,7 +150,7 @@ class Nomat : MainAPI() {
                     addScore(rating ?: "")
                 }
             } else {
-                val playUrl = document.selectFirst(".play-btn, [data-play], a[href*='player'], a[href*='watch'], a[href*='stream'], div.video-wrapper a")?.attr("href")
+                val playUrl = document.selectFirst("a:has(.play-btn), a[href*='nontonhemat.link'], [data-play], a[href*='player'], a[href*='watch'], a[href*='stream']")?.attr("href")
 
                 newMovieLoadResponse(title, url, TvType.Movie, playUrl ?: url) {
                     this.posterUrl = poster
@@ -176,31 +176,54 @@ class Nomat : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            val embedDoc = app.get(data, referer = mainUrl, timeout = 30_000L).document
+            val pageUrl = data.ifBlank { mainUrl }
 
-            embedDoc.select("track[kind=subtitles], .subtitle-option, [data-subtitle]").forEach { subEl ->
-                val subUrl = subEl.attr("src").takeIf { it.isNotBlank() }
-                    ?: subEl.attr("data-src").takeIf { it.isNotBlank() }
-                    ?: subEl.attr("data-subtitle").takeIf { it.isNotBlank() }
-                val lang = subEl.attr("srclang").takeIf { it.isNotBlank() } ?: subEl.attr("data-lang").takeIf { it.isNotBlank() } ?: "id"
-                val label = subEl.attr("label").takeIf { it.isNotBlank() } ?: subEl.attr("data-label").takeIf { it.isNotBlank() } ?: lang
-                subUrl?.let { subtitleCallback(newSubtitleFile(label, it)) }
-            }
+            // First attempt: fetch the embed page directly (nontonhemat.link)
+            val embedDoc = app.get(pageUrl, referer = mainUrl, timeout = 30_000L).document
+            var hasServers = parseEmbedPage(embedDoc, pageUrl, subtitleCallback, callback)
 
-            embedDoc.select("div.server-item").amap { el ->
-                val encoded = el.attr("data-url")
-                if (encoded.isNotBlank()) {
-                    try {
-                        val decoded = base64Decode(encoded)
-                        loadExtractor(decoded, data, subtitleCallback, callback)
-                    } catch (e: Exception) {
-                        logError(e)
-                    }
+            // Fallback: if no servers found, look for a play button and follow it
+            if (!hasServers) {
+                val playHref = embedDoc.selectFirst("a:has(.play-btn), a[href*='nontonhemat.link']")?.attr("href")
+                if (!playHref.isNullOrBlank()) {
+                    val playDoc = app.get(playHref, referer = pageUrl, timeout = 30_000L).document
+                    parseEmbedPage(playDoc, playHref, subtitleCallback, callback)
                 }
             }
+
             true
         } catch (e: Exception) {
             throw ErrorLoadingException(e.message ?: "Gagal memuat video")
         }
+    }
+
+    private suspend fun parseEmbedPage(
+        doc: org.jsoup.nodes.Document,
+        pageUrl: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ): Boolean {
+        doc.select("track[kind=subtitles], .subtitle-option, [data-subtitle]").forEach { subEl ->
+            val subUrl = subEl.attr("src").takeIf { it.isNotBlank() }
+                ?: subEl.attr("data-src").takeIf { it.isNotBlank() }
+                ?: subEl.attr("data-subtitle").takeIf { it.isNotBlank() }
+            val lang = subEl.attr("srclang").takeIf { it.isNotBlank() } ?: subEl.attr("data-lang").takeIf { it.isNotBlank() } ?: "id"
+            val label = subEl.attr("label").takeIf { it.isNotBlank() } ?: subEl.attr("data-label").takeIf { it.isNotBlank() } ?: lang
+            subUrl?.let { subtitleCallback(newSubtitleFile(label, it)) }
+        }
+
+        val serverItems = doc.select("div.server-item")
+        serverItems.amap { el ->
+            val encoded = el.attr("data-url")
+            if (encoded.isNotBlank()) {
+                try {
+                    val decoded = base64Decode(encoded)
+                    loadExtractor(decoded, pageUrl, subtitleCallback, callback)
+                } catch (e: Exception) {
+                    logError(e)
+                }
+            }
+        }
+        return serverItems.isNotEmpty()
     }
 }
