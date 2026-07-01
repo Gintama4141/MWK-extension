@@ -291,10 +291,10 @@
   },
   {
     "iconUrl": "https://torrentio.strem.fun/images/logo_v1.png",
-    "fileHash": "sha256-c342e27b99f3d52cc50e01bccc4cf55c51ca91e86943918b79ec8b6521129cde",
+    "fileHash": "sha256-b31842a49407140af8f7c694846b801cf311e66c33349e6bfe258f718595c663",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 207027,
+    "fileSize": 207035,
     "status": 1,
     "language": "en",
     "authors": [
