@@ -225,10 +225,10 @@
   },
   {
     "iconUrl": "https://www.google.com/s2/favicons?domain=onetouchtv.xyz/&sz=%size%",
-    "fileHash": "sha256-dbf020932fb92c7ec535ca22b6a138ddb86b179bd63b8a176fe0a55220259216",
+    "fileHash": "sha256-9c10402442c486d15ca32de681e096d533ecce72923770901b0ad8c084ed6e29",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 43508,
+    "fileSize": 40081,
     "status": 1,
     "language": "id",
     "authors": [
@@ -239,7 +239,7 @@
       "AsianDrama",
       "TvSeries"
     ],
-    "version": 6,
+    "version": 7,
     "internalName": "OneTouchTVProvider",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/OneTouchTVProvider.cs3",
     "name": "OneTouchTVProvider"
