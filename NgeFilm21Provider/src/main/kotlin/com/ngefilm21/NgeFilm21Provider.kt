@@ -215,9 +215,9 @@ class Ngefilm21Provider : MainAPI() {
                                     }
                                     url.contains("morencius") -> extractPackedM3u8(url, "Morencius", callback)
                                     url.contains("vidara.to") -> extractPackedM3u8(url, "Vidara", callback)
-                                    url.contains("abyss") -> loadExtractor(url, subtitleCallback, callback)
+                                    url.contains("abyss") -> extractWithFallback(url, "Abyss", subtitleCallback, callback)
                                     url.contains("hgcloud") -> loadExtractor(url, subtitleCallback, callback)
-                                    url.contains("bangjago") -> loadExtractor(url, subtitleCallback, callback)
+                                    url.contains("bangjago") -> extractWithFallback(url, "Bangjago", subtitleCallback, callback)
                                     else -> loadExtractor(url, subtitleCallback, callback)
                                 }
                             }
@@ -460,6 +460,22 @@ class Ngefilm21Provider : MainAPI() {
                 )
             }
         } catch (_: Exception) { }
+    }
+
+    private suspend fun extractWithFallback(url: String, name: String, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
+        try {
+            val resp = app.get(url, headers = mapOf(
+                "User-Agent" to UA_BROWSER,
+                "Referer" to mainUrl
+            ), timeout = 15_000L)
+            REGEX_M3U8.find(resp.text)?.groupValues?.get(1)?.let { link ->
+                callback.invoke(newExtractorLink(name, name, link.cleanSlashes(), ExtractorLinkType.M3U8) {
+                    this.referer = resp.url
+                    this.headers = mapOf("User-Agent" to UA_BROWSER)
+                })
+            }
+        } catch (_: Exception) { }
+        loadExtractor(url, subtitleCallback, callback)
     }
 
     private fun decryptAES(text: String): String {
