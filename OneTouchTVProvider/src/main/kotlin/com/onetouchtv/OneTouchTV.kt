@@ -44,7 +44,9 @@ class OneTouchTV : MainAPI() {
         "vod/filter?country=korean&page=%d" to "Korean",
         "vod/filter?country=chinese&page=%d" to "Chinese",
         "vod/filter?country=thai&page=%d" to "Thai",
-        "vod/filter?country=japanese&page=%d" to "Japanese"
+        "vod/filter?country=japanese&page=%d" to "Japanese",
+        "vod/filter?country=filipino&page=%d" to "Filipino",
+        "vod/filter?country=taiwanese&page=%d" to "Taiwanese"
     )
 
     override suspend fun search(query: String, page: Int): SearchResponseList? {
