@@ -61,8 +61,9 @@ class SettingsFragment(
         val providers = listOf(
             "YTS", "EZTV", "RARBG", "1337x", "ThePirateBay", "KickassTorrents",
             "TorrentGalaxy", "MagnetDL", "HorribleSubs", "NyaaSi", "TokyoTosho",
-            "AniDex", "Rutor", "RuTracker", "Comando", "BluDV", "Torrent9",
-            "ilCorSaRoNeRo", "MejorTorrent", "Wolfmax4k", "Cinecalidad", "BestTorrents"
+            "AniDex", "nekoBT", "Rutor", "Rutracker", "Comando", "BluDV",
+            "MicoLeaoDublado", "Torrent9", "ilCorSaRoNeRo", "MejorTorrent",
+            "Wolfmax4k", "Cinecalidad", "BestTorrents"
         )
         val selectedProviders = BooleanArray(providers.size)
         sharedPref.getString("provider", "")?.split(",")?.forEach { saved ->
