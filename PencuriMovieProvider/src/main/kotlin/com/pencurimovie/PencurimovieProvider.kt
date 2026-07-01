@@ -6,7 +6,9 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.mvvm.logError
 import java.net.URLEncoder
+import kotlinx.coroutines.CancellationException
 
 
 class PencurimovieProvider : MainAPI() {
@@ -140,14 +142,7 @@ class PencurimovieProvider : MainAPI() {
     ): Boolean {
         return try {
             val document = app.get(data, timeout = 30_000L).document
-            var found = false
-            document.select("div.movieplay iframe").forEach { iframe ->
-                val href = iframe.attr("data-src").ifBlank { iframe.attr("src") }
-                if (href.isNotBlank()) {
-                    found = true
-                    loadExtractor(href, subtitleCallback, callback)
-                }
-            }
+
             document.select("track[kind=subtitles]").forEach { track ->
                 val src = track.attr("src")
                 val label = track.attr("label").ifBlank { "Subtitle" }
@@ -155,9 +150,27 @@ class PencurimovieProvider : MainAPI() {
                     subtitleCallback(newSubtitleFile(src, label))
                 }
             }
-            found
+
+            val iframes = document.select("div.movieplay iframe").mapNotNull { iframe ->
+                val href = iframe.attr("data-src").ifBlank { iframe.attr("src") }
+                href.takeIf { it.isNotBlank() }
+            }
+
+            iframes.amap { href ->
+                try {
+                    loadExtractor(href, subtitleCallback, callback)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logError(e)
+                }
+            }
+
+            iframes.isNotEmpty()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            throw ErrorLoadingException("Gagal memuat video")
+            throw ErrorLoadingException(e.message ?: "Gagal memuat video")
         }
     }
 }
