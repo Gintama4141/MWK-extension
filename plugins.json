@@ -291,10 +291,10 @@
   },
   {
     "iconUrl": "https://torrentio.strem.fun/images/logo_v1.png",
-    "fileHash": "sha256-7507ae93ed1cfd58194b2442ff8962c8fcdcb341d81dcd414c62117ce4fad914",
+    "fileHash": "sha256-12c7b40139dbaab25fac9d30df411eb0445973391dfe538799c1dd3249777e3a",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 215365,
+    "fileSize": 211068,
     "status": 1,
     "language": "en",
     "authors": [
@@ -308,7 +308,7 @@
       "TvSeries",
       "Anime"
     ],
-    "version": 89,
+    "version": 90,
     "internalName": "TorraStreamProvider",
     "description": "#1 Best Extension \u2013 MultiAPI-Based with 4K Torrent Support (Debian) Use Extension Settings",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/TorraStreamProvider.cs3",
