@@ -263,7 +263,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
                 val jpTitle = res.alternative_titles?.results?.find { it.iso_3166_1 == "JP" }?.title
                     ?: cineRes?.meta?.name
                 val syncMetaData = runCatching {
-                    app.get("https://api.ani.zip/mappings?imdb_id=$imdbId", timeout = 15_000L).text
+                    app.get("https://api.ani.zip/mappings?imdb_id=$imdbId", timeout = 10_000L).text
                 }.getOrNull().orEmpty()
                 val animeMetaData = tryParseJson<MetaAnimeData>(syncMetaData)
                 val kitsuid = animeMetaData?.mappings?.kitsuid
@@ -387,7 +387,7 @@ class TorraStream(private val sharedPref: SharedPreferences) : TmdbProvider() {
         val id = dataObj.imdbId
         val year = dataObj.year
         val anijson = dataObj.aniZipJson ?: runCatching {
-            app.get("https://api.ani.zip/mappings?imdb_id=$id", timeout = 15_000L).text
+            app.get("https://api.ani.zip/mappings?imdb_id=$id", timeout = 10_000L).text
         }.getOrNull().orEmpty()
         val aniData = tryParseJson<AniZipData>(anijson)
         val mappings = aniData?.mappings
