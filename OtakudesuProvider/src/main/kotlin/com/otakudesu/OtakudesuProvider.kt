@@ -1,6 +1,5 @@
 package com.otakudesu
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
@@ -14,7 +13,11 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
+import com.mwk.shared.data.MetaAnimeData
+import com.mwk.shared.data.MetaEpisode
+import com.mwk.shared.data.MetaImage
+import com.mwk.shared.data.MetaMappings
+import com.mwk.shared.utils.getIndexQuality
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
@@ -48,22 +51,17 @@ class OtakudesuProvider : MainAPI() {
         private val EMBED_ACTION_REGEX = Regex("""nonce[^,]*,\s*action:\s*"([a-f0-9]+)"""")
         private val NONCE_ACTION2_REGEX = Regex("""nonce:[^,]+,action:"([^"]+)"""")
         private val FILE_ID_REGEX = Regex("""(?:/f/|/file/)(\w+)""")
-        private val QUALITY_PIXEL_REGEX = Regex("(\\d{3,4})[pP]")
 
-        fun getType(t: String): TvType {
-            return when {
-                t.contains("OVA", true) || t.contains("Special", true) -> TvType.OVA
-                t.contains("Movie", true) -> TvType.AnimeMovie
-                else -> TvType.Anime
-            }
+        fun getType(t: String): TvType = when {
+            t.contains("OVA", true) || t.contains("Special", true) -> TvType.OVA
+            t.contains("Movie", true) -> TvType.AnimeMovie
+            else -> TvType.Anime
         }
 
-        fun getStatus(t: String): ShowStatus {
-            return when (t) {
-                "Completed" -> ShowStatus.Completed
-                "Ongoing" -> ShowStatus.Ongoing
-                else -> ShowStatus.Completed
-            }
+        fun getStatus(t: String): ShowStatus = when (t) {
+            "Completed" -> ShowStatus.Completed
+            "Ongoing" -> ShowStatus.Ongoing
+            else -> ShowStatus.Completed
         }
     }
 
@@ -80,13 +78,14 @@ class OtakudesuProvider : MainAPI() {
         val home = document.select("div.venz > ul > li").mapNotNull {
             it.toSearchResult()
         }
-        return newHomePageResponse(request.name, home)
+        val hasNext = document.selectFirst("a.next.page-numbers, .pagination .next") != null
+        return newHomePageResponse(request.name, home, hasNext = hasNext)
     }
 
     private fun Element.toSearchResult(): AnimeSearchResponse? {
         val title = this.selectFirst("h2.jdlflm")?.text()?.trim() ?: return null
         val href = this.selectFirst("a")?.attr("href") ?: return null
-        val posterUrl = this.select("div.thumbz > img").attr("src").toString()
+        val posterUrl = this.select("div.thumbz > img").attr("src")
         val epNum = this.selectFirst("div.epz")?.ownText()?.replace(NON_DIGIT_REGEX, "")?.trim()
             ?.toIntOrNull()
         return newAnimeSearchResponse(title, href, TvType.Anime) {
@@ -96,16 +95,20 @@ class OtakudesuProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val encodedQuery = URLEncoder.encode(query, "UTF-8")
-        return app.get("$mainUrl/?s=$encodedQuery&post_type=anime", timeout = 15_000L).document.select("ul.chivsrc > li")
-            .mapNotNull {
-                val title = it.selectFirst("h2 > a")?.ownText()?.trim() ?: return@mapNotNull null
-                val href = it.selectFirst("h2 > a")?.attr("href") ?: return@mapNotNull null
-                val posterUrl = it.selectFirst("img")?.attr("src") ?: ""
-                newAnimeSearchResponse(title, href, TvType.Anime) {
-                    this.posterUrl = posterUrl
+        return try {
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            app.get("$mainUrl/?s=$encodedQuery&post_type=anime", timeout = 15_000L).document.select("ul.chivsrc > li")
+                .mapNotNull {
+                    val title = it.selectFirst("h2 > a")?.ownText()?.trim() ?: return@mapNotNull null
+                    val href = it.selectFirst("h2 > a")?.attr("href") ?: return@mapNotNull null
+                    val posterUrl = it.selectFirst("img")?.attr("src") ?: ""
+                    newAnimeSearchResponse(title, href, TvType.Anime) {
+                        this.posterUrl = posterUrl
+                    }
                 }
-            }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
 
@@ -114,7 +117,8 @@ class OtakudesuProvider : MainAPI() {
         val infoRows = document.select("div.infozingle > p")
 
         val title = infoRows.firstOrNull { it.text().contains("Judul", true) }
-            ?.selectFirst("span")?.ownText()?.replace(":", "")?.trim().orEmpty()
+            ?.selectFirst("span")?.ownText()?.replace(":", "")?.trim()
+            ?: "Unknown Title"
         val poster = document.selectFirst("div.fotoanime > img")?.attr("src")
         val tags = infoRows.firstOrNull { it.text().contains("Genre", true) }
             ?.select("span > a")?.map { it.text() } ?: emptyList()
@@ -129,7 +133,7 @@ class OtakudesuProvider : MainAPI() {
         )?.groupValues?.get(1)?.toIntOrNull()
         val status = getStatus(
             infoRows.firstOrNull { it.text().contains("Status", true) }
-                ?.selectFirst("span")?.ownText()?.replace(":", "")?.trim().orEmpty()
+                ?.selectFirst("span")?.ownText()?.replace(":", "")?.trim() ?: "Completed"
         )
         val description = document.select("div.sinopc > p").text()
 
@@ -140,13 +144,11 @@ class OtakudesuProvider : MainAPI() {
         var kitsuid: String? = null
 
         if (malId != null) {
-            val syncMetaData = try {
-                withTimeoutOrNull(10_000L) {
-                    app.get("https://api.ani.zip/mappings?mal_id=$malId", timeout = 15_000L).text
-                }
-            } catch (_: Exception) { null }
+            val syncMetaData = runCatching {
+                app.get("https://api.ani.zip/mappings?mal_id=$malId", timeout = 15_000L).text
+            }.getOrNull()
             if (syncMetaData != null) {
-                animeMetaData = parseAnimeData(syncMetaData)
+                animeMetaData = tryParseJson<MetaAnimeData>(syncMetaData)
                 kitsuid = animeMetaData?.mappings?.kitsuId
             }
         }
@@ -224,7 +226,7 @@ class OtakudesuProvider : MainAPI() {
             this.recommendations = recommendations
             addMalId(malId)
             addAniListId(tracker?.aniId?.toIntOrNull())
-            try { addKitsuId(kitsuid) } catch(_:Throwable){}
+            if (kitsuid != null) addKitsuId(kitsuid)
         }
     }
 
@@ -286,14 +288,14 @@ class OtakudesuProvider : MainAPI() {
                             val decodedEmbed = runCatching { base64Decode(embedData) }.getOrNull() ?: return@amap null
                             val sources = Jsoup.parse(decodedEmbed).select("iframe").attr("src")
 
-                            loadCustomExtractor(sources, data, subtitleCallback, callback, getQuality(res.q))
+                            loadCustomExtractor(sources, data, subtitleCallback, callback, getIndexQuality(res.q))
                         }
                     }
                 }
             },
             {
                 document.select("div.download li").map { ele ->
-                    val quality = getQuality(ele.select("strong").text())
+                    val quality = getIndexQuality(ele.select("strong").text())
                     ele.select("a").map {
                         it.attr("href") to it.text()
                     }.filter {
@@ -324,7 +326,7 @@ class OtakudesuProvider : MainAPI() {
     ) {
         loadExtractor(url, referer, subtitleCallback) { link ->
             runBlocking {
-                callback.invoke(
+                callback(
                     newExtractorLink(
                         link.name,
                         link.name,
@@ -355,47 +357,6 @@ class OtakudesuProvider : MainAPI() {
     private fun inBlacklist(host: String?): Boolean {
         return mirrorBlackList.any { it.equals(host, true) }
     }
-
-    private fun getQuality(str: String?): Int {
-        return QUALITY_PIXEL_REGEX.find(str ?: "")?.groupValues?.getOrNull(1)?.toIntOrNull()
-            ?: Qualities.Unknown.value
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class MetaImage(
-        @JsonProperty("coverType") val coverType: String?,
-        @JsonProperty("url") val url: String?
-    )
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class MetaEpisode(
-        @JsonProperty("episode") val episode: String?,
-        @JsonProperty("airDateUtc") val airDateUtc: String?,
-        @JsonProperty("runtime") val runtime: Int?,
-        @JsonProperty("image") val image: String?,
-        @JsonProperty("title") val title: Map<String, String>?,
-        @JsonProperty("overview") val overview: String?,
-        @JsonProperty("rating") val rating: String?,
-        @JsonProperty("finaleType") val finaleType: String?
-    )
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class MetaAnimeData(
-        @JsonProperty("titles") val titles: Map<String, String>?,
-        @JsonProperty("description") val description: String?,
-        @JsonProperty("images") val images: List<MetaImage>?,
-        @JsonProperty("episodes") val episodes: Map<String, MetaEpisode>?,
-        @JsonProperty("mappings") val mappings: MetaMappings? = null
-    )
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    data class MetaMappings(
-        @JsonProperty("themoviedb_id") val themoviedbId: Int? = null,
-        @JsonProperty("kitsu_id") val kitsuId: String? = null
-    )
-
-    private fun parseAnimeData(jsonString: String): MetaAnimeData? =
-        tryParseJson(jsonString)
 }
 
 class Moedesu : JWPlayer() {
