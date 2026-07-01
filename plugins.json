@@ -203,10 +203,10 @@
     "name": "NgeFilm21Provider"
   },
   {
-    "fileHash": "sha256-eaf6d561d65cb843d4336639112da92797f415dc94b9c0b174730d974e47e725",
+    "fileHash": "sha256-dcad71dddf4746d99a3c91b0c07662a89e2dad05e6ee4dacf240db296128ba63",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 22495,
+    "fileSize": 22670,
     "status": 1,
     "language": "id",
     "authors": [
@@ -217,7 +217,7 @@
       "TvSeries",
       "Movie"
     ],
-    "version": 7,
+    "version": 8,
     "internalName": "Nomat",
     "description": "Nomat - Streaming Movie and TV Series",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/Nomat.cs3",
