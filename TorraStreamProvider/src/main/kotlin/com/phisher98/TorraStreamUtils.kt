@@ -248,12 +248,8 @@ fun filteredCallback(
         ?: emptyList()
 
     val maxSize = sharedPref.getString("sizefilter", "")?.toDoubleOrNull()
-    val limit = sharedPref.getString("limit", "")?.toIntOrNull() ?: 0
-    var resultCount = 0
 
     return fun(link: ExtractorLink) {
-
-        if (limit in 1..resultCount) return
 
         val detectedQuality = when (link.quality) {
             in 2000..3000 -> "4k"
@@ -277,7 +273,6 @@ fun filteredCallback(
         }
         if (maxSize != null && sizeGB != null && sizeGB > maxSize) return
         callback(link)
-        resultCount++
     }
 }
 
