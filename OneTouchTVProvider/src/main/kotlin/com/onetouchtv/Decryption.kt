@@ -1,5 +1,6 @@
 package com.onetouchtv
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.lagradost.cloudstream3.base64Decode
 import com.lagradost.cloudstream3.base64DecodeArray
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
@@ -12,6 +13,8 @@ private val ivHex = base64Decode("Njk2ZDM3MzI2MzY4NjE3MjUwNjE3MzczNzc2ZjcyNjQ=")
 private val key = keyHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 private val iv = ivHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 private val WHITESPACE_REGEX = "\\s+".toRegex()
+private val mapper = ObjectMapper()
+private data class DecryptResult(val result: String)
 
 fun normalizeCustomAlphabet(s: String): String =
     s.replace("-_.", "/").replace("@", "+").replace(WHITESPACE_REGEX, "")
@@ -31,16 +34,24 @@ fun decryptAes256Cbc(cipherBytes: ByteArray, key: ByteArray, iv: ByteArray): Byt
     return cipher.doFinal(cipherBytes)
 }
 
-private data class DecryptResult(val result: String)
+private fun unwrapApiEnvelope(json: String): String {
+    return try {
+        mapper.readTree(json).let { tree ->
+            if (tree.has("success") && tree.get("success").asBoolean(false) && tree.has("result"))
+                tree.get("result").toString() else json
+        }
+    } catch (_: Exception) { json }
+}
 
 fun decryptString(input: String): String {
     val trimmed = input.trim()
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return trimmed
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return unwrapApiEnvelope(trimmed)
     return runCatching {
         val normalized = normalizeCustomAlphabet(input)
         val cipherBytes = base64ToBytes(normalized)
         val plaintextBytes = decryptAes256Cbc(cipherBytes, key, iv)
         val plaintext = String(plaintextBytes, Charsets.UTF_8)
-        tryParseJson<DecryptResult>(plaintext)?.result ?: plaintext
+        val inner = tryParseJson<DecryptResult>(plaintext)?.result ?: plaintext
+        unwrapApiEnvelope(inner)
     }.getOrDefault("")
 }
