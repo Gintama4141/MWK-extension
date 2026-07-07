@@ -1,10 +1,10 @@
 [
   {
     "iconUrl": "https://anichin.ro/wp-content/uploads/2026/02/cropped-favicon-anichin-192x192.webp",
-    "fileHash": "sha256-8a63e828755796673d9af1d9faf4210d82d67470e13b2efce9d75fbf010162d7",
+    "fileHash": "sha256-1ed7cc849129490d8f61a23b0e478788808913639e4b09ba3acd8644a1e00196",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 39793,
+    "fileSize": 39800,
     "status": 1,
     "language": "id",
     "authors": [
@@ -22,11 +22,33 @@
     "name": "AnichinProvider"
   },
   {
-    "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://donghub.vip&size=%size%",
-    "fileHash": "sha256-5624ae15928d64b5a82c95a248472d6a0e7890dce53c4f74994104d58f89c367",
+    "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://animeku.tv&size=%size%",
+    "fileHash": "sha256-fa7171b2327ea8b0763afbc65fed9fdb09f164fdf9503e836d4ede93b090519d",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 30179,
+    "fileSize": 13781,
+    "status": 1,
+    "language": "id",
+    "authors": [
+      "MWK"
+    ],
+    "tvTypes": [
+      "Anime",
+      "AnimeMovie",
+      "OVA"
+    ],
+    "version": 2,
+    "internalName": "AnimekuProvider",
+    "description": "Animeku \u2014 Streaming Anime Subtitle Indonesia",
+    "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/AnimekuProvider.cs3",
+    "name": "AnimekuProvider"
+  },
+  {
+    "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://donghub.vip&size=%size%",
+    "fileHash": "sha256-a0abb7128d0a294eadf7948ad32a913f22892b2c91b06ac6d13ae14f693ef769",
+    "apiVersion": 1,
+    "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
+    "fileSize": 30180,
     "status": 1,
     "language": "id",
     "authors": [
@@ -45,10 +67,10 @@
     "name": "DonghubProvider"
   },
   {
-    "fileHash": "sha256-1ecb78962493550be1d3490cf02c7088803e11c0f4e48e511fd28b23ef64d1a9",
+    "fileHash": "sha256-8eff5691026ea2e05a29cfd580c9d2321f378baade5b4108f5ca46812f3fb4ef",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 42579,
+    "fileSize": 42581,
     "status": 1,
     "language": "id",
     "authors": [
@@ -203,10 +225,10 @@
     "name": "NgeFilm21Provider"
   },
   {
-    "fileHash": "sha256-a59bb530ceda8922c8c1a51e3b9f7b100728efc5dda4da0470ddc0f099a8c6aa",
+    "fileHash": "sha256-0a46d04b94078313e8c32cb8812540eb261dccd62ec4b7d9d9303483dfd8986b",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 24156,
+    "fileSize": 24157,
     "status": 1,
     "language": "id",
     "authors": [
@@ -291,10 +313,10 @@
   },
   {
     "iconUrl": "https://torrentio.strem.fun/images/logo_v1.png",
-    "fileHash": "sha256-b31842a49407140af8f7c694846b801cf311e66c33349e6bfe258f718595c663",
+    "fileHash": "sha256-4f2cce56fd6979d207e08d9732039722e676e3af74e5bf71c8fa118c18ad0ec6",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 207035,
+    "fileSize": 207042,
     "status": 1,
     "language": "en",
     "authors": [
