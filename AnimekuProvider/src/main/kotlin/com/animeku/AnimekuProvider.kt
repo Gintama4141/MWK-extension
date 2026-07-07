@@ -96,52 +96,63 @@ class AnimekuProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data, timeout = 15_000L).document
+        val currentUrl = fixUrl(data)
+        val referer = "$mainUrl/"
 
+        // Try quality selector first (direct MP4 from animeku CDN)
         val options = document.select("#Quality_Select option")
-        if (options.isEmpty()) {
-            val videoSrc = document.selectFirst("video.ak-vp__video")?.attr("abs:src")
-            if (!videoSrc.isNullOrBlank()) {
+        if (options.isNotEmpty()) {
+            var found = false
+            for (opt in options) {
+                val rawUrl = opt.attr("value").takeIf { it.startsWith("http") } ?: continue
+                val resLabel = opt.attr("data-res").takeIf { it.isNotBlank() }
+                    ?: opt.text().substringBefore("·").trim().takeIf { it.isNotBlank() }
+                    ?: "Unknown"
+                found = true
                 callback.invoke(
                     newExtractorLink(
                         source = this.name,
-                        name = this.name,
-                        url = fixUrl(videoSrc),
-                        type = INFER_TYPE
+                        name = "${this.name} $resLabel",
+                        url = fixUrl(rawUrl),
+                        type = ExtractorLinkType.M3U8  // animeku CDN works better with this
                     ) {
-                        this.referer = "$mainUrl/"
-                        this.quality = Qualities.Unknown.value
-                        this.headers = mapOf("Referer" to "$mainUrl/", "Origin" to mainUrl)
+                        this.referer = referer
+                        this.quality = getQualityFromName(resLabel)
+                        this.headers = mapOf(
+                            "Referer" to referer,
+                            "Origin" to mainUrl,
+                            "User-Agent" to USER_AGENT
+                        )
                     }
                 )
-                return true
             }
-            throw ErrorLoadingException("Tidak ada sumber video di Animeku")
+            if (found) return true
         }
 
-        var found = false
-        for (opt in options) {
-            val rawUrl = opt.attr("value").takeIf { it.startsWith("http") } ?: continue
-            val resLabel = opt.attr("data-res").takeIf { it.isNotBlank() } ?: opt.text()
-            found = true
+        // Fallback: try video tag directly
+        val videoSrc = document.selectFirst("video.ak-vp__video")?.attr("abs:src")
+        if (!videoSrc.isNullOrBlank()) {
+            val quality = document.selectFirst("video.ak-vp__video")?.attr("data-res")
+                ?: "Unknown"
             callback.invoke(
                 newExtractorLink(
                     source = this.name,
-                    name = "${this.name} $resLabel",
-                    url = fixUrl(rawUrl),
-                    type = INFER_TYPE
+                    name = this.name,
+                    url = fixUrl(videoSrc),
+                    type = ExtractorLinkType.M3U8
                 ) {
-                    this.referer = "$mainUrl/"
-                    this.quality = getQualityFromName(resLabel)
+                    this.referer = referer
+                    this.quality = getQualityFromName(quality)
                     this.headers = mapOf(
-                        "Referer" to "$mainUrl/",
+                        "Referer" to referer,
                         "Origin" to mainUrl,
                         "User-Agent" to USER_AGENT
                     )
                 }
             )
+            return true
         }
 
-        if (!found) throw ErrorLoadingException("Tidak ada sumber video di Animeku")
-        return true
+        throw ErrorLoadingException("Tidak ada sumber video di Animeku")
     }
 }
