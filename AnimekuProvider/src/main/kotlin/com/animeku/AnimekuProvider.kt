@@ -109,7 +109,7 @@ class AnimekuProvider : MainAPI() {
                         type = INFER_TYPE
                     ) {
                         this.referer = "$mainUrl/"
-                        this.quality = Qualities.Unknown
+                        this.quality = Qualities.Unknown.value
                         this.headers = mapOf("Referer" to "$mainUrl/", "Origin" to mainUrl)
                     }
                 )
