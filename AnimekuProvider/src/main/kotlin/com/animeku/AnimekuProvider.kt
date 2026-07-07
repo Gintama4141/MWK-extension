@@ -114,7 +114,7 @@ class AnimekuProvider : MainAPI() {
                         source = this.name,
                         name = "${this.name} $resLabel",
                         url = fixUrl(rawUrl),
-                        type = ExtractorLinkType.M3U8  // animeku CDN works better with this
+                        type = ExtractorLinkType.VIDEO  // animeku CDN serves direct MP4, not M3U8
                     ) {
                         this.referer = referer
                         this.quality = getQualityFromName(resLabel)
@@ -139,7 +139,7 @@ class AnimekuProvider : MainAPI() {
                     source = this.name,
                     name = this.name,
                     url = fixUrl(videoSrc),
-                    type = ExtractorLinkType.M3U8
+                    type = ExtractorLinkType.VIDEO
                 ) {
                     this.referer = referer
                     this.quality = getQualityFromName(quality)
