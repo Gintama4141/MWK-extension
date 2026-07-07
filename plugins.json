@@ -23,10 +23,10 @@
   },
   {
     "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://animeku.tv&size=%size%",
-    "fileHash": "sha256-bb0f5ca7676fa109f60a81bdead2f810447d5bb06c1d2686bcc4b8a384eb19d0",
+    "fileHash": "sha256-11c178a8b93f974c89f94669f96d9d0206572208b41d3e285847920307cc3aa9",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 14208,
+    "fileSize": 14211,
     "status": 1,
     "language": "id",
     "authors": [
@@ -37,7 +37,7 @@
       "AnimeMovie",
       "OVA"
     ],
-    "version": 3,
+    "version": 4,
     "internalName": "AnimekuProvider",
     "description": "Animeku \u2014 Streaming Anime Subtitle Indonesia",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/AnimekuProvider.cs3",
