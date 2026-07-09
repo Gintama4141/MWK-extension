@@ -313,10 +313,10 @@
   },
   {
     "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://samehadaku.how&size=%size%",
-    "fileHash": "sha256-27dbaca2fd6c3dadb739675e6792b1c999894e933b286c736233802a600b4fc5",
+    "fileHash": "sha256-87c95eb6080b98a00dfb8a890284cbef934700bacc96dc244dc950256dc383e6",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
-    "fileSize": 14885,
+    "fileSize": 14819,
     "status": 1,
     "language": "id",
     "authors": [
@@ -327,7 +327,7 @@
       "AnimeMovie",
       "OVA"
     ],
-    "version": 1,
+    "version": 2,
     "internalName": "SamehadakuProvider",
     "description": "Samehadaku \u2014 Streaming Anime Subtitle Indonesia",
     "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/SamehadakuProvider.cs3",
