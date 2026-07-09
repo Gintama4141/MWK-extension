@@ -1,4 +1,4 @@
-version = 3
+version = 4
 
 cloudstream {
     description = "Samehadaku — Streaming Anime Subtitle Indonesia"

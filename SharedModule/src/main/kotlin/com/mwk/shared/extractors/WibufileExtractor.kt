@@ -8,19 +8,22 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
 
 /**
- * Override untuk extractor core CloudStream `Wibufile` (wibufile.com).
+ * Override untuk extractor core CloudStream `Wibufile`.
  *
- * Core `Wibufile.getUrl` memanggil `app.get(url).text`. Response wibufile sekarang
- * punya Content-Length > 5.000.000 byte sehingga NiceHttp membuang IllegalStateException
- * (OOM guard) sebelum body dikembalikan -> episode gagal ("No Links Found").
+ * Samehadaku menyajikan server wibufile via `https://api.wibufile.com/embed/<id>`.
+ * Halaman embed (≈39 KB) tidak lagi menyimpan video di `src: '...'` melainkan di JSON
+ * `file":"https:\/\/s0.wibufile.com\/...mp4"`. Regex core (`src: ['"](.*?)['"]`) gagal
+ * cocok sehingga tidak ada link yang dihasilkan -> "No Links Found".
  *
- * Fix: gunakan `.textLarge` yang mengizinkan response besar, dengan regex `src:` yang sama.
- * Didaftarkan lewat SharedModule sehingga (karena loadExtractor iterasi terbalik) versi ini
- * meng-override extractor core.
+ * Fix:
+ *  - `mainUrl = https://api.wibufile.com` agar cocok persis dengan URL embed (loadExtractor
+ *    iterasi terbalik -> extractor extension menang atas core).
+ *  - ekstrak `file":"<url>"` lalu unescape `\/` -> `/`.
+ *  - pakai `.textLarge` untuk amankan response besar (guard OOM >5 MB).
  */
 class Wibufile : ExtractorApi() {
     override val name = "Wibufile"
-    override val mainUrl = "https://wibufile.com"
+    override val mainUrl = "https://api.wibufile.com"
     override val requiresReferer = false
 
     override suspend fun getUrl(
@@ -29,8 +32,13 @@ class Wibufile : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val res = app.get(url, timeout = 30_000L).textLarge
-        val video = Regex("src: ['\"](.*?)['\"]").find(res)?.groupValues?.get(1) ?: return
+        val res = app.get(url, referer = referer, timeout = 30_000L).textLarge
+
+        val raw = Regex("""file"\s*:\s*"(.*?)"""").find(res)?.groupValues?.get(1)
+            ?: Regex("""src:\s*['"](.*?)['"]""").find(res)?.groupValues?.get(1)
+            ?: return
+
+        val video = raw.replace("\\/", "/")
 
         callback.invoke(
             newExtractorLink(
