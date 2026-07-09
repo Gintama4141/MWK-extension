@@ -312,6 +312,28 @@
     "name": "PencuriMovieProvider"
   },
   {
+    "iconUrl": "https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://samehadaku.how&size=%size%",
+    "fileHash": "sha256-27dbaca2fd6c3dadb739675e6792b1c999894e933b286c736233802a600b4fc5",
+    "apiVersion": 1,
+    "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
+    "fileSize": 14885,
+    "status": 1,
+    "language": "id",
+    "authors": [
+      "MWK"
+    ],
+    "tvTypes": [
+      "Anime",
+      "AnimeMovie",
+      "OVA"
+    ],
+    "version": 1,
+    "internalName": "SamehadakuProvider",
+    "description": "Samehadaku \u2014 Streaming Anime Subtitle Indonesia",
+    "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/SamehadakuProvider.cs3",
+    "name": "SamehadakuProvider"
+  },
+  {
     "iconUrl": "https://torrentio.strem.fun/images/logo_v1.png",
     "fileHash": "sha256-4f2cce56fd6979d207e08d9732039722e676e3af74e5bf71c8fa118c18ad0ec6",
     "apiVersion": 1,
