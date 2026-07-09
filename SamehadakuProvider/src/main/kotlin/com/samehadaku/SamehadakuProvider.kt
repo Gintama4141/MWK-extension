@@ -14,9 +14,8 @@ class SamehadakuProvider : MainAPI() {
     override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie, TvType.OVA)
 
     override val mainPage = mainPageOf(
-        "$mainUrl/" to "Home",
         "$mainUrl/anime-terbaru/" to "Anime Terbaru",
-        "$mainUrl/daftar-anime-2/page/%d/" to "Daftar Anime",
+        "https://v2.samehadaku.how/anime-movie/" to "Daftar Anime",
         "$mainUrl/anime-movie/" to "Movie",
     )
 
