@@ -42,6 +42,7 @@ https://raw.githubusercontent.com/Gintama4141/MWK-extension/master/repo.json
 | **Anichin** | Anime | Streaming Donghua Subtitle Indonesia |
 | **CineMax21** | Movie & TV | Streaming Movie dan TV Series (TMDB-based, multi-source) |
 | **Donghub** | Anime | Streaming Donghua Subtitle Indonesia |
+| **Drachin** | Asian Drama | Streaming Drama China Sub Indo (YouTube) |
 | **DutaMovie** | Movie & TV | Streaming Movie dan TV Series |
 | **Kisskh** | Movie & TV | Streaming Movie dan TV Series (TMDB-based) |
 | **KlikXXI** | Movie & TV | Streaming Movie dan TV Series |
