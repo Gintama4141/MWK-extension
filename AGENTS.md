@@ -11,8 +11,8 @@ Maintain and optimize the MWK-extension CloudStream3 plugin repo; fix `NoSuchMet
 - `lang` left as-is per provider — not forced to "id".
 - `AesHelper` is allowed — used for AES content decryption, not JSON parsing.
 
-## Active Providers (16)
-Anichin, Animeku, Cinemax21(deleted), Donghub, Dutamovie, Kisskh, Klikxxi, Kuronime, Moviebox, MoviePedia21, NgeFilm21, Nomat, OneTouchTV, Oploverz, Otakudesu, PencuriMovie, TorraStream.
+## Active Providers (15)
+Anichin, Animeku, Cinemax21(deleted), Donghub, Dutamovie, Kisskh, Klikxxi, Kuronime, Moviebox, MoviePedia21, NgeFilm21, Nomat, OneTouchTV, Otakudesu, PencuriMovie, TorraStream.
 
 ## Provider Versions
 | Provider | Version | Type |
@@ -29,7 +29,6 @@ Anichin, Animeku, Cinemax21(deleted), Donghub, Dutamovie, Kisskh, Klikxxi, Kuron
 | NgeFilm21 | v5 | Movie & TV |
 | Nomat | v6 | Movie & TV |
 | OneTouchTV | v6 | Movie & TV |
-| Oploverz | v1 | Anime |
 | Otakudesu | v10 | Anime |
 | PencuriMovie | v4 | Movie & TV |
 | TorraStream | v89 | Movie, TV & Anime |
