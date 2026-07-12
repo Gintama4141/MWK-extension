@@ -67,6 +67,27 @@
     "name": "DonghubProvider"
   },
   {
+    "fileHash": "sha256-069fde4c80822be8bcbbff0a89b442f9b8f36f1c7bfb05f5b0349564a50a2545",
+    "apiVersion": 1,
+    "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
+    "fileSize": 18098,
+    "status": 1,
+    "language": "id",
+    "authors": [
+      "MWK"
+    ],
+    "tvTypes": [
+      "AsianDrama",
+      "TvSeries",
+      "Movie"
+    ],
+    "version": 1,
+    "internalName": "DrachinProvider",
+    "description": "Drachin - Streaming Drama China Sub Indo",
+    "url": "https://raw.githubusercontent.com/Gintama4141/MWK-extension/builds/DrachinProvider.cs3",
+    "name": "DrachinProvider"
+  },
+  {
     "fileHash": "sha256-8eff5691026ea2e05a29cfd580c9d2321f378baade5b4108f5ca46812f3fb4ef",
     "apiVersion": 1,
     "repositoryUrl": "https://github.com/Gintama4141/MWK-extension",
